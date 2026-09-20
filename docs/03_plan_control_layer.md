@@ -326,13 +326,13 @@ below, not just once at the end.
 | `src/control/index.ts`             | Re-exports the public surface only                                            |
 | `src/main.ts`                      | Cycle 7 — replaces the Vite demo content                                      |
 
-## Verification
+## Verification — done, confirmed in a real browser
 
 - `npx vitest run` — every cycle's tests green, suite completes in well under a second (a sign no test
   is accidentally waiting on a real timer instead of a fake clock).
 - `npx tsc` — clean under `strict`.
 - `npm run build` — still produces a working `dist/`.
-- Manual, in `npm run dev`:
+- Manual, in `npm run dev` — all confirmed working by a human tester:
   - Hold a letter key down: exactly one console line, not a stream of repeats.
   - Press `Cmd+R` (or `Ctrl+R`): the page reloads — confirms the adapter isn't swallowing browser
     shortcuts.
@@ -341,6 +341,12 @@ below, not just once at the end.
     cleared afterward, checked via the `window` handle in devtools.
   - From the devtools console, read `window.controlLayer`'s history after a few presses and confirm it
     matches what was logged.
+
+One console error was seen on load in Firefox: `Permission denied to access property "then"`. Not from
+this codebase — nothing in `src/` uses `.then`, `Promise`, or `async`. Confirmed as a browser-extension
+artifact (the error is Firefox's cross-realm security-boundary check, tripped by an extension's content
+script probing the page): it disappeared in a Private Browsing window, where extensions are disabled by
+default.
 
 ## Explicitly not in this plan
 
