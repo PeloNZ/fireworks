@@ -8,14 +8,14 @@
  * shape itself; until that cycle, this lived inline in `ControlConfig` with
  * nothing to import it. */
 export interface KeyboardConfig {
-  readonly deniedCodes: readonly string[]
+  readonly deniedCodes: readonly string[];
 }
 
 export interface ControlConfig {
-  readonly defaultIntensity: number
-  readonly historyMaxEntries: number
-  readonly historyMaxAgeMs: number
-  readonly keyboard: KeyboardConfig
+  readonly defaultIntensity: number;
+  readonly historyMaxEntries: number;
+  readonly historyMaxAgeMs: number;
+  readonly keyboard: KeyboardConfig;
 }
 
 export const defaultConfig: ControlConfig = Object.freeze({
@@ -24,15 +24,15 @@ export const defaultConfig: ControlConfig = Object.freeze({
   historyMaxAgeMs: 2000,
   keyboard: Object.freeze({
     deniedCodes: Object.freeze([
-      'ShiftLeft',
-      'ShiftRight',
-      'ControlLeft',
-      'ControlRight',
-      'AltLeft',
-      'AltRight',
-      'MetaLeft',
-      'MetaRight',
-      'CapsLock',
+      "ShiftLeft",
+      "ShiftRight",
+      "ControlLeft",
+      "ControlRight",
+      "AltLeft",
+      "AltRight",
+      "MetaLeft",
+      "MetaRight",
+      "CapsLock",
     ]),
   }),
-})
+});

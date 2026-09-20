@@ -1,19 +1,19 @@
 {
-    "env": {
-        "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1"
-    },
-    "hooks": {
-        "TaskCompleted": [
-            {
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/doc-sync-gate.sh",
-                        "timeout": 20,
-                        "statusMessage": "Checking documentation against changes"
-                    }
-                ]
-            }
+  "env": {
+    "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1"
+  },
+  "hooks": {
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/doc-sync-gate.sh",
+            "timeout": 20,
+            "statusMessage": "Checking documentation against changes"
+          }
         ]
-    }
+      }
+    ]
+  }
 }

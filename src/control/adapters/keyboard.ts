@@ -1,5 +1,5 @@
-import type { KeyboardConfig } from '../config.ts'
-import type { ControllerAdapter, RawInput } from '../types.ts'
+import type { KeyboardConfig } from "../config.ts";
+import type { ControllerAdapter, RawInput } from "../types.ts";
 
 /**
  * The minimal slice of a real `KeyboardEvent` this function needs — a
@@ -9,12 +9,12 @@ import type { ControllerAdapter, RawInput } from '../types.ts'
  * jsdom" in docs/03_plan_control_layer.md.
  */
 export interface KeyEventLike {
-  readonly code: string
-  readonly shiftKey: boolean
-  readonly ctrlKey: boolean
-  readonly metaKey: boolean
-  readonly repeat: boolean
-  readonly timeStamp: number
+  readonly code: string;
+  readonly shiftKey: boolean;
+  readonly ctrlKey: boolean;
+  readonly metaKey: boolean;
+  readonly repeat: boolean;
+  readonly timeStamp: number;
 }
 
 /**
@@ -24,21 +24,21 @@ export interface KeyEventLike {
  * returns the same decision, with no reach into the DOM.
  */
 export interface KeyDecision {
-  readonly input: RawInput | null
-  readonly preventDefault: boolean
+  readonly input: RawInput | null;
+  readonly preventDefault: boolean;
 }
 
 // Suppressing these prevents the page from scrolling or moving focus.
 // Codes only — see the Ctrl/Meta guard below for why that's not the whole
 // story.
 const NAVIGATION_CODES = new Set([
-  'Tab',
-  'Space',
-  'ArrowUp',
-  'ArrowDown',
-  'ArrowLeft',
-  'ArrowRight',
-])
+  "Tab",
+  "Space",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+]);
 
 /**
  * Turns one `keydown` event into a decision: is there a meaningful press
@@ -56,19 +56,23 @@ export function interpretKeyEvent(
     // never treat it as game input, and never suppress its default
     // behavior either — "survives" has to mean both, or Ctrl+Tab would
     // still get hijacked even though Cmd+R doesn't.
-    return { input: null, preventDefault: false }
+    return { input: null, preventDefault: false };
   }
 
-  const preventDefault = NAVIGATION_CODES.has(event.code)
+  const preventDefault = NAVIGATION_CODES.has(event.code);
 
   if (event.repeat || keyboardConfig.deniedCodes.includes(event.code)) {
-    return { input: null, preventDefault }
+    return { input: null, preventDefault };
   }
 
   return {
-    input: { code: event.code, shift: event.shiftKey, timestamp: event.timeStamp },
+    input: {
+      code: event.code,
+      shift: event.shiftKey,
+      timestamp: event.timeStamp,
+    },
     preventDefault,
-  }
+  };
 }
 
 /**
@@ -78,7 +82,7 @@ export function interpretKeyEvent(
  * the pure function's.
  */
 export interface KeyboardListenerEvent extends KeyEventLike {
-  readonly preventDefault: () => void
+  readonly preventDefault: () => void;
 }
 
 /**
@@ -88,8 +92,14 @@ export interface KeyboardListenerEvent extends KeyEventLike {
  * the only event type this adapter ever registers.
  */
 export interface KeyboardEventTarget {
-  addEventListener(type: 'keydown', listener: (event: KeyboardListenerEvent) => void): void
-  removeEventListener(type: 'keydown', listener: (event: KeyboardListenerEvent) => void): void
+  addEventListener(
+    type: "keydown",
+    listener: (event: KeyboardListenerEvent) => void,
+  ): void;
+  removeEventListener(
+    type: "keydown",
+    listener: (event: KeyboardListenerEvent) => void,
+  ): void;
 }
 
 /**
@@ -99,31 +109,31 @@ export interface KeyboardEventTarget {
  * this function only acts on those decisions.
  */
 export function createKeyboardAdapter(options: {
-  readonly target: KeyboardEventTarget
-  readonly config: KeyboardConfig
+  readonly target: KeyboardEventTarget;
+  readonly config: KeyboardConfig;
 }): ControllerAdapter {
-  const { target, config } = options
-  let handler: ((event: KeyboardListenerEvent) => void) | null = null
+  const { target, config } = options;
+  let handler: ((event: KeyboardListenerEvent) => void) | null = null;
 
   return {
-    source: 'keyboard',
+    source: "keyboard",
     start(emit) {
       handler = (event) => {
-        const decision = interpretKeyEvent(event, config)
+        const decision = interpretKeyEvent(event, config);
         if (decision.preventDefault) {
-          event.preventDefault()
+          event.preventDefault();
         }
         if (decision.input) {
-          emit(decision.input)
+          emit(decision.input);
         }
-      }
-      target.addEventListener('keydown', handler)
+      };
+      target.addEventListener("keydown", handler);
     },
     stop() {
       if (handler) {
-        target.removeEventListener('keydown', handler)
-        handler = null
+        target.removeEventListener("keydown", handler);
+        handler = null;
       }
     },
-  }
+  };
 }

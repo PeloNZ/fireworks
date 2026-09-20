@@ -14,15 +14,17 @@ Tests run on Vitest: `npm test` (watch) or `npm run test:run` (single run).
 
 ```bash
 npm install
-npm run dev        # Vite dev server with HMR
-npm run build      # tsc (typecheck only) && vite build
-npm run preview    # serve the built dist/
-npm run typecheck  # tsc, no build
-npm test           # vitest, watch mode
-npm run test:run   # vitest, single run
-npm run lint       # eslint .
-npm run lint:fix   # eslint . --fix
-npm run knip       # unreachable-export / dead-code check
+npm run dev           # Vite dev server with HMR
+npm run build         # tsc (typecheck only) && vite build
+npm run preview       # serve the built dist/
+npm run typecheck     # tsc, no build
+npm test              # vitest, watch mode
+npm run test:run      # vitest, single run
+npm run lint          # eslint .
+npm run lint:fix      # eslint . --fix
+npm run format        # prettier --write .
+npm run format:check  # prettier --check .
+npm run knip          # unreachable-export / dead-code check
 ```
 
 `vite ^8.3.0` and `typescript ~6.0.2` float in `package.json`; `package-lock.json` pins the versions actually installed.
@@ -37,7 +39,7 @@ All application code (`src/control/**` and beyond) is written test-first. This i
 - **Assert against something a shortcut would fail.** E.g. drive a config-derived value with an unusual config value, not its default — a hardcoded implementation can fake the default but not an arbitrary one.
 - **No real time, no real DOM in tests.** Inject a clock (`now: () => number`) rather than reading it inside logic under test; use plain fake objects ("ports") shaped like the slice of `EventTarget`/`KeyboardEvent` actually used, rather than pulling in `jsdom`.
 - **Types and config objects aren't test-driven themselves** — there's no logic to test — but don't add or export one before a tested function needs it. An unused export is a defect `knip` will flag, not a "for later." Grow the shared contract (`src/control/types.ts`) one cycle at a time.
-- **Before every commit**, `npx vitest run`, `npx tsc`, `npx eslint .`, and `npx knip` must all be clean on the code just written. Pre-existing failures elsewhere (e.g. the untouched Vite demo files) are left alone, not fixed as a drive-by.
+- **Before every commit**, `npx vitest run`, `npx tsc`, `npx eslint .`, `npx prettier --check .`, and `npx knip` must all be clean on the code just written. Pre-existing failures elsewhere (e.g. the untouched Vite demo files) are left alone, not fixed as a drive-by.
 
 ## Gotchas
 

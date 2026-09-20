@@ -12,6 +12,8 @@
     "test:run": "vitest run",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "knip": "knip"
   },
   "devDependencies": {

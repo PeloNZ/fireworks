@@ -1,3 +1,10 @@
-# Ignore artifacts:
+# Prettier formats; ESLint and knip catch bugs. Keep that split — don't add
+# style/formatting rules back into eslint.config.js.
+
+# Build artifacts:
 build
 coverage
+dist
+
+# Generated, not hand-written — reformatting it is noise:
+package-lock.json

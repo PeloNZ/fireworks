@@ -1,5 +1,5 @@
-import type { ControlConfig } from './config.ts'
-import type { ControlSignal, ControlSource, RawInput } from './types.ts'
+import type { ControlConfig } from "./config.ts";
+import type { ControlSignal, ControlSource, RawInput } from "./types.ts";
 
 /**
  * Turns a device-neutral RawInput into a ControlSignal. Pure: the same
@@ -23,5 +23,5 @@ export function buildSignal(
     timestamp: raw.timestamp,
     intensity: config.defaultIntensity,
     source,
-  }
+  };
 }

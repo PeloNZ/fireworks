@@ -11,7 +11,7 @@
 /** Which adapter produced a signal. A union of one today; widened when a
  * second adapter (MIDI, motion) is built. Downstream logic should avoid
  * branching on this — see "Extensibility notes" in docs/02_spec.md. */
-export type ControlSource = 'keyboard'
+export type ControlSource = "keyboard";
 
 /**
  * A device-neutral description of "something meaningful happened", as
@@ -21,19 +21,19 @@ export type ControlSource = 'keyboard'
  * docs/03_plan_control_layer.md).
  */
 export interface RawInput {
-  readonly code: string
-  readonly shift: boolean
-  readonly timestamp: number
+  readonly code: string;
+  readonly shift: boolean;
+  readonly timestamp: number;
 }
 
 /** What Control hands downstream: a RawInput plus the policy fields only
  * the core is allowed to decide. */
 export interface ControlSignal {
-  readonly id: string
-  readonly shift: boolean
-  readonly timestamp: number
-  readonly intensity: number
-  readonly source: ControlSource
+  readonly id: string;
+  readonly shift: boolean;
+  readonly timestamp: number;
+  readonly intensity: number;
+  readonly source: ControlSource;
 }
 
 /**
@@ -46,7 +46,7 @@ export interface ControlSignal {
 // ControlSignal[] }` member has to be additive, and `interface` can't
 // express a union at all, let alone grow one without reshaping this member.
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
-export type ControlEvent = { kind: 'single'; signal: ControlSignal }
+export type ControlEvent = { kind: "single"; signal: ControlSignal };
 
 /**
  * The seam every adapter must fill. Deliberately tiny — two methods, no
@@ -56,7 +56,7 @@ export type ControlEvent = { kind: 'single'; signal: ControlSignal }
  * do with each input.
  */
 export interface ControllerAdapter {
-  readonly source: ControlSource
-  start(emit: (input: RawInput) => void): void
-  stop(): void
+  readonly source: ControlSource;
+  start(emit: (input: RawInput) => void): void;
+  stop(): void;
 }

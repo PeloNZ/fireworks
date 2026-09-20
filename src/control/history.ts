@@ -1,5 +1,5 @@
-import type { ControlConfig } from './config.ts'
-import type { ControlSignal } from './types.ts'
+import type { ControlConfig } from "./config.ts";
+import type { ControlSignal } from "./types.ts";
 
 /**
  * A bounded, timestamped store of recent signals. Two limits, count and
@@ -11,15 +11,15 @@ import type { ControlSignal } from './types.ts'
  * waiting on real time.
  */
 export function createHistory(config: ControlConfig, now: () => number) {
-  let entries: ControlSignal[] = []
+  let entries: ControlSignal[] = [];
 
   return {
     /** Add a signal. Drops the oldest entry first if this push goes over
      * `config.historyMaxEntries`. */
     push(signal: ControlSignal): void {
-      entries.push(signal)
+      entries.push(signal);
       if (entries.length > config.historyMaxEntries) {
-        entries = entries.slice(entries.length - config.historyMaxEntries)
+        entries = entries.slice(entries.length - config.historyMaxEntries);
       }
     },
 
@@ -28,14 +28,14 @@ export function createHistory(config: ControlConfig, now: () => number) {
      * signal can go stale with no new push to trigger the check. Returns
      * a copy; mutating the result does not change stored state. */
     recent(): readonly ControlSignal[] {
-      const cutoff = now() - config.historyMaxAgeMs
-      entries = entries.filter((entry) => entry.timestamp >= cutoff)
-      return [...entries]
+      const cutoff = now() - config.historyMaxAgeMs;
+      entries = entries.filter((entry) => entry.timestamp >= cutoff);
+      return [...entries];
     },
 
     /** Empty the buffer. A push after this starts a new, empty history. */
     clear(): void {
-      entries = []
+      entries = [];
     },
-  }
+  };
 }

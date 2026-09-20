@@ -8,7 +8,7 @@ A browser-based, 2D horizontal-platform-view fireworks game, built in JavaScript
 
 - Press any key → one firework launches.
 - Sequences (keys pressed in order) unlock special patterns.
-- *(Future direction, not v1 — see "Explicitly descoped for v1" below: chords, keys pressed together, launching multiples with combined effects.)*
+- _(Future direction, not v1 — see "Explicitly descoped for v1" below: chords, keys pressed together, launching multiples with combined effects.)_
 - Each key press seeds a random-but-repeatable set of colors, patterns, and effects.
 - Sound effects follow each firework's sprite; background music's pace and density respond to how fast and how often the player is playing.
 
@@ -36,7 +36,7 @@ Data flows one direction only, control → action → audiovisual. Nothing downs
 
 ## Multiplayer (seam only, not building yet)
 
-Multiple players should eventually see the *same* firework on every screen. That means the firework spec — including any random seed — must be finalized once, in the Action layer, before it's handed to rendering. It is never decided by (or duplicated per) an individual player's screen. Building this is explicitly out of scope for now; the architecture just needs to not preclude it.
+Multiple players should eventually see the _same_ firework on every screen. That means the firework spec — including any random seed — must be finalized once, in the Action layer, before it's handed to rendering. It is never decided by (or duplicated per) an individual player's screen. Building this is explicitly out of scope for now; the architecture just needs to not preclude it.
 
 ## Explicitly descoped for v1
 

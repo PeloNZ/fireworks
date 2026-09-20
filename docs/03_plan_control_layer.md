@@ -1,7 +1,7 @@
 # Fireworks game — Control layer build plan (v1)
 
 See `01_intent.md` for the overall vision and `02_spec.md` for what the Control layer must do. This
-document is the *how*: file layout, contracts, and an ordered list of test-driven build cycles for the
+document is the _how_: file layout, contracts, and an ordered list of test-driven build cycles for the
 Control layer, an abstract controller adapter, and one concrete keyboard adapter.
 
 **Out of scope here**: the `ControlEvent` consumer (the Action layer). Nothing in this plan interprets
@@ -55,47 +55,47 @@ deliberately thin so there's as little untested surface as possible.
 // A device-neutral description of "something happened at this key/button/whatever".
 // This is what an adapter produces — see "Why the adapter emits RawInput" below.
 interface RawInput {
-  code: string        // e.g. "KeyA" for keyboard; a future MIDI adapter might use "note:60"
-  shift: boolean       // keyboard-specific today, but any adapter can set it; unused ones default false
-  timestamp: number    // same clock domain as `now()` — see "Clock injection" in 02_spec.md
+  code: string; // e.g. "KeyA" for keyboard; a future MIDI adapter might use "note:60"
+  shift: boolean; // keyboard-specific today, but any adapter can set it; unused ones default false
+  timestamp: number; // same clock domain as `now()` — see "Clock injection" in 02_spec.md
 }
 
 // What Control actually hands downstream. Built from a RawInput, but stamped with policy
 // (source, intensity) that only Control's core is allowed to decide.
 interface ControlSignal {
-  id: string
-  shift: boolean
-  timestamp: number
-  intensity: number
-  source: ControlSource
+  id: string;
+  shift: boolean;
+  timestamp: number;
+  intensity: number;
+  source: ControlSource;
 }
 
-type ControlSource = 'keyboard'   // widened when a second adapter exists
+type ControlSource = "keyboard"; // widened when a second adapter exists
 
 // The discriminated union from 02_spec.md — one member today, room for "chord" later.
-type ControlEvent = { kind: 'single'; signal: ControlSignal }
+type ControlEvent = { kind: "single"; signal: ControlSignal };
 
 // The seam every adapter must fill. Deliberately tiny: two methods, no inheritance.
 interface ControllerAdapter {
-  readonly source: ControlSource
-  start(emit: (input: RawInput) => void): void
-  stop(): void
+  readonly source: ControlSource;
+  start(emit: (input: RawInput) => void): void;
+  stop(): void;
 }
 
 // A sink is just a function. No interface, no class — see "Why a sink is a function" below.
-type ControlEventSink = (event: ControlEvent) => void
+type ControlEventSink = (event: ControlEvent) => void;
 ```
 
 ## Where noise filtering actually belongs
 
-`02_spec.md` (as amended) still describes *what* counts as noise — held-key repeats, standalone
+`02_spec.md` (as amended) still describes _what_ counts as noise — held-key repeats, standalone
 modifier presses, Ctrl/Meta-held combinations that would hijack a browser shortcut. What changed is
-*where* that filtering happens.
+_where_ that filtering happens.
 
 Think about what `ControllerAdapter` promises: "give me a `target` and a config, and I'll call `emit`
 with a `RawInput` for every meaningful press." Nothing in that promise mentions keyboards. If the
 Control layer's core also had to know that `"ShiftLeft"` is a modifier to be dropped, that knowledge
-would live in two places at once — the adapter *and* the core — for no benefit. Worse, a future MIDI
+would live in two places at once — the adapter _and_ the core — for no benefit. Worse, a future MIDI
 adapter would inherit a `deniedCodes` list full of keyboard key names that mean nothing to a MIDI
 device, and would have to either ignore it or awkwardly extend it.
 
@@ -109,7 +109,7 @@ a `ControlSignal` and remember it, never to second-guess whether it should exist
 
 It would be shorter to have the keyboard adapter build the final `ControlSignal` directly — it already
 has the code, the shift state, and the timestamp. Resist that. `ControlSignal` carries two fields the
-adapter should *not* decide: `source` (which adapter this came from — obvious for keyboard, but the
+adapter should _not_ decide: `source` (which adapter this came from — obvious for keyboard, but the
 point is the core assigns it, not the adapter itself) and `intensity` (currently always
 `config.defaultIntensity`, but this is exactly the field `01_intent.md` reserves for a future
 hold-to-charge feature). If every adapter stamped its own `source` and `intensity`, that's the same
@@ -131,14 +131,14 @@ natural instinct from OO web frameworks, would be over-engineering for what's ne
 
 `formatControlEvent(event): string` takes a `ControlEvent` and returns one line of text. It doesn't call
 `console.debug` itself — that's `createConsoleSink`'s only job, and it's a one-liner:
-`(event) => log(formatControlEvent(event))`. The separation exists so the *text* can be unit-tested
+`(event) => log(formatControlEvent(event))`. The separation exists so the _text_ can be unit-tested
 directly: `expect(formatControlEvent(fixture)).toBe('...')`, no spying on `console`, no capturing stdout.
 It also means the debug surface can grow later (write to a `<pre>` element, send over a WebSocket to a
 second screen) by writing a new one-line sink, never touching the formatting logic or its tests.
 
 ## Why a fake target beats jsdom
 
-Testing `createKeyboardAdapter` needs *something* that behaves like a DOM `EventTarget`. The usual web
+Testing `createKeyboardAdapter` needs _something_ that behaves like a DOM `EventTarget`. The usual web
 answer is to pull in `jsdom` and test against a simulated `window`. This plan does the opposite: the
 adapter's `target` parameter is typed as just `{ addEventListener; removeEventListener }` — the smallest
 slice of `EventTarget` it actually uses — and tests construct a plain object with those two methods by
@@ -147,7 +147,7 @@ matching that shape can be plugged in"). Likewise, `interpretKeyEvent` takes a p
 `{ code, shiftKey, ctrlKey, metaKey, repeat, timeStamp }` rather than a real `KeyboardEvent`.
 
 The payoff: tests run in plain Node, with no browser-emulation dependency to install, configure, or have
-version-mismatch with real browsers. The cost, stated plainly: the *wiring* — the few lines that actually
+version-mismatch with real browsers. The cost, stated plainly: the _wiring_ — the few lines that actually
 call `target.addEventListener('keydown', ...)` — is only lightly exercised by these tests, because a fake
 target can't prove a real browser calls the listener the way we expect. That's why "Verification" below
 still includes a real `npm run dev` check by hand; the unit tests prove the logic is right, the manual
@@ -158,7 +158,7 @@ check proves the wiring is real.
 `ControlEventSink` is the last thing this plan builds. There is deliberately no code here that reads a
 `ControlEvent` and decides "this means launch a firework" — that's the Action layer, and it doesn't
 exist yet. Keeping the boundary here means this plan's tests can assert exactly one thing about output:
-"did the right `ControlEvent` get produced/logged" — not "did the right *firework* happen," which would
+"did the right `ControlEvent` get produced/logged" — not "did the right _firework_ happen," which would
 require Action to exist and would make a Control-layer test failure and an Action-layer test failure
 look the same from the outside.
 
@@ -166,13 +166,13 @@ look the same from the outside.
 
 ```ts
 interface ControlConfig {
-  defaultIntensity: number      // 1.0
-  historyMaxEntries: number     // 16
-  historyMaxAgeMs: number       // 2000
+  defaultIntensity: number; // 1.0
+  historyMaxEntries: number; // 16
+  historyMaxAgeMs: number; // 2000
   keyboard: {
-    deniedCodes: readonly string[]   // ShiftLeft, ShiftRight, ControlLeft, ControlRight,
-                                      // AltLeft, AltRight, MetaLeft, MetaRight, CapsLock
-  }
+    deniedCodes: readonly string[]; // ShiftLeft, ShiftRight, ControlLeft, ControlRight,
+    // AltLeft, AltRight, MetaLeft, MetaRight, CapsLock
+  };
 }
 ```
 
@@ -189,6 +189,7 @@ exists — by the time cycle 5 needs a "fake browser," cycles 1–4 have already
 output looks like.
 
 **Setup (before cycle 1) — done:**
+
 1. `npm install -D vitest`, add `"test"` / `"test:run"` scripts to `package.json`.
 2. `tsconfig.json`: `"strict": true`, plus the strict flags `strict` alone doesn't cover —
    `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `noImplicitReturns`,
@@ -217,7 +218,7 @@ equivalent of either in this ecosystem, but these are the closest fits:
   never awaited." That's the PHPStan-shaped value: analysis a plain type-checker pass doesn't do.
 - **`knip`** (`knip.json`), which starts from the app's real entry point (`src/main.ts`) and reports
   exports, files, and dependencies nothing reachable from there actually uses. It's the closest fit to
-  Rector's "find code that shouldn't be here" role, though Rector also *rewrites* code to modernize it —
+  Rector's "find code that shouldn't be here" role, though Rector also _rewrites_ code to modernize it —
   knip only finds candidates for removal, it doesn't rewrite anything itself.
 
 Both run via `npm run lint` / `npm run knip`, and both are meant to be run often during the TDD cycles
@@ -281,28 +282,27 @@ below, not just once at the end.
    `01_intent.md` — running the exact same input list through a fresh layer twice produces byte-identical
    output both times.
 
-**Wiring, after the cycles above are green:**
-7. `src/main.ts` becomes the dev harness: create a real `createKeyboardAdapter` against `window`, a
-   `createConsoleSink`, wire them through `createControlLayer`, and assign the running layer to
-   `window.controlLayer` (or similar) so `history` and manual `stop()`/`start()` can be poked from
-   devtools. This file is intentionally not unit tested — it's wiring, proven by the manual check in
-   Verification, not by an automated test (see "Why a fake target beats jsdom" for why that tradeoff is
-   acceptable here).
+**Wiring, after the cycles above are green:** 7. `src/main.ts` becomes the dev harness: create a real `createKeyboardAdapter` against `window`, a
+`createConsoleSink`, wire them through `createControlLayer`, and assign the running layer to
+`window.controlLayer` (or similar) so `history` and manual `stop()`/`start()` can be poked from
+devtools. This file is intentionally not unit tested — it's wiring, proven by the manual check in
+Verification, not by an automated test (see "Why a fake target beats jsdom" for why that tradeoff is
+acceptable here).
 
 ## Critical files
 
-| Path | Purpose |
-|---|---|
-| `src/control/types.ts` | The cross-layer contract — the shapes everything else in this plan implements |
-| `src/control/config.ts` | Single source of tunable values |
-| `src/control/signal.ts` | Cycle 1 |
-| `src/control/history.ts` | Cycle 3 |
-| `src/control/adapters/keyboard.ts` | Cycles 2 and 5 |
-| `src/control/controlLayer.ts` | Cycle 6 |
-| `src/control/debug/format.ts` | Cycle 4 |
-| `src/control/debug/consoleSink.ts` | One-liner built on cycle 4 |
-| `src/control/index.ts` | Re-exports the public surface only |
-| `src/main.ts` | Cycle 7 — replaces the Vite demo content |
+| Path                               | Purpose                                                                       |
+| ---------------------------------- | ----------------------------------------------------------------------------- |
+| `src/control/types.ts`             | The cross-layer contract — the shapes everything else in this plan implements |
+| `src/control/config.ts`            | Single source of tunable values                                               |
+| `src/control/signal.ts`            | Cycle 1                                                                       |
+| `src/control/history.ts`           | Cycle 3                                                                       |
+| `src/control/adapters/keyboard.ts` | Cycles 2 and 5                                                                |
+| `src/control/controlLayer.ts`      | Cycle 6                                                                       |
+| `src/control/debug/format.ts`      | Cycle 4                                                                       |
+| `src/control/debug/consoleSink.ts` | One-liner built on cycle 4                                                    |
+| `src/control/index.ts`             | Re-exports the public surface only                                            |
+| `src/main.ts`                      | Cycle 7 — replaces the Vite demo content                                      |
 
 ## Verification
 

@@ -16,16 +16,20 @@ The Action and AudioVisual layers do not exist yet.
 
 ```bash
 npm install
-npm run dev        # Vite dev server with HMR
-npm run build      # tsc (typecheck only) && vite build
-npm run preview    # serve the built dist/
-npm run typecheck  # tsc, no build
-npm test           # vitest, watch mode
-npm run test:run   # vitest, single run
-npm run lint       # eslint .
-npm run lint:fix   # eslint . --fix
-npm run knip       # unreachable-export / dead-code check
+npm run dev           # Vite dev server with HMR
+npm run build         # tsc (typecheck only) && vite build
+npm run preview       # serve the built dist/
+npm run typecheck     # tsc, no build
+npm test              # vitest, watch mode
+npm run test:run      # vitest, single run
+npm run lint          # eslint .
+npm run lint:fix      # eslint . --fix
+npm run format        # prettier --write .
+npm run format:check  # prettier --check .
+npm run knip          # unreachable-export / dead-code check
 ```
+
+Prettier formats; ESLint and knip catch bugs — the two don't overlap, so there's nothing to reconcile between them.
 
 ## Development
 
