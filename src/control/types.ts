@@ -4,9 +4,8 @@
 //
 // Grown one cycle at a time, not written all upfront: knip (see
 // docs/03_plan_control_layer.md#linting-and-static-analysis) flags an
-// exported type nothing imports yet as dead code, and it's right to —
-// ControlEventSink belongs here too, but arrives with cycle 6, the
-// cycle that actually consumes it.
+// exported type nothing imports yet as dead code, and every type below
+// was added in the cycle that first needed to name it.
 
 /** Which adapter produced a signal. A union of one today; widened when a
  * second adapter (MIDI, motion) is built. Downstream logic should avoid
@@ -60,3 +59,12 @@ export interface ControllerAdapter {
   start(emit: (input: RawInput) => void): void;
   stop(): void;
 }
+
+/**
+ * A sink is just a function. No interface, no class to implement — any
+ * function with this shape satisfies it, `console.debug` included once
+ * wrapped in one line by `createConsoleSink`. Introducing a class here
+ * would add ceremony to solve a problem — "plug in different output
+ * destinations" — a plain function already solves.
+ */
+export type ControlEventSink = (event: ControlEvent) => void;

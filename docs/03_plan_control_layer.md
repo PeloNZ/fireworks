@@ -275,19 +275,25 @@ below, not just once at the end.
    that (`expect(event.preventDefault).toHaveBeenCalledTimes(1)`) purely to inspect a spy's call record.
    `ControllerAdapter` moved from the deferred list in `types.ts` to a real export, since this is its
    first consumer.
-6. **`createControlLayer({ adapter, config, now, sink })`** — wire a fake adapter (not the real keyboard
-   one) and a recording sink. Feed a sequence of `RawInput`s through the fake adapter's `emit` and assert:
-   the sink receives one `{ kind: 'single', ... }` event per input, in order; the signal fields match
-   what `buildSignal` would produce; and — the determinism check that matters for the multiplayer seam in
-   `01_intent.md` — running the exact same input list through a fresh layer twice produces byte-identical
-   output both times.
+6. **`createControlLayer({ adapter, config, now, sink })` — done.** Wire a fake adapter (not the real
+   keyboard one) and a recording sink. Feed a sequence of `RawInput`s through the fake adapter's `emit`
+   and assert: the sink receives one `{ kind: 'single', ... }` event per input, in order; the signal
+   fields match what `buildSignal` would produce; and — the determinism check that matters for the
+   multiplayer seam in `01_intent.md` — running the exact same input list through a fresh layer twice
+   produces byte-identical output both times, checked on both the sink's recorded calls and `recent()`.
+   `ControlEventSink` moved from types.ts's deferred list to a real export here, its first consumer.
+   `createControlLayer`'s return value (`start`/`stop`/`recent`) has no exported name of its own yet —
+   nothing outside this file needs to name the shape, only use the value cycle 7's dev harness will get
+   back from calling this function.
 
-**Wiring, after the cycles above are green:** 7. `src/main.ts` becomes the dev harness: create a real `createKeyboardAdapter` against `window`, a
-`createConsoleSink`, wire them through `createControlLayer`, and assign the running layer to
-`window.controlLayer` (or similar) so `history` and manual `stop()`/`start()` can be poked from
-devtools. This file is intentionally not unit tested — it's wiring, proven by the manual check in
-Verification, not by an automated test (see "Why a fake target beats jsdom" for why that tradeoff is
-acceptable here).
+**Wiring, after the cycles above are green:**
+
+7. `src/main.ts` becomes the dev harness: create a real `createKeyboardAdapter` against `window`, a
+   `createConsoleSink`, wire them through `createControlLayer`, and assign the running layer to
+   `window.controlLayer` (or similar) so `history` and manual `stop()`/`start()` can be poked from
+   devtools. This file is intentionally not unit tested — it's wiring, proven by the manual check in
+   Verification, not by an automated test (see "Why a fake target beats jsdom" for why that tradeoff is
+   acceptable here).
 
 ## Critical files
 
