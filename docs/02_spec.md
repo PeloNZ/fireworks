@@ -161,7 +161,10 @@ An unbounded history buffer is a memory leak in slow motion — a session left r
 - **`historyMaxEntries`** (suggested `16`) — a hard cap on the number of retained signals; oldest evicted first.
 - **`historyMaxAgeMs`** (suggested `2000`) — signals older than this relative to the current clock time are dropped. This bound exists because a sequence pattern is expected to complete within a couple of seconds; there's no gameplay reason to keep signals from 30 seconds ago around.
 
-Both bounds are enforced on every push, using the injected clock (see below), not `Date.now()`.
+`historyMaxEntries` is enforced on every push, oldest evicted first. `historyMaxAgeMs` is enforced when
+the history is read, not on push — a signal can go stale between pushes with no new one to trigger the
+check, so age has to be checked against the clock at read time. Both use the injected clock (see below),
+never `Date.now()`.
 
 ## Buffer reset rule: focus/blur loss
 

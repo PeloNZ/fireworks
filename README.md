@@ -6,7 +6,7 @@ See `docs/01_intent.md` for the full vision and the three-layer design (Control,
 
 ## Status
 
-The Control layer is in progress. `src/control/` has a tested `buildSignal` function. The keyboard adapter, history buffer, event formatting, and the layer's wiring are not built yet — see `docs/03_plan_control_layer.md` for the build plan and cycle order.
+The Control layer is in progress. `src/control/` has tested `buildSignal`, `interpretKeyEvent`, `createHistory`, `formatControlEvent`, and `createKeyboardAdapter` functions. The layer's core wiring (`createControlLayer`) and the dev harness in `src/main.ts` are not built yet — see `docs/03_plan_control_layer.md` for the build plan and cycle order.
 
 The Action and AudioVisual layers do not exist yet.
 
