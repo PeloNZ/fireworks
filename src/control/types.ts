@@ -5,8 +5,8 @@
 // Grown one cycle at a time, not written all upfront: knip (see
 // docs/03_plan_control_layer.md#linting-and-static-analysis) flags an
 // exported type nothing imports yet as dead code, and it's right to —
-// ControlEvent, ControllerAdapter, and ControlEventSink belong here too,
-// but arrive with the cycles that actually consume them (5 and 6).
+// ControllerAdapter and ControlEventSink belong here too, but arrive with
+// the cycles that actually consume them (5 and 6).
 
 /** Which adapter produced a signal. A union of one today; widened when a
  * second adapter (MIDI, motion) is built. Downstream logic should avoid
@@ -35,3 +35,15 @@ export interface ControlSignal {
   readonly intensity: number
   readonly source: ControlSource
 }
+
+/**
+ * Control → Action event shape. A discriminated union — an object with a
+ * literal `kind` field that lets code branch and narrow the type safely —
+ * with one member for v1. This is the "chord seam": adding a `"chord"`
+ * member later only means adding a case, not reshaping `"single"`.
+ */
+// A discriminated union needs `type`; a future `| { kind: 'chord'; signals:
+// ControlSignal[] }` member has to be additive, and `interface` can't
+// express a union at all, let alone grow one without reshaping this member.
+// eslint-disable-next-line @typescript-eslint/consistent-type-definitions
+export type ControlEvent = { kind: 'single'; signal: ControlSignal }

@@ -249,8 +249,13 @@ below, not just once at the end.
    the returned array itself is not frozen — a plain copy was enough to satisfy the requirement without
    the extra step of freezing it too. Age-based eviction runs inside `recent()`, at read time, against
    `now()` — never inside `push()` — so a signal can go stale with no new push to trigger the check.
-4. **`formatControlEvent(event)`** — one deterministic string per fixture event; assert the exact string,
-   not just "contains X", so a future accidental format change is caught immediately.
+4. **`formatControlEvent(event)` — done.** One deterministic string per fixture event; assert the exact
+   string, not just "contains X", so a future accidental format change is caught immediately. Format:
+   `single KeyA shift=true intensity=1 source=keyboard t=1234`. `ControlEvent` moved from types.ts's
+   deferred list to a real export here — the comment in types.ts said it would arrive with cycles 5 and
+   6, but this cycle needed it first; the comment now says so. No `switch` on `event.kind`: with one
+   union member, a switch is a branch that never branches, and ESLint's `no-unnecessary-condition` said
+   so — the function just reads `event.kind` directly into the string.
 5. **`createKeyboardAdapter({ target, config })`** — using the fake `target` from "Why a fake target beats
    jsdom": `start(emit)` registers a `keydown` listener; firing a synthetic event that
    `interpretKeyEvent` would accept results in `emit` being called with the matching `RawInput`; firing
