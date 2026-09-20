@@ -19,6 +19,18 @@ npm run build    # tsc (typecheck only) && vite build
 npm run preview  # serve the built dist/
 ```
 
+## Development tactic: TDD only
+
+All application code (`src/control/**` and beyond) is written test-first. This is mandatory, not a preference — see `docs/03_plan_control_layer.md` for the cycle-by-cycle build order it applies to.
+
+- **Red before green, every time.** Write the test against code that doesn't exist yet, run it, and confirm it fails for the right reason (missing module, wrong value — not a typo in the test itself). Only then write the implementation.
+- **Minimum code to pass.** No branches, fields, or exports beyond what the current failing test requires. If it isn't tested, it isn't written yet.
+- **One behavior per cycle, one commit per cycle.** Don't fold multiple functions' tests into a single red/green pass.
+- **Assert against something a shortcut would fail.** E.g. drive a config-derived value with an unusual config value, not its default — a hardcoded implementation can fake the default but not an arbitrary one.
+- **No real time, no real DOM in tests.** Inject a clock (`now: () => number`) rather than reading it inside logic under test; use plain fake objects ("ports") shaped like the slice of `EventTarget`/`KeyboardEvent` actually used, rather than pulling in `jsdom`.
+- **Types and config objects aren't test-driven themselves** — there's no logic to test — but don't add or export one before a tested function needs it. An unused export is a defect `knip` will flag, not a "for later." Grow the shared contract (`src/control/types.ts`) one cycle at a time.
+- **Before every commit**, `npx vitest run`, `npx tsc`, `npx eslint .`, and `npx knip` must all be clean on the code just written. Pre-existing failures elsewhere (e.g. the untouched Vite demo files) are left alone, not fixed as a drive-by.
+
 ## Gotchas
 
 - **`npm run dev` does not typecheck.** Vite only strips types; `tsc` runs in `build`. With `noUnusedLocals` and `noUnusedParameters` on, an unused import or variable passes `dev` and fails `build`. Run `npx tsc` to check without building.
