@@ -228,13 +228,18 @@ below, not just once at the end.
 1. **`buildSignal(raw, source, config)` — done.** Asserts the returned `ControlSignal` has all five fields;
    `id`/`shift`/`timestamp` pass through from `raw` unchanged; `intensity` always equals
    `config.defaultIntensity`; `source` equals the `source` argument, not something the function invents.
-2. **`interpretKeyEvent(event, keyboardConfig)`** — the noise-filtering rules from `02_spec.md`, as unit
-   tests against plain fixture objects: `repeat: true` → no input; codes in `deniedCodes` alone → no
+2. **`interpretKeyEvent(event, keyboardConfig)` — done.** The noise-filtering rules from `02_spec.md`, as
+   unit tests against plain fixture objects: `repeat: true` → no input; codes in `deniedCodes` alone → no
    input; `ctrlKey`/`metaKey` held with any code → no input (so Cmd+R survives); ordinary letters,
    digits, Tab, and arrow codes → an input is produced; `shiftKey` is captured into `shift`. Also assert
    the `preventDefault` decision (true for Tab/Space/arrows) without the function calling anything —
    it returns a plain decision object; the caller acts on it. This split is what keeps the function pure:
    a function that reaches out and calls a browser API is no longer "just compute a value from inputs."
+   One refinement made while writing the tests: `preventDefault` is forced to `false` whenever
+   `ctrlKey`/`metaKey` is held, even for a navigation code like Tab — otherwise "Cmd+R survives" would
+   still leave a real shortcut like Ctrl+Tab (switch browser tabs) suppressed. `KeyboardConfig` was
+   promoted from an inline shape in `config.ts` to a named export here, since this is the cycle that
+   finally needs to name it.
 3. **`createHistory(config, now)`** — push more than `historyMaxEntries` and confirm the oldest drop off;
    advance a fake clock past `historyMaxAgeMs` and confirm stale entries are gone on the next read;
    `clear()` empties it; `recent()` returns entries oldest-to-newest and doesn't let a caller mutate the
