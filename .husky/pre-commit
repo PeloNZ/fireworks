@@ -1,1 +1,4 @@
 npx lint-staged
+npx tsc
+npx vitest run
+npx knip

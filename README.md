@@ -31,7 +31,7 @@ npm run knip          # unreachable-export / dead-code check
 
 Prettier formats; ESLint and knip catch bugs — the two don't overlap, so there's nothing to reconcile between them.
 
-A pre-commit git hook runs Prettier on staged files automatically (Husky + `lint-staged`). It runs after `npm install`, so a fresh clone needs that once before the hook works.
+A pre-commit git hook (Husky + `lint-staged`) enforces this on every commit: it formats and lints staged files, then runs `tsc`, the test suite, and `knip` against the whole project. Any failure blocks the commit. It runs after `npm install`, so a fresh clone needs that once before the hook works.
 
 ## Development
 
