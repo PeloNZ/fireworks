@@ -25,8 +25,13 @@ STAMP="$STATE_DIR/$TASK_ID"
 LAST_HEAD_FILE="$STATE_DIR/last-head"
 
 # Loop guard: one block per task. Once doc-sync has been asked for on this
-# task, let it complete freely on retry.
+# task, let it complete freely on retry — but first advance the baseline to
+# the current HEAD. Without this, a retry after the doc-sync fix commit
+# would leave that commit (and anything else landed in the meantime)
+# unseen by last-head, and the next task's diff would silently absorb it.
 if [ -e "$STAMP" ]; then
+  CURRENT_HEAD=$(git rev-parse HEAD 2>/dev/null)
+  [ -n "$CURRENT_HEAD" ] && echo "$CURRENT_HEAD" > "$LAST_HEAD_FILE" 2>/dev/null
   exit 0
 fi
 
