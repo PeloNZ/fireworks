@@ -171,7 +171,7 @@ The browser can silently drop `keyup` (and, less commonly, stray `keydown`) even
 
 ## Clock injection
 
-All timing logic (the history buffer's age-based eviction) takes a `now: () => number` function rather than calling `performance.now()` or `Date.now()` directly. The convention: it's a parameter on the factory that creates the control layer (e.g. `createControlLayer({ config, now, ... })`), defaulting to `performance.now` when not supplied. Tests pass a fake clock — a simple closure returning a controllable value — so buffer-expiry behavior can be tested by advancing a variable instead of waiting on a real timer.
+All timing logic (the history buffer's age-based eviction) takes a `now: () => number` function rather than calling `performance.now()` or `Date.now()` directly. The convention: it's a required parameter on the factory that creates the control layer (`createControlLayer({ adapter, config, now, sink })`) — no default. Every other dependency this factory needs (`adapter`, `config`, `sink`) is also required with no default, so `now` isn't a special case; the caller always supplies the real clock. In practice that means `src/main.ts` passes `performance.now` itself when wiring up the real control layer. Tests pass a fake clock instead — a simple closure returning a controllable value — so buffer-expiry behavior can be tested by advancing a variable instead of waiting on a real timer.
 
 ## Data flow (system view)
 
@@ -221,4 +221,4 @@ Earlier drafts of this spec left several items open. They're resolved as follows
 
 1. **Sequence pattern content and timeouts** — deferred to the Action layer's own spec, not Control's. Control has no `sequences` list; it only supplies bounded, timestamped history for Action to interpret.
 2. **`keyMap` / allow-list character set** — superseded. There is no allow-list; see "Why a deny-list, not an allow-list" above. The only exclusions are the fixed `keyboard.deniedCodes` list, and that filtering is the keyboard adapter's responsibility, not the Control layer core's — see "Where noise filtering belongs" above.
-3. **Clock injection convention** — a `now: () => number` parameter on the control-layer factory, defaulting to `performance.now`. See "Clock injection" above.
+3. **Clock injection convention** — a required `now: () => number` parameter on the control-layer factory, no default, same as every other dependency it needs. See "Clock injection" above.
