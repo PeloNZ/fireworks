@@ -39,7 +39,7 @@ All application code (`src/control/**` and beyond) is written test-first. This i
 - **Assert against something a shortcut would fail.** E.g. drive a config-derived value with an unusual config value, not its default — a hardcoded implementation can fake the default but not an arbitrary one.
 - **No real time, no real DOM in tests.** Inject a clock (`now: () => number`) rather than reading it inside logic under test; use plain fake objects ("ports") shaped like the slice of `EventTarget`/`KeyboardEvent` actually used, rather than pulling in `jsdom`.
 - **Types and config objects aren't test-driven themselves** — there's no logic to test — but don't add or export one before a tested function needs it. An unused export is a defect `knip` will flag, not a "for later." Grow the shared contract (`src/control/types.ts`) one cycle at a time.
-- **Before every commit**, `npx vitest run`, `npx tsc`, `npx eslint .`, `npx prettier --check .`, and `npx knip` must all be clean on the code just written. Pre-existing failures elsewhere (e.g. the untouched Vite demo files) are left alone, not fixed as a drive-by.
+- **Before every commit**, `npx vitest run`, `npx tsc`, `npx eslint .`, `npx prettier --check .`, and `npx knip` must all be clean on the code just written. Pre-existing failures elsewhere (e.g. the untouched Vite demo files) are left alone, not fixed as a drive-by. A pre-commit git hook (Husky, `.husky/pre-commit`) runs `lint-staged`, which formats staged files with Prettier automatically — it does not run tests, `tsc`, ESLint, or knip, so the manual checklist above still applies before every commit.
 
 ## Gotchas
 
@@ -48,6 +48,7 @@ All application code (`src/control/**` and beyond) is written test-first. This i
 - **`erasableSyntaxOnly: true`**: no `enum`, no `namespace`, no constructor parameter properties.
 - **`strict` is on** in `tsconfig.json`, plus flags `strict` alone doesn't cover: `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `noImplicitReturns`, `noPropertyAccessFromIndexSignature`, `forceConsistentCasingInFileNames`.
 - **Imports carry explicit `.ts` extensions** (`import { setupCounter } from './counter.ts'`) under `allowImportingTsExtensions`. Match this in new files.
+- **`npm install` installs the git hook.** Its `prepare` script runs `husky`, which points git's `core.hooksPath` at `.husky/`. A fresh clone has no working pre-commit hook until `npm install` has run once.
 
 ## Assets
 
