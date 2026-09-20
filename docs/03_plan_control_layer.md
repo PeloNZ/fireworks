@@ -288,12 +288,28 @@ below, not just once at the end.
 
 **Wiring, after the cycles above are green:**
 
-7. `src/main.ts` becomes the dev harness: create a real `createKeyboardAdapter` against `window`, a
-   `createConsoleSink`, wire them through `createControlLayer`, and assign the running layer to
-   `window.controlLayer` (or similar) so `history` and manual `stop()`/`start()` can be poked from
-   devtools. This file is intentionally not unit tested — it's wiring, proven by the manual check in
-   Verification, not by an automated test (see "Why a fake target beats jsdom" for why that tradeoff is
-   acceptable here).
+7. **`src/main.ts` becomes the dev harness — done.** Creates a real `createKeyboardAdapter` against
+   `window`, a real `createConsoleSink`, wires them through `createControlLayer`, and assigns the
+   running layer to `window.controlLayer` via a `declare global { interface Window { ... } }`
+   augmentation, so it's fully typed for devtools poking rather than reached through a cast. This file
+   is intentionally not unit tested — it's wiring, proven by the manual check in Verification, not by an
+   automated test (see "Why a fake target beats jsdom" for why that tradeoff is acceptable here). This is
+   also where `src/counter.ts`, `src/style.css`, and `src/assets/*` — the Vite demo content this file
+   replaces — were deleted.
+
+   Two things worth naming from writing it:
+   - `now: () => performance.now()`, not `now: performance.now`. The bare reference would detach
+     `performance.now` from the `performance` object its implementation depends on — calling it would
+     throw `TypeError: Illegal invocation` in a real browser. Same lesson as cycle 5's
+     `no-unbound-method` fix, just not one ESLint can catch here, since `performance.now` is a browser
+     built-in with no type in this codebase for the rule to flag.
+   - `target: window` — cycle 5's plan entry left open whether a real `EventTarget` would actually
+     satisfy the narrow `KeyboardEventTarget` port type. It does: `tsc` accepts `window` here with no
+     cast, thanks to TypeScript's bivariant checking of method-shorthand parameters.
+
+   `createConsoleSink(log = console.debug)` (`src/control/debug/consoleSink.ts`) was built alongside
+   this cycle, test-first like everything else — it's a one-line function, but "small" isn't an
+   exception to the TDD rule in `CLAUDE.md`.
 
 ## Critical files
 
@@ -306,7 +322,7 @@ below, not just once at the end.
 | `src/control/adapters/keyboard.ts` | Cycles 2 and 5                                                                |
 | `src/control/controlLayer.ts`      | Cycle 6                                                                       |
 | `src/control/debug/format.ts`      | Cycle 4                                                                       |
-| `src/control/debug/consoleSink.ts` | One-liner built on cycle 4                                                    |
+| `src/control/debug/consoleSink.ts` | Cycle 7 — one-liner, still test-first                                         |
 | `src/control/index.ts`             | Re-exports the public surface only                                            |
 | `src/main.ts`                      | Cycle 7 — replaces the Vite demo content                                      |
 
