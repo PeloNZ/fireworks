@@ -26,6 +26,8 @@ const layer = createControlLayer({
   config: defaultConfig,
   now: () => performance.now(),
   sink,
+  // Temporary no-op — replaced by createWindowFocusLoss in the next cycle.
+  focusLoss: { start: () => undefined, stop: () => undefined },
 });
 
 declare global {

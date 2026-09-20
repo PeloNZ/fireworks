@@ -61,6 +61,17 @@ export interface ControllerAdapter {
 }
 
 /**
+ * The seam for "the browser silently dropped input" — window blur, or the
+ * page becoming hidden. Two methods, same shape as `ControllerAdapter`, so
+ * there is one idiom for "a browser event crosses into the Control layer",
+ * not two. See "Buffer reset rule: focus/blur loss" in docs/02_spec.md.
+ */
+export interface FocusLossSource {
+  start(onFocusLoss: () => void): void;
+  stop(): void;
+}
+
+/**
  * A sink is just a function. No interface, no class to implement — any
  * function with this shape satisfies it, `console.debug` included once
  * wrapped in one line by `createConsoleSink`. Introducing a class here

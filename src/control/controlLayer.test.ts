@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { defaultConfig } from "./config.ts";
 import { createControlLayer } from "./controlLayer.ts";
-import type { ControllerAdapter, ControlEventSink, RawInput } from "./types.ts";
+import type {
+  ControllerAdapter,
+  ControlEventSink,
+  FocusLossSource,
+  RawInput,
+} from "./types.ts";
 
 // Cycle 6 (docs/03_plan_control_layer.md): createControlLayer is the piece
 // that wires an adapter's RawInputs through buildSignal and createHistory
@@ -27,6 +32,24 @@ function fakeAdapter(): ControllerAdapter & {
   };
 }
 
+// Cycle 0 (docs/04_plan_action_layer.md's Part 0): a fake FocusLossSource,
+// same shape as fakeAdapter above — a port a test can trigger directly,
+// standing in for a real blur/visibilitychange listener.
+function fakeFocusLossSource(): FocusLossSource & { trigger: () => void } {
+  let onFocusLoss: (() => void) | null = null;
+  return {
+    start(callback) {
+      onFocusLoss = callback;
+    },
+    stop() {
+      onFocusLoss = null;
+    },
+    trigger() {
+      onFocusLoss?.();
+    },
+  };
+}
+
 function fixedClock(value: number): () => number {
   return () => value;
 }
@@ -40,6 +63,7 @@ describe("createControlLayer", () => {
       config: defaultConfig,
       now: fixedClock(0),
       sink,
+      focusLoss: fakeFocusLossSource(),
     });
     layer.start();
 
@@ -77,6 +101,7 @@ describe("createControlLayer", () => {
       config,
       now: fixedClock(0),
       sink,
+      focusLoss: fakeFocusLossSource(),
     });
     layer.start();
 
@@ -102,11 +127,73 @@ describe("createControlLayer", () => {
       config: defaultConfig,
       now: fixedClock(0),
       sink: vi.fn(),
+      focusLoss: fakeFocusLossSource(),
     });
 
     layer.stop();
 
     expect(stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("stop() also stops the focus-loss source", () => {
+    const focusLoss = fakeFocusLossSource();
+    const stop = vi.spyOn(focusLoss, "stop");
+    const layer = createControlLayer({
+      adapter: fakeAdapter(),
+      config: defaultConfig,
+      now: fixedClock(0),
+      sink: vi.fn(),
+      focusLoss,
+    });
+
+    layer.stop();
+
+    expect(stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears history when the focus-loss source fires", () => {
+    const adapter = fakeAdapter();
+    const focusLoss = fakeFocusLossSource();
+    const layer = createControlLayer({
+      adapter,
+      config: defaultConfig,
+      now: fixedClock(0),
+      sink: vi.fn(),
+      focusLoss,
+    });
+    layer.start();
+    adapter.emit({ code: "KeyA", shift: false, timestamp: 0 });
+
+    focusLoss.trigger();
+
+    expect(layer.recent()).toEqual([]);
+  });
+
+  it("still records signals pushed after a focus loss", () => {
+    const adapter = fakeAdapter();
+    const focusLoss = fakeFocusLossSource();
+    const layer = createControlLayer({
+      adapter,
+      config: defaultConfig,
+      now: fixedClock(0),
+      sink: vi.fn(),
+      focusLoss,
+    });
+    layer.start();
+    adapter.emit({ code: "KeyA", shift: false, timestamp: 0 });
+    focusLoss.trigger();
+
+    adapter.emit({ code: "KeyB", shift: false, timestamp: 10 });
+
+    expect(layer.recent()).toEqual([
+      {
+        id: "KeyB",
+        shift: false,
+        timestamp: 10,
+        intensity: 1,
+        source: "keyboard",
+      },
+    ]);
   });
 
   it("exposes recent history through recent()", () => {
@@ -116,6 +203,7 @@ describe("createControlLayer", () => {
       config: defaultConfig,
       now: fixedClock(0),
       sink: vi.fn(),
+      focusLoss: fakeFocusLossSource(),
     });
     layer.start();
 
@@ -147,6 +235,7 @@ describe("createControlLayer", () => {
         config: defaultConfig,
         now: fixedClock(0),
         sink,
+        focusLoss: fakeFocusLossSource(),
       });
       layer.start();
       for (const input of inputs) {
