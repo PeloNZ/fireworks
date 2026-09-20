@@ -256,11 +256,25 @@ below, not just once at the end.
    6, but this cycle needed it first; the comment now says so. No `switch` on `event.kind`: with one
    union member, a switch is a branch that never branches, and ESLint's `no-unnecessary-condition` said
    so — the function just reads `event.kind` directly into the string.
-5. **`createKeyboardAdapter({ target, config })`** — using the fake `target` from "Why a fake target beats
-   jsdom": `start(emit)` registers a `keydown` listener; firing a synthetic event that
+5. **`createKeyboardAdapter({ target, config })` — done.** Using the fake `target` from "Why a fake
+   target beats jsdom": `start(emit)` registers a `keydown` listener; firing a synthetic event that
    `interpretKeyEvent` would accept results in `emit` being called with the matching `RawInput`; firing
    one it would reject results in no call; `stop()` removes the listener (assert
-   `removeEventListener` was called with the same handler `addEventListener` received).
+   `removeEventListener` was called with the same handler `addEventListener` received). `config` here is
+   `KeyboardConfig`, not the whole `ControlConfig` — the adapter only ever hands it to
+   `interpretKeyEvent`, which only reads `deniedCodes`; there's no reason for it to also carry
+   `defaultIntensity` or the history settings, which are Control-core concerns. One addition beyond the
+   plan's original wording: the adapter also has to call `event.preventDefault()` when
+   `interpretKeyEvent`'s decision says to — cycle 2 built that decision, this cycle is what finally acts
+   on it. Doing that needed a slightly larger event shape than `interpretKeyEvent`'s own `KeyEventLike`
+   (which deliberately has no `preventDefault`, so the pure function can never reach into the DOM): a new
+   `KeyboardListenerEvent` extends `KeyEventLike` with one function-typed `preventDefault` field. It's a
+   property, not a method signature — `readonly preventDefault: () => void`, not
+   `preventDefault(): void` — because ESLint's `no-unbound-method` rule flags a plain method reference as
+   unsafe to detach from its object (it might depend on `this`), and this codebase's tests do exactly
+   that (`expect(event.preventDefault).toHaveBeenCalledTimes(1)`) purely to inspect a spy's call record.
+   `ControllerAdapter` moved from the deferred list in `types.ts` to a real export, since this is its
+   first consumer.
 6. **`createControlLayer({ adapter, config, now, sink })`** — wire a fake adapter (not the real keyboard
    one) and a recording sink. Feed a sequence of `RawInput`s through the fake adapter's `emit` and assert:
    the sink receives one `{ kind: 'single', ... }` event per input, in order; the signal fields match

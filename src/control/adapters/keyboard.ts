@@ -1,5 +1,5 @@
 import type { KeyboardConfig } from '../config.ts'
-import type { RawInput } from '../types.ts'
+import type { ControllerAdapter, RawInput } from '../types.ts'
 
 /**
  * The minimal slice of a real `KeyboardEvent` this function needs — a
@@ -68,5 +68,62 @@ export function interpretKeyEvent(
   return {
     input: { code: event.code, shift: event.shiftKey, timestamp: event.timeStamp },
     preventDefault,
+  }
+}
+
+/**
+ * `KeyEventLike` plus the one DOM method `createKeyboardAdapter` is allowed
+ * to call. `interpretKeyEvent` never sees `preventDefault` — it only
+ * decides whether to; acting on that decision is the adapter's job, not
+ * the pure function's.
+ */
+export interface KeyboardListenerEvent extends KeyEventLike {
+  readonly preventDefault: () => void
+}
+
+/**
+ * The minimal slice of `EventTarget` the keyboard adapter needs — a port,
+ * exactly like `KeyEventLike`. Real usage passes `window`; tests pass a
+ * plain object with two methods. Narrowed to `'keydown'` because that is
+ * the only event type this adapter ever registers.
+ */
+export interface KeyboardEventTarget {
+  addEventListener(type: 'keydown', listener: (event: KeyboardListenerEvent) => void): void
+  removeEventListener(type: 'keydown', listener: (event: KeyboardListenerEvent) => void): void
+}
+
+/**
+ * Wires `interpretKeyEvent` to a real `EventTarget`. This is the only
+ * function in this file that is not pure — it registers and removes a DOM
+ * listener. Everything it decides still comes from `interpretKeyEvent`;
+ * this function only acts on those decisions.
+ */
+export function createKeyboardAdapter(options: {
+  readonly target: KeyboardEventTarget
+  readonly config: KeyboardConfig
+}): ControllerAdapter {
+  const { target, config } = options
+  let handler: ((event: KeyboardListenerEvent) => void) | null = null
+
+  return {
+    source: 'keyboard',
+    start(emit) {
+      handler = (event) => {
+        const decision = interpretKeyEvent(event, config)
+        if (decision.preventDefault) {
+          event.preventDefault()
+        }
+        if (decision.input) {
+          emit(decision.input)
+        }
+      }
+      target.addEventListener('keydown', handler)
+    },
+    stop() {
+      if (handler) {
+        target.removeEventListener('keydown', handler)
+        handler = null
+      }
+    },
   }
 }

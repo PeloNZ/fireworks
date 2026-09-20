@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { defaultConfig } from '../config.ts'
-import { interpretKeyEvent } from './keyboard.ts'
-import type { KeyEventLike } from './keyboard.ts'
+import { createKeyboardAdapter, interpretKeyEvent } from './keyboard.ts'
+import type { KeyboardListenerEvent, KeyEventLike } from './keyboard.ts'
 
 // Cycle 2 (docs/03_plan_control_layer.md): interpretKeyEvent owns every
 // keyboard-specific noise-filtering rule from docs/02_spec.md. It's pure —
@@ -78,5 +78,121 @@ describe('interpretKeyEvent', () => {
     const decision = interpretKeyEvent({ ...baseEvent, code: 'Tab', ctrlKey: true }, keyboardConfig)
 
     expect(decision).toEqual({ input: null, preventDefault: false })
+  })
+})
+
+// Cycle 5 (docs/03_plan_control_layer.md): createKeyboardAdapter is the
+// only non-pure piece here — it wires interpretKeyEvent to a real
+// EventTarget. Tests use a fake target (a "port" — see "Why a fake target
+// beats jsdom" in 03_plan_control_layer.md), not jsdom, so this still runs
+// in plain Node.
+
+function fakeTarget() {
+  return {
+    addEventListener: vi.fn<(type: 'keydown', listener: (event: KeyboardListenerEvent) => void) => void>(),
+    removeEventListener: vi.fn<(type: 'keydown', listener: (event: KeyboardListenerEvent) => void) => void>(),
+  }
+}
+
+function listenerEvent(overrides: Partial<KeyboardListenerEvent> = {}): KeyboardListenerEvent {
+  return { ...baseEvent, preventDefault: vi.fn(), ...overrides }
+}
+
+/** Starts the adapter against `target` and returns the handler function
+ * `target.addEventListener` actually received, so a test can fire it
+ * directly instead of needing a real, dispatching EventTarget. */
+function startAndCaptureHandler(
+  target: ReturnType<typeof fakeTarget>,
+  emit: (input: { code: string; shift: boolean; timestamp: number }) => void = vi.fn(),
+): (event: KeyboardListenerEvent) => void {
+  const adapter = createKeyboardAdapter({ target, config: keyboardConfig })
+  adapter.start(emit)
+
+  const call = target.addEventListener.mock.calls[0]
+  if (!call) {
+    throw new Error('expected addEventListener to have been called')
+  }
+  return call[1]
+}
+
+describe('createKeyboardAdapter', () => {
+  it('reports its source as keyboard', () => {
+    const adapter = createKeyboardAdapter({ target: fakeTarget(), config: keyboardConfig })
+
+    expect(adapter.source).toBe('keyboard')
+  })
+
+  it('registers exactly one keydown listener on start', () => {
+    const target = fakeTarget()
+    const adapter = createKeyboardAdapter({ target, config: keyboardConfig })
+
+    adapter.start(vi.fn())
+
+    expect(target.addEventListener).toHaveBeenCalledTimes(1)
+    expect(target.addEventListener).toHaveBeenCalledWith('keydown', expect.any(Function))
+  })
+
+  it('emits a RawInput when the fired event is one interpretKeyEvent accepts', () => {
+    const target = fakeTarget()
+    const emit = vi.fn()
+    const handler = startAndCaptureHandler(target, emit)
+
+    handler(listenerEvent({ code: 'KeyA' }))
+
+    expect(emit).toHaveBeenCalledWith({ code: 'KeyA', shift: false, timestamp: 1000 })
+  })
+
+  it('does not emit when the fired event is one interpretKeyEvent rejects', () => {
+    const target = fakeTarget()
+    const emit = vi.fn()
+    const handler = startAndCaptureHandler(target, emit)
+
+    handler(listenerEvent({ repeat: true }))
+
+    expect(emit).not.toHaveBeenCalled()
+  })
+
+  it('calls preventDefault on the real event when interpretKeyEvent says to', () => {
+    const target = fakeTarget()
+    const handler = startAndCaptureHandler(target)
+    const event = listenerEvent({ code: 'Tab' })
+
+    handler(event)
+
+    expect(event.preventDefault).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not call preventDefault when interpretKeyEvent says not to', () => {
+    const target = fakeTarget()
+    const handler = startAndCaptureHandler(target)
+    const event = listenerEvent({ code: 'KeyA' })
+
+    handler(event)
+
+    expect(event.preventDefault).not.toHaveBeenCalled()
+  })
+
+  it('removes on stop the exact same function addEventListener received', () => {
+    const target = fakeTarget()
+    const adapter = createKeyboardAdapter({ target, config: keyboardConfig })
+    adapter.start(vi.fn())
+    const call = target.addEventListener.mock.calls[0]
+    if (!call) {
+      throw new Error('expected addEventListener to have been called')
+    }
+    const registeredHandler = call[1]
+
+    adapter.stop()
+
+    expect(target.removeEventListener).toHaveBeenCalledWith('keydown', registeredHandler)
+  })
+
+  it('does nothing on stop if start was never called', () => {
+    const target = fakeTarget()
+    const adapter = createKeyboardAdapter({ target, config: keyboardConfig })
+
+    adapter.stop()
+
+    expect(target.removeEventListener).not.toHaveBeenCalled()
   })
 })

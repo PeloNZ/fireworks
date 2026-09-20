@@ -5,8 +5,8 @@
 // Grown one cycle at a time, not written all upfront: knip (see
 // docs/03_plan_control_layer.md#linting-and-static-analysis) flags an
 // exported type nothing imports yet as dead code, and it's right to —
-// ControllerAdapter and ControlEventSink belong here too, but arrive with
-// the cycles that actually consume them (5 and 6).
+// ControlEventSink belongs here too, but arrives with cycle 6, the
+// cycle that actually consumes it.
 
 /** Which adapter produced a signal. A union of one today; widened when a
  * second adapter (MIDI, motion) is built. Downstream logic should avoid
@@ -47,3 +47,16 @@ export interface ControlSignal {
 // express a union at all, let alone grow one without reshaping this member.
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
 export type ControlEvent = { kind: 'single'; signal: ControlSignal }
+
+/**
+ * The seam every adapter must fill. Deliberately tiny — two methods, no
+ * inheritance — so a fake implementation for tests costs nothing to write.
+ * `start` takes the emit callback rather than receiving it at construction
+ * time, so a caller can build the adapter first and decide later what to
+ * do with each input.
+ */
+export interface ControllerAdapter {
+  readonly source: ControlSource
+  start(emit: (input: RawInput) => void): void
+  stop(): void
+}
