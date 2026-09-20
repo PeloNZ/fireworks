@@ -240,11 +240,15 @@ below, not just once at the end.
    still leave a real shortcut like Ctrl+Tab (switch browser tabs) suppressed. `KeyboardConfig` was
    promoted from an inline shape in `config.ts` to a named export here, since this is the cycle that
    finally needs to name it.
-3. **`createHistory(config, now)`** — push more than `historyMaxEntries` and confirm the oldest drop off;
-   advance a fake clock past `historyMaxAgeMs` and confirm stale entries are gone on the next read;
-   `clear()` empties it; `recent()` returns entries oldest-to-newest and doesn't let a caller mutate the
-   internal array (return a copy or a frozen array — a caller holding a live reference into internal
-   state is a common way encapsulation quietly leaks).
+3. **`createHistory(config, now)` — done.** Push more than `historyMaxEntries` and confirm the oldest
+   drop off; advance a fake clock past `historyMaxAgeMs` and confirm stale entries are gone on the next
+   read; `clear()` empties it; `recent()` returns entries oldest-to-newest and doesn't let a caller
+   mutate the internal array (return a copy or a frozen array — a caller holding a live reference into
+   internal state is a common way encapsulation quietly leaks). Built with a copy, not a frozen array:
+   `recent()` returns `[...entries]`, so a caller mutating the result never touches stored state, but
+   the returned array itself is not frozen — a plain copy was enough to satisfy the requirement without
+   the extra step of freezing it too. Age-based eviction runs inside `recent()`, at read time, against
+   `now()` — never inside `push()` — so a signal can go stale with no new push to trigger the check.
 4. **`formatControlEvent(event)`** — one deterministic string per fixture event; assert the exact string,
    not just "contains X", so a future accidental format change is caught immediately.
 5. **`createKeyboardAdapter({ target, config })`** — using the fake `target` from "Why a fake target beats
