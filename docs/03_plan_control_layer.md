@@ -225,7 +225,7 @@ below, not just once at the end.
 
 **Cycles:**
 
-1. **`buildSignal(raw, source, config)`** — asserts the returned `ControlSignal` has all five fields;
+1. **`buildSignal(raw, source, config)` — done.** Asserts the returned `ControlSignal` has all five fields;
    `id`/`shift`/`timestamp` pass through from `raw` unchanged; `intensity` always equals
    `config.defaultIntensity`; `source` equals the `source` argument, not something the function invents.
 2. **`interpretKeyEvent(event, keyboardConfig)`** — the noise-filtering rules from `02_spec.md`, as unit

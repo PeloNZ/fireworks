@@ -20,7 +20,7 @@ If chords come back later, the seam is already there: the Control→Action event
 
 ## Stack
 
-- **TypeScript** — the control signal is a small, precise shape; typing it catches mismatches between layers early. (This benefit is real once `tsconfig.json`'s `strict` flag is on — with it off, as it currently is in this scaffold, TypeScript mostly just documents shapes rather than proving them. Turning `strict` on is part of the setup work, not this spec.)
+- **TypeScript** — the control signal is a small, precise shape; typing it catches mismatches between layers early. `tsconfig.json`'s `strict` flag is on, so TypeScript proves shapes match rather than just documenting them.
 - **Vite** — dev server and bundling.
 - **Vitest** — unit tests. In particular, the history buffer must be tested with a fake clock (an injected clock function, not `Date.now()`), so timing-dependent behavior (buffer expiry) can be tested deterministically without real delays. This matters more in games than in typical web-app testing: a web app's tests usually wait for a promise or a fixed timeout, but here the code being tested is *about* time (durations between key presses), so if the test also has to wait in real time, it's both slow and flaky. Injecting the clock means a test can say "pretend 3000ms just passed" instantly.
 - **Raw WebGL2** for rendering (AudioVisual layer) — no rendering framework. Written by hand: buffers, shaders, draw calls. This is a deliberate choice to learn the underlying mechanics rather than have them hidden by a library.

@@ -4,20 +4,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-This is an **unmodified Vite `vanilla-ts` scaffold** — no application code has been written yet. The hero image, Vite/TypeScript logos, counter button, and "Documentation / Connect with us" sections in `src/main.ts`, plus all of `src/style.css`, are Vite's starter demo content. Treat them as placeholder to replace, not as load-bearing code to preserve.
+The hero image, Vite/TypeScript logos, counter button, and "Documentation / Connect with us" sections in `src/main.ts`, plus all of `src/style.css`, are Vite's untouched starter demo content. Treat them as placeholder to replace, not as load-bearing code to preserve.
 
-There is no git repository, no README, and no test runner — so there is no test command to run.
+Application code has started under `src/control/` — see `docs/03_plan_control_layer.md` for the build plan and cycle order.
+
+There is no README. Tests run on Vitest: `npm test` (watch) or `npm run test:run` (single run).
 
 ## Commands
 
-`node_modules` is absent and there is no lockfile (`vite ^8.3.0`, `typescript ~6.0.2` float), so start with:
-
 ```bash
 npm install
-npm run dev      # Vite dev server with HMR
-npm run build    # tsc (typecheck only) && vite build
-npm run preview  # serve the built dist/
+npm run dev        # Vite dev server with HMR
+npm run build      # tsc (typecheck only) && vite build
+npm run preview    # serve the built dist/
+npm run typecheck  # tsc, no build
+npm test           # vitest, watch mode
+npm run test:run   # vitest, single run
+npm run lint       # eslint .
+npm run lint:fix   # eslint . --fix
+npm run knip       # unreachable-export / dead-code check
 ```
+
+`vite ^8.3.0` and `typescript ~6.0.2` float in `package.json`; `package-lock.json` pins the versions actually installed.
 
 ## Development tactic: TDD only
 
@@ -36,7 +44,7 @@ All application code (`src/control/**` and beyond) is written test-first. This i
 - **`npm run dev` does not typecheck.** Vite only strips types; `tsc` runs in `build`. With `noUnusedLocals` and `noUnusedParameters` on, an unused import or variable passes `dev` and fails `build`. Run `npx tsc` to check without building.
 - **`tsc` never emits** (`noEmit: true`) — Vite does all bundling.
 - **`erasableSyntaxOnly: true`**: no `enum`, no `namespace`, no constructor parameter properties.
-- **`strict` is not set** in `tsconfig.json` (and there is no `extends`), so `strictNullChecks` and friends are off.
+- **`strict` is on** in `tsconfig.json`, plus flags `strict` alone doesn't cover: `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `noImplicitReturns`, `noPropertyAccessFromIndexSignature`, `forceConsistentCasingInFileNames`.
 - **Imports carry explicit `.ts` extensions** (`import { setupCounter } from './counter.ts'`) under `allowImportingTsExtensions`. Match this in new files.
 
 ## Assets
