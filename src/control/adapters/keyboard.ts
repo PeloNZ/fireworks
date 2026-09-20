@@ -118,6 +118,9 @@ export function createKeyboardAdapter(options: {
   return {
     source: "keyboard",
     start(emit) {
+      if (handler) {
+        target.removeEventListener("keydown", handler);
+      }
       handler = (event) => {
         const decision = interpretKeyEvent(event, config);
         if (decision.preventDefault) {

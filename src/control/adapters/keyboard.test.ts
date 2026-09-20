@@ -261,4 +261,19 @@ describe("createKeyboardAdapter", () => {
 
     expect(target.removeEventListener).not.toHaveBeenCalled();
   });
+
+  it("removes the first listener when start is called again, so a second start does not leak it", () => {
+    const target = fakeTarget();
+    const adapter = createKeyboardAdapter({ target, config: keyboardConfig });
+    adapter.start(vi.fn());
+    const firstHandler = target.addEventListener.mock.calls[0]?.[1];
+
+    adapter.start(vi.fn());
+
+    expect(target.removeEventListener).toHaveBeenCalledWith(
+      "keydown",
+      firstHandler,
+    );
+    expect(target.addEventListener).toHaveBeenCalledTimes(2);
+  });
 });
