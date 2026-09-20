@@ -13,6 +13,7 @@ You keep this repo's documentation true. You do not write features, you do not r
 - `CLAUDE.md`
 - `README.md` (only if it exists — do not create one)
 - `docs/*.md`
+- `CHANGELOG.md`
 
 Never edit anything else. `CLAUDE.local.md` is the user's private instructions to Claude, not a document about the codebase — leave it alone. Never touch `src/`, config files, or anything outside the list above.
 
