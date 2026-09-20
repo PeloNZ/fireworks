@@ -1,6 +1,6 @@
 # Fireworks game — control layer spec (v1, keyboard only)
 
-See `01_intent.md` for the overall vision and layering philosophy. This document specs the **Control layer** only — turning keyboard input into one normalized signal handed to the Action layer. The Action and AudioVisual layers are out of scope here; in particular, **sequence interpretation is an Action-layer concern**, not Control's (see "What Control does not do" below).
+See `01_intent.md` for the overall vision and layering philosophy, and `03_plan_control_layer.md` for the build plan (file layout, contracts, and test-driven build order) that implements what this document specs. This document specs the **Control layer** only — turning keyboard input into one normalized signal handed to the Action layer. The Action and AudioVisual layers are out of scope here; in particular, **sequence interpretation is an Action-layer concern**, not Control's (see "What Control does not do" below).
 
 ## Scope for v1
 
@@ -32,33 +32,52 @@ This choice only affects the AudioVisual layer's implementation. The Control lay
 
 ```mermaid
 flowchart TD
-    A[keydown event] --> B[Repeat filter: drop held-key repeats]
-    B --> C[Noise filter: drop modifier keys and Ctrl/Meta-held presses]
-    C --> D[Build control signal: id, shift, timestamp, intensity, source]
-    D --> E[History buffer: bounded, timestamped]
-    D --> F[Emit single event]
-    F --> G[Action layer]
+    subgraph Adapter [Keyboard adapter — device-specific]
+        A[keydown event] --> B[Repeat filter: drop held-key repeats]
+        B --> C[Noise filter: drop modifier keys and Ctrl/Meta-held presses]
+        C --> D[Emit RawInput: code, shift, timestamp]
+    end
+    subgraph Core [Control layer core — device-neutral]
+        D --> E[Build control signal: id, shift, timestamp, intensity, source]
+        E --> F[History buffer: bounded, timestamped]
+        E --> G[Emit single event]
+    end
+    G --> H[Action layer]
 ```
 
 Notes on each stage:
 
-- **Repeat filter**: the browser fires repeated `keydown` events while a key is held. Filter these out at the adapter boundary — one physical press should produce one signal.
-- **Noise filter**: a deny-list, not an allow-list (see "Why a deny-list, not an allow-list" below). It drops keydowns that are pure modifiers (`ShiftLeft`, `ShiftRight`, `ControlLeft`, `ControlRight`, `AltLeft`, `AltRight`, `MetaLeft`, `MetaRight`, `CapsLock`) and any press held together with Ctrl or Meta, so OS/browser shortcuts (Cmd+R, Ctrl+W, etc.) are never hijacked. Everything else passes through — letters, digits, punctuation, Tab, arrows, function keys, Space.
-- **Build control signal**: assembles the five-field object below. `intensity` is currently always the config's `defaultIntensity` constant (hold-based charging is descoped — see `01_intent.md`).
+- **Repeat filter**: the browser fires repeated `keydown` events while a key is held. Filter these out — one physical press should produce one signal. This happens in the keyboard adapter, not the core (see "Where noise filtering belongs" below).
+- **Noise filter**: a deny-list, not an allow-list (see "Why a deny-list, not an allow-list" below). It drops keydowns that are pure modifiers (`ShiftLeft`, `ShiftRight`, `ControlLeft`, `ControlRight`, `AltLeft`, `AltRight`, `MetaLeft`, `MetaRight`, `CapsLock`) and any press held together with Ctrl or Meta, so OS/browser shortcuts (Cmd+R, Ctrl+W, etc.) are never hijacked. Everything else passes through — letters, digits, punctuation, Tab, arrows, function keys, Space. This also happens in the keyboard adapter.
+- **Build control signal**: assembles the five-field object below, from the adapter's device-neutral `RawInput`. `intensity` is currently always the config's `defaultIntensity` constant (hold-based charging is descoped — see `01_intent.md`). This step runs in the Control layer's core, which never sees a raw DOM event.
 - **History buffer**: every signal is pushed to a single bounded, timestamped buffer. Control does not interpret this history — it only keeps it and hands the Action layer both the new signal and, on request, recent history. Interpreting the history (recognizing a sequence pattern in it) is Action's job (see below).
+
+## Where noise filtering belongs
+
+The repeat filter and noise filter both live in the keyboard adapter, not the Control layer's core. The
+core's job is to turn "something happened" into a `ControlSignal` and remember it — it should never need
+to know what `event.repeat` means, or that `"ShiftLeft"` is a modifier key. Those are keyboard facts, and
+the adapter is the only piece of this system allowed to know a keyboard exists (see "Extensibility
+notes" below). A future MIDI or motion adapter defines its own idea of noise — a stuck sustain pedal, a
+sensor's rest-state jitter — without the core changing at all, and without inheriting a `deniedCodes`
+list full of keyboard key names that would mean nothing to it.
+
+Concretely: the adapter emits a `RawInput` — `{ code, shift, timestamp }`, a device-neutral shape with no
+policy baked in — only for presses it has decided are meaningful. The core never sees a rejected press;
+it has no rejection logic of its own to write or test.
 
 ## What Control does not do
 
 This section exists because the boundary here is easy to get wrong coming from a typical web app's MVC split, where a controller often *does* interpret input ("this is a search query," "this is a form submit").
 
 - **Control does not decide what counts as a sequence.** It has no concept of a named pattern, no timeout logic for "did these three keys complete a pattern," and no per-pattern state. It only maintains one flat, time-ordered, size-bounded history of recent signals. The Action layer reads that history and decides whether a game-relevant pattern occurred. This split matters for testability: Control's output is verifiable with no knowledge of what any sequence means, and sequence *rules* can change (new patterns, retuned timeouts) without touching Control at all.
-- **Control does not narrow the keyboard down to "the keys that matter for gameplay."** It only removes noise (repeats, modifiers, OS-shortcut collisions). Deciding that, say, arrow keys and letter keys should be treated as interchangeable for a particular game mode is a normalizing/collapsing decision, and that belongs in Action, not here — see "Why a deny-list, not an allow-list" below.
+- **Nothing in this system narrows the keyboard down to "the keys that matter for gameplay."** The adapter only removes noise (repeats, modifiers, OS-shortcut collisions) — see "Why a deny-list, not an allow-list" below. Deciding that, say, arrow keys and letter keys should be treated as interchangeable for a particular game mode is a normalizing/collapsing decision, and that belongs in Action, not the adapter and not the core.
 
 ## Why a deny-list, not an allow-list
 
-An earlier draft of this spec used an ASCII allow-list (letters, digits, a few punctuation keys) and discarded everything else — Tab, arrows, function keys — before Action ever saw it. That was the wrong instinct: it reduces the raw signal available to the game and pre-decides, in the wrong layer, which keys are "interesting." Control's job is to maximize the signal surface it forwards and stay ignorant of what any of it means; collapsing distinct keys into equivalent groups (e.g., treating all arrow keys as one control id, or ignoring function keys for a particular sequence) is exactly the kind of decision the Action layer should make, and it can differ per game mode without Control changing.
+An earlier draft of this spec used an ASCII allow-list (letters, digits, a few punctuation keys) and discarded everything else — Tab, arrows, function keys — before Action ever saw it. That was the wrong instinct: it reduces the raw signal available to the game and pre-decides, in the wrong layer, which keys are "interesting." The keyboard adapter's job is to maximize the signal surface it forwards and stay ignorant of what any of it means; collapsing distinct keys into equivalent groups (e.g., treating all arrow keys as one control id, or ignoring function keys for a particular sequence) is exactly the kind of decision the Action layer should make, and it can differ per game mode without the adapter changing.
 
-The only keys Control removes are ones that were never meaningful game *signal* to begin with — held-key repeats (a browser artifact, not a new press) and modifier/OS-shortcut collisions (removing these would either produce noise with no clean single-press meaning, or break the browser tab/window itself).
+The only keys the adapter removes are ones that were never meaningful game *signal* to begin with — held-key repeats (a browser artifact, not a new press) and modifier/OS-shortcut collisions (removing these would either produce noise with no clean single-press meaning, or break the browser tab/window itself). This filtering is the adapter's responsibility, not the core's — see "Where noise filtering belongs" above.
 
 ## Control signal shape
 
@@ -75,8 +94,11 @@ classDiagram
         number defaultIntensity
         number historyMaxEntries
         number historyMaxAgeMs
+    }
+    class KeyboardConfig {
         string[] deniedCodes
     }
+    Config "1" *-- "1" KeyboardConfig : keyboard
 ```
 
 | Field | Type | Notes |
@@ -112,14 +134,23 @@ Config is a single read-only object, not scattered constants — the values here
 defaultIntensity: 1.0
 historyMaxEntries: 16     // see "History buffer limits" below
 historyMaxAgeMs: 2000     // see "History buffer limits" below
-deniedCodes: [
-  "ShiftLeft", "ShiftRight",
-  "ControlLeft", "ControlRight",
-  "AltLeft", "AltRight",
-  "MetaLeft", "MetaRight",
-  "CapsLock"
-]
+keyboard: {
+  deniedCodes: [
+    "ShiftLeft", "ShiftRight",
+    "ControlLeft", "ControlRight",
+    "AltLeft", "AltRight",
+    "MetaLeft", "MetaRight",
+    "CapsLock"
+  ]
+}
 ```
+
+`deniedCodes` is nested under a `keyboard` key rather than sitting at the top level, because only the
+keyboard adapter reads it — see "Where noise filtering belongs" above. Nesting it makes that ownership
+visible just from the shape of the config, without needing to check where the value is consumed. A
+future MIDI adapter would get its own sibling key (e.g. `midi: { ... }`) with whatever noise rules make
+sense for that device; the top-level fields (`defaultIntensity`, `historyMaxEntries`, `historyMaxAgeMs`)
+stay device-neutral and shared by every adapter.
 
 Note what's *not* here: no `chordWindowMs` (chords are out — see above), and no `sequences` list. Sequence pattern definitions and their timeouts are an Action-layer concern (Action owns "what pattern of history counts as a named sequence"), so they belong in Action's config, not Control's. See `01_intent.md` for why sequence *interpretation* sits there.
 
@@ -146,7 +177,7 @@ All timing logic (the history buffer's age-based eviction) takes a `now: () => n
 flowchart TD
     P((Player)) -->|keydown| CL[Control layer process]
     CL -->|control event + recent history| AL((Action layer))
-    CS[(Config store: defaultIntensity, historyMaxEntries, historyMaxAgeMs, deniedCodes)] --> CL
+    CS[(Config store: defaultIntensity, historyMaxEntries, historyMaxAgeMs, keyboard.deniedCodes)] --> CL
 ```
 
 `Config store` is read-only at runtime in v1 — nothing writes back to it during play.
@@ -160,15 +191,18 @@ Because chords are out of scope, two keys pressed close together are simply two 
 ```mermaid
 sequenceDiagram
     participant DOM
-    participant Adapter
+    participant Adapter as Keyboard adapter
+    participant Core as Control core
     participant History
     participant Action
     DOM->>Adapter: keydown KeyA (t=0ms)
-    Adapter->>History: push signal (id: "KeyA")
-    Adapter->>Action: single event (id: "KeyA")
+    Adapter->>Core: RawInput (code: "KeyA")
+    Core->>History: push signal (id: "KeyA")
+    Core->>Action: single event (id: "KeyA")
     DOM->>Adapter: keydown KeyB (t=60ms)
-    Adapter->>History: push signal (id: "KeyB")
-    Adapter->>Action: single event (id: "KeyB")
+    Adapter->>Core: RawInput (code: "KeyB")
+    Core->>History: push signal (id: "KeyB")
+    Core->>Action: single event (id: "KeyB")
 ```
 
 Action receives both single events, in order, with timestamps, and has everything it needs to later decide these two form (or don't form) part of some pattern — without Control ever having made that call.
@@ -177,12 +211,12 @@ Action receives both single events, in order, with timestamps, and has everythin
 
 - The adapter is the only piece allowed to know a keyboard exists. Everything downstream of it must operate purely on `(id, timestamp, shift)` values and never branch on `source === "keyboard"`.
 - Signal production should be a pure function of its inputs: given the same code, shift state, and timestamp, `buildSignal` always produces the same signal object. Combined with never reading the clock directly inside timing logic, this is what makes a recorded key log replayable later — feed the same list of timestamped signals through the same logic twice and get the same result. That replayability is also the basis for any future shared-multiplayer determinism (two devices agreeing on one outcome from one log, rather than two independent live buffers).
-- Don't hardcode `defaultIntensity`, `historyMaxEntries`, `historyMaxAgeMs`, or `deniedCodes` into logic — read them from the `Config` object.
+- Don't hardcode `defaultIntensity`, `historyMaxEntries`, `historyMaxAgeMs`, or `keyboard.deniedCodes` into logic — read them from the `Config` object.
 
 ## Resolved items
 
 Earlier drafts of this spec left several items open. They're resolved as follows:
 
 1. **Sequence pattern content and timeouts** — deferred to the Action layer's own spec, not Control's. Control has no `sequences` list; it only supplies bounded, timestamped history for Action to interpret.
-2. **`keyMap` / allow-list character set** — superseded. There is no allow-list; see "Why a deny-list, not an allow-list" above. The only exclusions are the fixed `deniedCodes` list.
+2. **`keyMap` / allow-list character set** — superseded. There is no allow-list; see "Why a deny-list, not an allow-list" above. The only exclusions are the fixed `keyboard.deniedCodes` list, and that filtering is the keyboard adapter's responsibility, not the Control layer core's — see "Where noise filtering belongs" above.
 3. **Clock injection convention** — a `now: () => number` parameter on the control-layer factory, defaulting to `performance.now`. See "Clock injection" above.
