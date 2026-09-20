@@ -47,6 +47,47 @@ Write present tense, describing what is true now. When a statement is superseded
 
 A file is a log only when it is named `CHANGELOG.md`, or its own first heading declares it a log. Append new entries to a log; never rewrite or delete its past entries. No file in this repo currently qualifies as a log — so this exemption has no target yet, but keep it in mind if one appears.
 
+### What warrants a changelog entry?
+
+Yes:
+
+- Any change that introduces a database migration, whether it’s regular, post, or data migration, must have a changelog entry, even if it is behind a disabled feature flag.
+- Security fixes must have a changelog entry, with Changelog trailer set to security.
+- Any user-facing change must have a changelog entry. Example: “GitLab now uses system fonts for all text.”
+- A fix for a regression introduced and then fixed in the same release (such as fixing a bug introduced during a monthly release candidate) should not have a changelog entry.
+
+No:
+
+- Any developer-facing change (such as refactoring, technical debt remediation, or test suite changes) MUST NOT have a changelog entry. Example: “Reduce database records created during Cycle Analytics model spec.”
+- Any experiment changes should not have a changelog entry.
+- An MR that includes only documentation changes should not have a changelog entry.
+
+### Writing good changelog entries
+
+A good changelog entry should be descriptive and concise. It should explain the change to a reader who has zero context about the change. If you have trouble making it both concise and descriptive, err on the side of descriptive.
+
+    Bad: Go to a project order.
+    Good: Show a user’s starred projects at the top of the “Go to project” dropdown list.
+
+The first example provides no context of where the change was made, or why, or how it benefits the user.
+
+    Bad: Copy (some text) to clipboard.
+    Good: Update the “Copy to clipboard” tooltip to indicate what’s being copied.
+
+Again, the first example is too vague and provides no context.
+
+    Bad: Fixes and Improves CSS and HTML problems in mini pipeline graph and builds dropdown list.
+    Good: Fix tooltips and hover states in mini pipeline graph and builds dropdown list.
+
+The first example is too focused on implementation details. The user doesn’t care that we changed CSS and HTML, they care about the end result of those changes.
+
+    Bad: Strip out nils in the Array of Commit objects returned from find_commits_by_message_with_elastic
+    Good: Fix 500 errors caused by Elasticsearch results referencing garbage-collected commits
+
+The first example focuses on how we fixed something, not on what it fixes. The rewritten version clearly describes the end benefit to the user (fewer 500 errors), and when (searching commits with Elasticsearch).
+
+Use your best judgement and try to put yourself in the mindset of someone reading the compiled changelog. Does this entry add value? Does it offer context about where and why the change was made?
+
 ## When you're not sure
 
 If fixing a claim would require guessing at naming, scope, or intent that the diff doesn't make clear, don't guess. Leave that text as-is and list it in your report as unresolved, with the reason.
