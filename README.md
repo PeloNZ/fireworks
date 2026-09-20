@@ -6,11 +6,9 @@ See `docs/01_intent.md` for the full vision and the three-layer design (Control,
 
 ## Status
 
-The Control layer is in progress. `src/control/` has tested `buildSignal`, `interpretKeyEvent`, `createHistory`, `formatControlEvent`, `createKeyboardAdapter`, and `createControlLayer` functions — the layer's core wiring is done. The dev harness in `src/main.ts` is not built yet — see `docs/03_plan_control_layer.md` for the build plan and cycle order.
+The Control layer is built. `src/control/` has tested `buildSignal`, `interpretKeyEvent`, `createHistory`, `formatControlEvent`, `createKeyboardAdapter`, `createConsoleSink`, and `createControlLayer` functions. `src/main.ts` is the dev harness: it wires a real keyboard adapter and console sink through the control layer and exposes the running layer on `window.controlLayer` — see `docs/03_plan_control_layer.md` for the build plan and cycle order.
 
 The Action and AudioVisual layers do not exist yet.
-
-`src/main.ts` and `src/style.css` still hold Vite's starter demo content. They get replaced when the Control layer's dev harness is wired (cycle 7 of the build plan).
 
 ## Commands
 

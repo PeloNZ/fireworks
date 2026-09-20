@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-The hero image, Vite/TypeScript logos, counter button, and "Documentation / Connect with us" sections in `src/main.ts`, plus all of `src/style.css`, are Vite's untouched starter demo content. Treat them as placeholder to replace, not as load-bearing code to preserve.
+`src/main.ts` is the Control layer's dev harness: it wires a real `createKeyboardAdapter` (against `window`), a real `createConsoleSink`, and `createControlLayer`, then assigns the running layer to `window.controlLayer` for poking from devtools. It renders two lines of instructional text into `#app` and is otherwise not unit tested — see `docs/03_plan_control_layer.md` cycle 7 and "Why a fake target beats jsdom" for why that's the accepted tradeoff.
 
-Application code has started under `src/control/` — see `docs/03_plan_control_layer.md` for the build plan and cycle order.
+Application code lives under `src/control/` — see `docs/03_plan_control_layer.md` for the build plan and cycle order.
 
 Tests run on Vitest: `npm test` (watch) or `npm run test:run` (single run).
 
@@ -39,8 +39,8 @@ All application code (`src/control/**` and beyond) is written test-first. This i
 - **Assert against something a shortcut would fail.** E.g. drive a config-derived value with an unusual config value, not its default — a hardcoded implementation can fake the default but not an arbitrary one.
 - **No real time, no real DOM in tests.** Inject a clock (`now: () => number`) rather than reading it inside logic under test; use plain fake objects ("ports") shaped like the slice of `EventTarget`/`KeyboardEvent` actually used, rather than pulling in `jsdom`.
 - **Types and config objects aren't test-driven themselves** — there's no logic to test — but don't add or export one before a tested function needs it. An unused export is a defect `knip` will flag, not a "for later." Grow the shared contract (`src/control/types.ts`) one cycle at a time.
-- **Before every commit**, `npx vitest run`, `npx tsc`, `npx eslint .`, `npx prettier --check .`, and `npx knip` must all be clean on the code just written. Pre-existing failures elsewhere (e.g. the untouched Vite demo files) are left alone, not fixed as a drive-by. A pre-commit git hook (Husky, `.husky/pre-commit`) now enforces most of this automatically:
-  - `lint-staged` runs on staged files only: Prettier formats them (writes fixes, re-stages), then ESLint checks them (no `--fix` — a real error blocks the commit). Scoping ESLint to staged files, not the whole project, is what keeps the pre-existing Vite-demo-file exception working: those files' errors only block a commit that actually touches them.
+- **Before every commit**, `npx vitest run`, `npx tsc`, `npx eslint .`, `npx prettier --check .`, and `npx knip` must all be clean on the code just written. Pre-existing failures elsewhere are left alone, not fixed as a drive-by. A pre-commit git hook (Husky, `.husky/pre-commit`) now enforces most of this automatically:
+  - `lint-staged` runs on staged files only: Prettier formats them (writes fixes, re-stages), then ESLint checks them (no `--fix` — a real error blocks the commit). Scoping ESLint to staged files, not the whole project, is what lets a pre-existing failure elsewhere sit unfixed: its errors only block a commit that actually touches that file.
   - `npx tsc`, `npx vitest run`, and `npx knip` then run against the whole project, same as the manual checklist — any failure blocks the commit.
   - `npx prettier --check .` isn't run separately — `lint-staged`'s `--write` step already guarantees every staged file is formatted before the other checks see it.
   - These full-project steps read the working tree, not the git index — an unstaged edit sitting alongside a partial `git add` can still affect their result, unlike `lint-staged`'s per-file, staged-content-only checks.
@@ -51,14 +51,11 @@ All application code (`src/control/**` and beyond) is written test-first. This i
 - **`tsc` never emits** (`noEmit: true`) — Vite does all bundling.
 - **`erasableSyntaxOnly: true`**: no `enum`, no `namespace`, no constructor parameter properties.
 - **`strict` is on** in `tsconfig.json`, plus flags `strict` alone doesn't cover: `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `noImplicitReturns`, `noPropertyAccessFromIndexSignature`, `forceConsistentCasingInFileNames`.
-- **Imports carry explicit `.ts` extensions** (`import { setupCounter } from './counter.ts'`) under `allowImportingTsExtensions`. Match this in new files.
+- **Imports carry explicit `.ts` extensions** (`import { defaultConfig } from './control/config.ts'`) under `allowImportingTsExtensions`. Match this in new files.
 - **`npm install` installs the git hook.** Its `prepare` script runs `husky`, which points git's `core.hooksPath` at `.husky/`. A fresh clone has no working pre-commit hook until `npm install` has run once.
 
 ## Assets
 
-There is no `vite.config.ts`, so Vite defaults apply and the two asset locations behave differently:
+There is no `vite.config.ts`, so Vite defaults apply. `public/` is copied verbatim and referenced by root-absolute URL: `public/favicon.svg` is referenced via `/favicon.svg` in `index.html`. `public/icons.svg` is an SVG sprite (`<svg><use href="/icons.svg#icon-id"></use></svg>`) that nothing in `src/` currently references. There is no `src/assets/` directory; a file placed there would be `import`ed as a module, with the resulting URL content-hashed at build time.
 
-- `public/` is copied verbatim and referenced by root-absolute URL — `public/icons.svg` is an SVG sprite used via `<svg><use href="/icons.svg#github-icon"></use></svg>`, and `public/favicon.svg` via `/favicon.svg` in `index.html`. Adding an icon means editing the sprite.
-- `src/assets/` files are `import`ed as modules, and the resulting URL is content-hashed at build time.
-
-`index.html` is the Vite entry point and loads `/src/main.ts`, which renders the whole page by assigning an HTML string to `#app`.
+`index.html` is the Vite entry point and loads `/src/main.ts`, which renders into `#app` via direct DOM calls (`document.createElement`, `.append(...)`), not by assigning an HTML string.
