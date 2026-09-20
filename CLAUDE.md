@@ -8,7 +8,7 @@ The hero image, Vite/TypeScript logos, counter button, and "Documentation / Conn
 
 Application code has started under `src/control/` — see `docs/03_plan_control_layer.md` for the build plan and cycle order.
 
-There is no README. Tests run on Vitest: `npm test` (watch) or `npm run test:run` (single run).
+Tests run on Vitest: `npm test` (watch) or `npm run test:run` (single run).
 
 ## Commands
 
