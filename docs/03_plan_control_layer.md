@@ -188,13 +188,40 @@ pass, then move on. Cycles are ordered so every pure unit is written and proven 
 exists — by the time cycle 5 needs a "fake browser," cycles 1–4 have already established what correct
 output looks like.
 
-**Setup (before cycle 1):**
-1. `npm install -D vitest`, add `"test": "vitest"` and `"test:run": "vitest run"` to `package.json`.
-2. Set `"strict": true` in `tsconfig.json`.
-3. Run `npx tsc` against the untouched scaffold and record the result. `src/main.ts` and `src/counter.ts`
-   were written before `strict` existed in this project; if they fail to typecheck now, that's expected
-   and is *not* a sign anything in this plan is wrong — it just means the demo files get stubbed out
-   before `main.ts` is rewritten as the dev harness in the last cycle.
+**Setup (before cycle 1) — done:**
+1. `npm install -D vitest`, add `"test"` / `"test:run"` scripts to `package.json`.
+2. `tsconfig.json`: `"strict": true`, plus the strict flags `strict` alone doesn't cover —
+   `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `noImplicitReturns`,
+   `noPropertyAccessFromIndexSignature`, `forceConsistentCasingInFileNames`.
+3. Install and configure a linter and a dead-code checker, so problems `tsc` can't see (unsafe `any`,
+   floating promises, unreachable exports) are caught before they're written, not after — the TypeScript
+   ecosystem's nearest equivalents to PHPStan and Rector. See "Linting and static analysis" below for
+   what was chosen and why.
+4. Ran `npx tsc`, `npx eslint .`, and `npx knip` against the untouched scaffold. `tsc` came back clean —
+   the scaffold already survives full `strict` unmodified. ESLint reports 4 errors, all in the pre-existing
+   Vite demo files (`src/counter.ts`, `src/main.ts`) — expected, since they predate this tooling; they get
+   stubbed out before `main.ts` is rewritten as the dev harness in the last cycle, not fixed now. `knip`
+   reports nothing to remove.
+
+## Linting and static analysis
+
+TypeScript's compiler (even under `strict`) only catches what its type system is designed to catch. Two
+further tools are added, matching the spirit of a PHP toolchain's PHPStan (static analysis beyond the
+type checker) and Rector (automated detection of dead/removable code) — there's no line-for-line
+equivalent of either in this ecosystem, but these are the closest fits:
+
+- **ESLint + `typescript-eslint`**, configured with the `strictTypeChecked` and `stylisticTypeChecked`
+  rule sets (`eslint.config.js`). "Type-checked" here means these rules don't just look at syntax — they
+  ask the TypeScript compiler questions about each expression's actual type, which is what lets a rule
+  catch things like "this value is typed `any` because it silently escaped a type" or "this promise is
+  never awaited." That's the PHPStan-shaped value: analysis a plain type-checker pass doesn't do.
+- **`knip`** (`knip.json`), which starts from the app's real entry point (`src/main.ts`) and reports
+  exports, files, and dependencies nothing reachable from there actually uses. It's the closest fit to
+  Rector's "find code that shouldn't be here" role, though Rector also *rewrites* code to modernize it —
+  knip only finds candidates for removal, it doesn't rewrite anything itself.
+
+Both run via `npm run lint` / `npm run knip`, and both are meant to be run often during the TDD cycles
+below, not just once at the end.
 
 **Cycles:**
 
