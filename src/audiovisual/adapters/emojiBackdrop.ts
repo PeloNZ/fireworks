@@ -6,7 +6,7 @@
 // glyph. The core (backdrop.ts) decides only what is where and how
 // bright it is, the same house rule asciiBackdrop.ts follows.
 
-import { rowCentreY } from "./cells.ts";
+import { rowCentreY, toCell } from "./cells.ts";
 import { rampGlyph } from "./emojiGrid.ts";
 import { skyBrightnessAt } from "../backdrop.ts";
 import type { AudioVisualConfig } from "../config.ts";
@@ -36,6 +36,25 @@ export function rasteriseEmojiBackdrop(
   for (let row = 0; row < rows; row++) {
     const brightness = skyBrightnessAt(backdrop.sky, rowCentreY(row, rows));
     cells.push(new Array<string>(columns).fill(rampGlyph(brightness, sky)));
+  }
+
+  const lineAt = (row: number): string[] => {
+    const line = cells[row];
+    if (line === undefined) {
+      // Every row index here comes from a bounded loop or from toCell,
+      // which already rejected anything outside [0, rows).
+      // noUncheckedIndexedAccess can't see that.
+      throw new Error("unreachable: cell row outside the grid");
+    }
+    return line;
+  };
+
+  for (const body of backdrop.bodies) {
+    const cell = toCell(body.position.x, body.position.y, emoji);
+    if (cell === null) {
+      continue;
+    }
+    lineAt(cell.row)[cell.column] = emoji.backdropGlyphs[body.kind];
   }
 
   return cells;

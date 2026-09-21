@@ -46,4 +46,52 @@ describe("rasteriseEmojiBackdrop", () => {
       ["s", "s", "s"],
     ]);
   });
+
+  it("draws each body as its kind's glyph, with later bodies over earlier ones", () => {
+    // Same 3x2 grid as asciiBackdrop.test.ts's own body fixture, through
+    // the same shared toCell mapping — a body and a spark at one world
+    // point land in the same cell.
+    const emoji = config({
+      columns: 3,
+      rows: 2,
+      sky: ["z", "z", "z", "z", "z"],
+      backdropGlyphs: {
+        ...defaultAudioVisualConfig.emoji.backdropGlyphs,
+        star: "S",
+        moon: "M",
+        planet: "P",
+      },
+    });
+    const withBodies = backdrop({
+      bodies: [
+        { kind: "star", position: { x: -40, y: 75, z: 0 } }, // row 0, col 0
+        { kind: "star", position: { x: -40, y: 25, z: 0 } }, // row 1, col 0
+        { kind: "planet", position: { x: 30, y: 25, z: 0 } }, // row 1, col 2
+        // Last, so it wins the cell the first star wanted — paint order
+        // is the whole mechanism, no overlap test anywhere.
+        { kind: "moon", position: { x: -40, y: 75, z: 0 } },
+      ],
+    });
+
+    expect(rasteriseEmojiBackdrop(withBodies, emoji)).toEqual([
+      ["M", "z", "z"],
+      ["S", "z", "P"],
+    ]);
+  });
+
+  it("clips a body outside the world box instead of wrapping it to the opposite edge", () => {
+    const emoji = config({
+      columns: 3,
+      rows: 2,
+      sky: ["z", "z", "z", "z", "z"],
+    });
+    const offScreen = backdrop({
+      bodies: [{ kind: "moon", position: { x: 1000, y: 50, z: 0 } }],
+    });
+
+    expect(rasteriseEmojiBackdrop(offScreen, emoji)).toEqual([
+      ["z", "z", "z"],
+      ["z", "z", "z"],
+    ]);
+  });
 });
