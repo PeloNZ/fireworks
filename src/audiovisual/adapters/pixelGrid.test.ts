@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   discCells,
   indexFor,
+  paintFrame,
   pixelCentreX,
   sparkIndex,
   toPixel,
@@ -9,7 +10,7 @@ import {
 } from "./pixelGrid.ts";
 import { defaultAudioVisualConfig } from "../config.ts";
 import type { AudioVisualConfig } from "../config.ts";
-import type { Rgb, Sprite } from "../types.ts";
+import type { Frame, Rgb, Sprite } from "../types.ts";
 
 // Cycle 3 (docs/09_8bit_renderer.md): the pixel renderer is the emoji
 // renderer with a palette index where the glyph was -- sparkIndex is
@@ -210,5 +211,42 @@ describe("discCells", () => {
     const offsets = discCells({ x: -80, y: 50 }, 5, wideGrid);
 
     expect(Array.from(offsets)).toEqual([]);
+  });
+});
+
+// Cycle 10: the whole grid, filled with pixel.blank and one sprite
+// painted -- the pixel counterpart of rasteriseFrame/rasteriseEmojiFrame.
+// blank: 7, never 0, so a hardcoded zero-fill can't pass.
+describe("paintFrame", () => {
+  it("fills the buffer with blank, painting one sprite's disc over it", () => {
+    const pixel: AudioVisualConfig["pixel"] = {
+      ...defaultAudioVisualConfig.pixel,
+      sparkHues: [{ hue: 10, index: 3 }],
+      columns: wideGrid.columns,
+      rows: wideGrid.rows,
+      blank: 7,
+    };
+    const frame: Frame = {
+      sprites: [
+        {
+          kind: "spark",
+          position: { x: 0, y: 50, z: 0 },
+          size: 0.1,
+          color: atHue(10),
+          brightness: 1,
+        },
+      ],
+    };
+
+    const buffer = paintFrame(frame, pixel);
+
+    expect(buffer).toBeInstanceOf(Uint8Array);
+    expect(buffer.length).toBe(80);
+    const expected = new Array<number>(80).fill(7);
+    const spark = toPixel(0, 50, wideGrid);
+    if (spark !== null) {
+      expected[spark] = 3;
+    }
+    expect(Array.from(buffer)).toEqual(expected);
   });
 });

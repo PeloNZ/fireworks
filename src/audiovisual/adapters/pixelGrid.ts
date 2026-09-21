@@ -1,7 +1,7 @@
 import { rampLevel } from "./ramp.ts";
 import { hueOf, nearestHue, saturationOf } from "../color.ts";
 import type { AudioVisualConfig } from "../config.ts";
-import type { Rgb, Sprite } from "../types.ts";
+import type { Frame, Rgb, Sprite } from "../types.ts";
 
 // The pixel half of the frame renderer: turning a sprite's colour,
 // position and radius into palette indices on a fixed-size grid. Grown
@@ -192,4 +192,29 @@ export function discCells(
   }
 
   return offsets;
+}
+
+/**
+ * Renders a frame's display list to a buffer of palette indices —
+ * `pixel.rows * pixel.columns` entries, `pixel.blank` where nothing
+ * draws. Unlike `rasteriseFrame`/`rasteriseEmojiFrame`, which sprite wins
+ * each cell is not `contestCells`'s job here: a sprite covers a disc of
+ * pixels rather than one cell, so which sprite wins is decided per pixel
+ * as each disc is painted (cycle 11).
+ */
+export function paintFrame(
+  frame: Frame,
+  pixel: AudioVisualConfig["pixel"],
+): Uint8Array {
+  const { columns, rows, blank } = pixel;
+  const buffer = new Uint8Array(columns * rows).fill(blank);
+
+  for (const sprite of frame.sprites) {
+    const index = indexFor(sprite, pixel);
+    for (const offset of discCells(sprite.position, sprite.size, pixel)) {
+      buffer[offset] = index;
+    }
+  }
+
+  return buffer;
 }

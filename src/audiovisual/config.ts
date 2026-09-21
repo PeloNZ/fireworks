@@ -105,13 +105,21 @@ export interface AudioVisualConfig {
     readonly desaturated: number; // below saturationFloor, hue means nothing
     readonly saturationFloor: number;
     readonly shell: number;
-    // Faded to bright. trail[0] must equal blank (cycle 10): a trail's
-    // dimmest index has to be the same blank a too-dim sprite would
-    // otherwise draw as, or a decaying trail keeps winning its pixel with
-    // a visible colour long after the ASCII renderer would show nothing
+    // Faded to bright. trail[0] must equal blank: a trail's dimmest
+    // index has to be the same blank a too-dim sprite would otherwise
+    // draw as, or a decaying trail keeps winning its pixel with a
+    // visible colour long after the ASCII renderer would show nothing
     // there. See "Why a trail's glyph ramp has to end on the blank" in
     // docs/07_emoji_renderer.md -- the same rule, one renderer over.
     readonly trail: readonly number[];
+    // The grid the frame is painted onto. Recomputed at runtime from the
+    // real viewport in main.ts (docs/09_8bit_renderer.md); these are only
+    // a starting shape for tests and the config type.
+    readonly columns: number;
+    readonly rows: number;
+    // The colour a pixel nothing draws on shows -- black, so it reads as
+    // night sky rather than a visible "nothing here" colour.
+    readonly blank: number;
   };
   // Only the Web Audio adapter and its planning functions read this,
   // nested under its own key for the same reason ascii is.
@@ -233,6 +241,13 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     saturationFloor: 0.15,
     shell: 7,
     trail: Object.freeze([0, 5, 6]),
+    // 160 rows fixed, so the world's full height always fits and one
+    // pixel is 100/160 = 0.625 world units on both axes. 284 columns is
+    // that same pixel size across a 16:9 viewport -- main.ts recomputes
+    // this from the real window at load.
+    columns: 284,
+    rows: 160,
+    blank: 0,
   }),
   audio: Object.freeze({
     lookaheadMs: 30,
