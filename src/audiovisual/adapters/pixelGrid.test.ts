@@ -250,3 +250,70 @@ describe("paintFrame", () => {
     expect(Array.from(buffer)).toEqual(expected);
   });
 });
+
+// Cycle 11: which sprite wins a pixel two discs both cover. Brightest
+// wins; on a tie the earlier sprite in frame.sprites keeps it --
+// byte-identical to contestCells's own rule, and reversed by any naive
+// painter's-algorithm implementation where the later sprite simply wins.
+describe("paintFrame -- the brightness contest", () => {
+  const contestPixel: AudioVisualConfig["pixel"] = {
+    ...defaultAudioVisualConfig.pixel,
+    sparkHues: [
+      { hue: 10, index: 3 },
+      { hue: 200, index: 12 },
+    ],
+    trail: [4, 5, 6],
+    columns: wideGrid.columns,
+    rows: wideGrid.rows,
+    blank: 7,
+  };
+  const offset = toPixel(0, 50, wideGrid);
+  if (offset === null) {
+    throw new Error("unreachable: {x:0,y:50} is inside wideGrid");
+  }
+
+  function spark(hue: number, brightness: number): Sprite {
+    return {
+      kind: "spark",
+      position: { x: 0, y: 50, z: 0 },
+      size: 0.1,
+      color: atHue(hue),
+      brightness,
+    };
+  }
+
+  it("the brighter sprite wins, whichever order they're drawn in", () => {
+    const frame: Frame = {
+      sprites: [spark(10, 0.9), spark(200, 0.2)],
+    };
+
+    expect(paintFrame(frame, contestPixel)[offset]).toBe(3);
+  });
+
+  it("on a tied brightness, the earlier sprite keeps the pixel", () => {
+    const frame: Frame = {
+      sprites: [spark(10, 0.5), spark(200, 0.5)],
+    };
+
+    expect(paintFrame(frame, contestPixel)[offset]).toBe(3);
+  });
+
+  it("a lone sprite at brightness 0 still paints, rather than staying blank", () => {
+    // The trap inside the fix: a fully decayed trail has brightness 0
+    // (frame.ts), so the brightness buffer must start at -1, not 0, or a
+    // zero-filled buffer swallows this sprite as if nothing were there.
+    const frame: Frame = {
+      sprites: [
+        {
+          kind: "trail",
+          position: { x: 0, y: 50, z: 0 },
+          size: 0.1,
+          color: atHue(10),
+          brightness: 0,
+        },
+      ],
+    };
+
+    expect(paintFrame(frame, contestPixel)[offset]).toBe(4);
+  });
+});

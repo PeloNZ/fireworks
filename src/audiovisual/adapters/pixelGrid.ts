@@ -199,8 +199,19 @@ export function discCells(
  * `pixel.rows * pixel.columns` entries, `pixel.blank` where nothing
  * draws. Unlike `rasteriseFrame`/`rasteriseEmojiFrame`, which sprite wins
  * each cell is not `contestCells`'s job here: a sprite covers a disc of
- * pixels rather than one cell, so which sprite wins is decided per pixel
- * as each disc is painted (cycle 11).
+ * pixels rather than one cell, and two discs can overlap on some pixels
+ * and not others, so which sprite wins is decided per pixel as each disc
+ * is painted.
+ *
+ * Brightest wins; on a tie the earlier sprite in `frame.sprites` keeps
+ * it — the strict `>` below overwrites only when a later sprite is
+ * actually brighter, the complement of `contestCells`'s own tie-break
+ * (`existing.brightness >= sprite.brightness` skips the new sprite).
+ * Reversed, a dimmer, later sprite (a decaying trail) would displace one
+ * that got there first. The brightness this pixel was last painted at
+ * starts below every real brightness (`-1`, never `0`): a fully decayed
+ * trail has `brightness: 0` (`frame.ts`), and a buffer that started at
+ * `0` would treat that as "nothing painted here" and silently drop it.
  */
 export function paintFrame(
   frame: Frame,
@@ -208,11 +219,15 @@ export function paintFrame(
 ): Uint8Array {
   const { columns, rows, blank } = pixel;
   const buffer = new Uint8Array(columns * rows).fill(blank);
+  const painted = new Float32Array(columns * rows).fill(-1);
 
   for (const sprite of frame.sprites) {
     const index = indexFor(sprite, pixel);
     for (const offset of discCells(sprite.position, sprite.size, pixel)) {
-      buffer[offset] = index;
+      if (sprite.brightness > (painted[offset] ?? -1)) {
+        painted[offset] = sprite.brightness;
+        buffer[offset] = index;
+      }
     }
   }
 
