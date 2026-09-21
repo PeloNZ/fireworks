@@ -60,6 +60,40 @@ export function skyBrightnessAt(sky: SkyGradient, y: number): number {
 }
 
 /**
+ * The ground's world height at world `x`, as a straight line between the
+ * two control points either side of it. Outside the polyline the nearest
+ * end's height is held rather than extrapolated, so a renderer sampling
+ * slightly beyond the last point gets flat ground instead of a hill that
+ * shoots off the screen.
+ *
+ * Walked with `for...of` rather than by index on purpose: it keeps the
+ * whole function free of the `noUncheckedIndexedAccess` guards that
+ * indexing a `readonly T[]` would otherwise need at every step.
+ */
+export function groundHeightAt(
+  ground: readonly GroundPoint[],
+  x: number,
+): number {
+  let previous: GroundPoint | undefined;
+  for (const point of ground) {
+    if (x < point.x) {
+      if (previous === undefined) {
+        return point.height; // left of the whole polyline
+      }
+      const t = (x - previous.x) / (point.x - previous.x);
+      return previous.height + (point.height - previous.height) * t;
+    }
+    previous = point;
+  }
+  if (previous === undefined) {
+    // buildGround always returns at least two points, since groundPoints
+    // must be >= 2. noUncheckedIndexedAccess can't see that.
+    throw new Error("unreachable: ground has no control points");
+  }
+  return previous.height; // at, or right of, the last point
+}
+
+/**
  * Draws one sky from `seed`, anywhere from a solid black night to a dim
  * sunset. Two draws are enough for that whole range: `horizon` sets how
  * lit the sky is at all, and `zenith` is a fraction *of* `horizon`, which

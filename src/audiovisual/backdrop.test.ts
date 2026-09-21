@@ -3,10 +3,11 @@ import {
   buildBodies,
   buildGround,
   buildSky,
+  groundHeightAt,
   skyBrightnessAt,
 } from "./backdrop.ts";
 import { defaultAudioVisualConfig } from "./config.ts";
-import type { SkyGradient } from "./types.ts";
+import type { GroundPoint, SkyGradient } from "./types.ts";
 
 // Cycle 1 (docs/06_world_backdrop.md): the sky gradient as a plain
 // function of world height. Two ends and a straight line between them —
@@ -251,5 +252,41 @@ describe("buildGround", () => {
     const config = defaultAudioVisualConfig.backdrop;
 
     expect(buildGround(1, config)).not.toEqual(buildGround(2, config));
+  });
+});
+
+// Cycle 6: sampling the height field. This is the one place the
+// interpolation rule lives, so switching from straight lines to something
+// crisper later is a change here and nowhere else.
+
+describe("groundHeightAt", () => {
+  // Hand-made and deliberately asymmetric — a ridge that rises then falls,
+  // so an implementation that always returns the first or last height, or
+  // that reads the polyline backwards, fails.
+  const ground: readonly GroundPoint[] = [
+    { x: -50, height: 10 },
+    { x: 0, height: 30 },
+    { x: 50, height: 20 },
+  ];
+
+  it("returns a control point's own height at its own x", () => {
+    expect(groundHeightAt(ground, -50)).toBeCloseTo(10);
+    expect(groundHeightAt(ground, 0)).toBeCloseTo(30);
+    expect(groundHeightAt(ground, 50)).toBeCloseTo(20);
+  });
+
+  it("returns the midpoint halfway between two control points", () => {
+    expect(groundHeightAt(ground, -25)).toBeCloseTo(20);
+    expect(groundHeightAt(ground, 25)).toBeCloseTo(25);
+  });
+
+  it("interpolates proportionally at a point that is not a midpoint", () => {
+    // A quarter along the first segment: 10 + (30 - 10) * 0.25.
+    expect(groundHeightAt(ground, -37.5)).toBeCloseTo(15);
+  });
+
+  it("clamps outside the polyline instead of extrapolating off the end of it", () => {
+    expect(groundHeightAt(ground, -1000)).toBeCloseTo(10);
+    expect(groundHeightAt(ground, 1000)).toBeCloseTo(20);
   });
 });
