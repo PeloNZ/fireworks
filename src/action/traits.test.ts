@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultActionConfig } from "./config.ts";
-import { pickPattern } from "./traits.ts";
+import { pickPalette, pickPattern } from "./traits.ts";
 import type { Seeds } from "./types.ts";
 
 // Cycle 6 (docs/04_plan_action_layer.md): pickPattern is the first of three
@@ -38,5 +38,49 @@ describe("pickPattern", () => {
 
     expect(pickPattern(seeds(), configA)).toBe("peony");
     expect(pickPattern(seeds(), configB)).toBe("ring");
+  });
+});
+
+// Cycle 7 (docs/04_plan_action_layer.md): pickPalette. Families are made
+// several times larger than paletteSize in defaultActionConfig precisely
+// so "different colours per press" isn't a coin flip — see the plan's note
+// on picking fixture seeds after seeing real output, not before.
+
+describe("pickPalette", () => {
+  it("selects the same colour family for the same key seed, whatever the press seed", () => {
+    const a = pickPalette(seeds({ key: 5, press: 1 }), defaultActionConfig);
+    const b = pickPalette(seeds({ key: 5, press: 2 }), defaultActionConfig);
+
+    const familyContaining = (colors: readonly string[]) =>
+      defaultActionConfig.palettes.find((family) =>
+        family.includes(colors[0] ?? ""),
+      );
+
+    expect(familyContaining(a)).toBe(familyContaining(b));
+  });
+
+  it("draws different colours for a different press seed, same key seed", () => {
+    const a = pickPalette(seeds({ key: 5, press: 1 }), defaultActionConfig);
+    const b = pickPalette(seeds({ key: 5, press: 2 }), defaultActionConfig);
+
+    expect(a).not.toEqual(b);
+  });
+
+  it("returns exactly config.paletteSize colours", () => {
+    const result = pickPalette(seeds(), defaultActionConfig);
+
+    expect(result).toHaveLength(defaultActionConfig.paletteSize);
+  });
+
+  it("returns only colours that exist in the chosen family", () => {
+    const result = pickPalette(seeds(), defaultActionConfig);
+    const chosenFamily = defaultActionConfig.palettes.find((family) =>
+      family.includes(result[0] ?? ""),
+    );
+
+    expect(chosenFamily).toBeDefined();
+    for (const color of result) {
+      expect(chosenFamily).toContain(color);
+    }
   });
 });

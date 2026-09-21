@@ -19,6 +19,8 @@ export interface ActionConfig {
   readonly fuelMs: NumberRange;
   readonly fuseMs: NumberRange;
   readonly patterns: readonly FireworkPattern[];
+  readonly palettes: readonly (readonly string[])[]; // colour families
+  readonly paletteSize: number; // colours drawn per firework
 }
 
 export const defaultActionConfig: ActionConfig = Object.freeze({
@@ -33,4 +35,37 @@ export const defaultActionConfig: ActionConfig = Object.freeze({
     "ring",
     "chrysanthemum",
   ]),
+  palettes: Object.freeze([
+    Object.freeze([
+      "#ff3b30",
+      "#ff9500",
+      "#ffcc00",
+      "#ffe066",
+      "#ff6b6b",
+      "#ffb4a2",
+      "#ff8552",
+      "#ffd23f",
+    ]),
+    Object.freeze([
+      "#34c759",
+      "#30d5c8",
+      "#00c2ff",
+      "#5ac8fa",
+      "#a1f2e0",
+      "#7fffd4",
+      "#48cae4",
+      "#90e0ef",
+    ]),
+    Object.freeze([
+      "#af52de",
+      "#ff2d95",
+      "#c77dff",
+      "#e0aaff",
+      "#ff8fe3",
+      "#d291ff",
+      "#f72585",
+      "#b5179e",
+    ]),
+  ]),
+  paletteSize: 3,
 });
