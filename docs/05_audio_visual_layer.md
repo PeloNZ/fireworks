@@ -492,7 +492,7 @@ src/audiovisual/
   audioVisualLayer.ts  createAudioVisualLayer({ renderer, audio, config, worldConfig })
   adapters/
     asciiGrid.ts       rasteriseFrame(frame, asciiConfig) -> string    [pure]
-    ascii.ts           createAsciiRenderer({ target, config })
+    ascii.ts           createAsciiRenderer({ target, config, backdrop })
     webAudio.ts        createWebAudioSink({ context, config }),
                        createNoiseBuffer(context, seed, durationMs)
 src/main.ts            rewired: Control -> Action -> AudioVisual, one rAF loop
