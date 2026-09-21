@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  discCells,
   indexFor,
   pixelCentreX,
   sparkIndex,
@@ -160,5 +161,22 @@ describe("toPixel", () => {
   it("clips y at the top and bottom of the half-open box", () => {
     expect(toPixel(0, 100, wideGrid)).toBeNull();
     expect(toPixel(0, -1, wideGrid)).toBeNull();
+  });
+});
+
+// Cycle 7: the disc a sprite's radius actually covers. wideGrid's pixel
+// centres sit 12.5 world units apart on both axes; centre {x:0,y:50} sits
+// between four of them and radius 20 is chosen so the boundary falls
+// clear of every pixel centre in the grid (nearest ring at ~19.76, next
+// at ~26.52 -- no rounding tie). The expected set is a genuine 2-4-4-2
+// diamond, not an axis-aligned box, so a bounding-box implementation
+// fails this.
+describe("discCells", () => {
+  it("paints a disc, not a box, around the centre", () => {
+    const offsets = discCells({ x: 0, y: 50 }, 20, wideGrid);
+
+    expect(Array.from(offsets).sort((a, b) => a - b)).toEqual([
+      24, 25, 33, 34, 35, 36, 43, 44, 45, 46, 54, 55,
+    ]);
   });
 });

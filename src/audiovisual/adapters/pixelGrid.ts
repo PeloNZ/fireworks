@@ -78,6 +78,42 @@ export function pixelCentreX(
 }
 
 /**
+ * The column a world `x` falls in — unclamped, so it can land outside
+ * `[0, columns)` for a point beyond the grid. `toPixel` clamps this to
+ * `null`; `discCells` uses the raw index to bound its scan.
+ */
+function columnIndexFor(
+  x: number,
+  grid: { readonly columns: number; readonly rows: number },
+): number {
+  const halfWidth = worldHalfWidth(grid);
+  return Math.floor(((x + halfWidth) / (2 * halfWidth)) * grid.columns);
+}
+
+/**
+ * The row a world `y` falls in — unclamped, flipping `y` the same way
+ * `toCell` does. See `columnIndexFor`.
+ */
+function rowIndexFor(
+  y: number,
+  grid: { readonly columns: number; readonly rows: number },
+): number {
+  return grid.rows - 1 - Math.floor((y / 100) * grid.rows);
+}
+
+/**
+ * The world `y` at the vertical centre of `row` — the pixel-grid
+ * counterpart of `rowCentreY`, over `grid.rows` alone, since the `y`
+ * mapping never varies with the grid's width.
+ */
+function pixelCentreY(
+  row: number,
+  grid: { readonly columns: number; readonly rows: number },
+): number {
+  return (100 * (grid.rows - row - 0.5)) / grid.rows;
+}
+
+/**
  * Maps a world point onto a flat row-major pixel offset
  * (`row * columns + column`), flipping `y` — world `y` grows up, pixel
  * rows grow down, the same rule `toCell` uses. Returns `null` when the
@@ -96,11 +132,51 @@ export function toPixel(
   grid: { readonly columns: number; readonly rows: number },
 ): number | null {
   const { columns, rows } = grid;
-  const halfWidth = worldHalfWidth(grid);
-  const column = Math.floor(((x + halfWidth) / (2 * halfWidth)) * columns);
-  const row = rows - 1 - Math.floor((y / 100) * rows);
+  const column = columnIndexFor(x, grid);
+  const row = rowIndexFor(y, grid);
   if (column < 0 || column >= columns || row < 0 || row >= rows) {
     return null;
   }
   return row * columns + column;
+}
+
+/**
+ * Every pixel offset whose centre lies within `radius` world units of
+ * `centre` — the disc a sprite's own radius actually covers, honouring
+ * `Sprite.size` in a way neither the ASCII nor the emoji renderer can.
+ * `contestCells` cannot answer this: it decides one sprite per cell,
+ * before any shape exists, and two discs can overlap on some pixels and
+ * not others.
+ *
+ * The column/row range scanned is bounded by `centre ± radius`, padded by
+ * one pixel each side and clamped to the grid — a performance bound, not
+ * a correctness one. Every pixel actually included is still decided by
+ * the distance test below; a too-wide bound only scans a few pixels that
+ * were always going to fail it.
+ */
+export function discCells(
+  centre: { readonly x: number; readonly y: number },
+  radius: number,
+  grid: { readonly columns: number; readonly rows: number },
+): readonly number[] {
+  const { columns, rows } = grid;
+  const minColumn = Math.max(0, columnIndexFor(centre.x - radius, grid) - 1);
+  const maxColumn = Math.min(
+    columns - 1,
+    columnIndexFor(centre.x + radius, grid) + 1,
+  );
+  const minRow = Math.max(0, rowIndexFor(centre.y + radius, grid) - 1);
+  const maxRow = Math.min(rows - 1, rowIndexFor(centre.y - radius, grid) + 1);
+
+  const offsets: number[] = [];
+  for (let row = minRow; row <= maxRow; row++) {
+    const dy = pixelCentreY(row, grid) - centre.y;
+    for (let column = minColumn; column <= maxColumn; column++) {
+      const dx = pixelCentreX(column, grid) - centre.x;
+      if (dx * dx + dy * dy <= radius * radius) {
+        offsets.push(row * columns + column);
+      }
+    }
+  }
+  return offsets;
 }
