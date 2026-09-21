@@ -43,3 +43,23 @@ export interface Cue {
   readonly kind: "launch" | "burst";
   readonly spec: FireworkSpec;
 } // cycle 16
+
+/** A volume curve over a voice's lifetime, in place of an on/off switch —
+ * see "Why a raw tone clicks" in docs/05_audio_visual_layer.md. */
+export interface Envelope {
+  readonly attackMs: number;
+  readonly decayMs: number;
+  readonly sustainLevel: number; // 0..1
+  readonly releaseMs: number;
+} // cycle 17
+
+/** One scheduled sound, built once and played once — see `planVoices` in
+ * voices.ts. `frequencyEndHz` of `null` means a constant pitch; a value
+ * is a glide target (cycle 20). */
+export interface Voice {
+  readonly kind: "tone" | "noise";
+  readonly frequencyHz: number;
+  readonly frequencyEndHz: number | null;
+  readonly durationMs: number;
+  readonly envelope: Envelope;
+} // cycle 17, grows

@@ -3,6 +3,7 @@
 // discipline src/action/config.ts follows for ActionConfig.
 
 import type { NumberRange } from "../action/config.ts";
+import type { Envelope } from "./types.ts";
 
 export interface AudioVisualConfig {
   // The render loop's elapsed-time clamp. Below the shortest phase Action
@@ -25,6 +26,13 @@ export interface AudioVisualConfig {
     readonly rows: number;
     readonly ramp: string; // dimmest to brightest, one character per level
   };
+  // Only the Web Audio adapter and its planning functions read this,
+  // nested under its own key for the same reason ascii is.
+  readonly audio: {
+    readonly burst: {
+      readonly envelope: Envelope;
+    };
+  };
 }
 
 export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
@@ -39,5 +47,15 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     columns: 80,
     rows: 40,
     ramp: " .:-=+*#%@",
+  }),
+  audio: Object.freeze({
+    burst: Object.freeze({
+      envelope: Object.freeze({
+        attackMs: 5,
+        decayMs: 50,
+        sustainLevel: 0.3,
+        releaseMs: 200,
+      }),
+    }),
   }),
 });
