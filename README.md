@@ -8,7 +8,7 @@ See `docs/01_intent.md` for the full vision and the three-layer design (Control,
 
 The Control layer is built. `src/control/` has tested `buildSignal`, `interpretKeyEvent`, `createHistory`, `formatControlEvent`, `createKeyboardAdapter`, `createConsoleSink`, and `createControlLayer` functions. `src/main.ts` is the dev harness: it wires a real keyboard adapter and console sink through the control layer and exposes the running layer on `window.controlLayer` — see `docs/03_plan_control_layer.md` for the build plan and cycle order.
 
-The Action layer is in progress. `src/action/` has tested `hashString`, `createRandom`, `deriveSeeds`, the vector helpers (`add`, `scale`, `magnitude`, `normalise`), `pickLaunch`, `pickPattern`, `pickPalette`, `pickSound`, `buildFireworkSpec`, `createFirework`, `stepPhysics`, `stepPhase`, `createWorld`, and `resolveAction` functions — see `docs/04_plan_action_layer.md` for the build plan and cycle order.
+The Action layer is in progress. `src/action/` has tested `hashString`, `createRandom`, `deriveSeeds`, the vector helpers (`add`, `scale`, `magnitude`, `normalise`), `pickLaunch`, `pickPattern`, `pickPalette`, `pickSound`, `buildFireworkSpec`, `createFirework`, `stepPhysics`, `stepPhase`, `createWorld`, `resolveAction`, and `createActionLayer` functions — see `docs/04_plan_action_layer.md` for the build plan and cycle order.
 
 The AudioVisual layer does not exist yet.
 
