@@ -129,6 +129,9 @@ export interface AudioVisualConfig {
         // Each bounce voice's gain and duration as a fraction of the
         // one before it — how fast the bounces die out.
         readonly bounceDecay: number;
+        // 0..1: the odds a burst gets an extra surprise voice after it
+        // finishes. Drawn per press, same as everything else silly.
+        readonly gremlinChance: number;
       };
     };
   };
@@ -225,6 +228,7 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
         flightVoiceGain: 0.09,
         bounceCount: 2,
         bounceDecay: 0.6,
+        gremlinChance: 0.25,
       }),
     }),
   }),

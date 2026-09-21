@@ -160,9 +160,9 @@ const SHARP_RELEASE_MULTIPLIER = 0.3;
 function planSillySharpBurstVoices(
   cue: Cue,
   config: AudioVisualConfig,
+  random: () => number,
 ): readonly Voice[] {
   const pitch = cue.spec.sound.pitch;
-  const random = createRandom(cue.spec.seed);
   const ratio = scaleTo(random, SHARP_RATIO_MIN, SHARP_RATIO_MAX);
   const envelope = config.audio.burst.envelope;
   return [
@@ -215,9 +215,9 @@ const CRACKLE_MICRO_TONE_ENVELOPE: Envelope = {
 function planSillyCrackleBurstVoices(
   cue: Cue,
   config: AudioVisualConfig,
+  random: () => number,
 ): readonly Voice[] {
   const pitch = cue.spec.sound.pitch;
-  const random = createRandom(cue.spec.seed);
 
   const body: Voice = {
     kind: "noise",
@@ -277,18 +277,79 @@ function planSillyCrackleBurstVoices(
   return [body, ...microTones];
 }
 
+// A surprise, not a change to the burst's own note: an extra voice
+// added after the burst has finished (`startOffsetMs` at
+// `spec.burstDurationMs`), never a change to the pitch a burst already
+// carries — that would break the key-to-pitch map. Picked between two
+// shapes with the same generator the burst's own randomness draws from,
+// so every burst's odds and choice are still deterministic per press.
+const GREMLIN_PICK_THRESHOLD = 0.5;
+const GREMLIN_SQUEAK_RATIO = 4;
+const GREMLIN_SQUEAK_DURATION_MS = 80;
+const GREMLIN_SLIDE_END_RATIO = 0.4;
+const GREMLIN_SLIDE_DURATION_MS = 400;
+const GREMLIN_VOICE_GAIN = 0.6;
+const GREMLIN_ENVELOPE: Envelope = {
+  attackMs: 2,
+  decayMs: 0,
+  sustainLevel: 1,
+  releaseMs: 30,
+};
+
+function planGremlinVoice(cue: Cue, random: () => number): Voice {
+  const pitch = cue.spec.sound.pitch;
+  const base: Voice = {
+    kind: "tone",
+    waveform: "sine",
+    frequencyHz: pitch,
+    frequencyEndHz: null,
+    durationMs: GREMLIN_SQUEAK_DURATION_MS,
+    envelope: GREMLIN_ENVELOPE,
+    gain: GREMLIN_VOICE_GAIN,
+    seed: cue.spec.seed,
+    filter: null,
+    startOffsetMs: cue.spec.burstDurationMs,
+    pitchLfo: null,
+    filterLfo: null,
+    effect: null,
+  };
+  if (random() < GREMLIN_PICK_THRESHOLD) {
+    // The squeak.
+    return { ...base, frequencyHz: pitch * GREMLIN_SQUEAK_RATIO };
+  }
+  // The slide-down.
+  return {
+    ...base,
+    waveform: "triangle",
+    frequencyEndHz: pitch * GREMLIN_SLIDE_END_RATIO,
+    durationMs: GREMLIN_SLIDE_DURATION_MS,
+  };
+}
+
 function planSillyBurstVoices(
   cue: Cue,
   config: AudioVisualConfig,
 ): readonly Voice[] {
-  switch (cue.spec.sound.timbre) {
-    case "soft":
-      return planSillySoftBurstVoices(cue, config);
-    case "sharp":
-      return planSillySharpBurstVoices(cue, config);
-    case "crackle":
-      return planSillyCrackleBurstVoices(cue, config);
+  // One generator for the whole burst — the timbre draws first, the
+  // gremlin roll continues from wherever that left off, rather than
+  // two independent draws from the same seed landing on the same first
+  // value.
+  const random = createRandom(cue.spec.seed);
+  const voices = (() => {
+    switch (cue.spec.sound.timbre) {
+      case "soft":
+        return planSillySoftBurstVoices(cue, config);
+      case "sharp":
+        return planSillySharpBurstVoices(cue, config, random);
+      case "crackle":
+        return planSillyCrackleBurstVoices(cue, config, random);
+    }
+  })();
+
+  if (random() < config.audio.sets.silly.gremlinChance) {
+    return [...voices, planGremlinVoice(cue, random)];
   }
+  return voices;
 }
 
 /**

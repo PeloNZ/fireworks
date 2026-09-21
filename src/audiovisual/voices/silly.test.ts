@@ -65,10 +65,28 @@ const config = {
         flightVoiceGain: 0.11,
         bounceCount: 3,
         bounceDecay: 0.5,
+        // 0 here: the shared config drives every timbre test above, and
+        // none of them expects a gremlin voice. withGremlinChance below
+        // overrides this for the gremlin's own tests.
+        gremlinChance: 0,
       },
     },
   },
 };
+
+// A config forcing (or forbidding) the gremlin roll, layered onto the
+// shared config above.
+function withGremlinChance(gremlinChance: number): typeof config {
+  return {
+    ...config,
+    audio: {
+      ...config.audio,
+      sets: {
+        silly: { ...config.audio.sets.silly, gremlinChance },
+      },
+    },
+  };
+}
 
 describe("planSillyVoices", () => {
   it("plans a slide-whistle launch: a wide triangle glide with a pitch LFO", () => {
@@ -264,6 +282,58 @@ describe("planSillyVoices", () => {
 
       const first = planSillyVoices(cue, config);
       const second = planSillyVoices(cue, config);
+
+      expect(second).toEqual(first);
+    });
+  });
+
+  describe("the gremlin tail", () => {
+    it("adds one extra voice after the burst when gremlinChance is 1", () => {
+      const spec = fireworkSpec({ sound: { pitch: 613, timbre: "sharp" } });
+      const cue: Cue = { kind: "burst", spec };
+      const alwaysGremlin = withGremlinChance(1);
+
+      const withoutGremlin = planSillyVoices(cue, withGremlinChance(0));
+      const withGremlin = planSillyVoices(cue, alwaysGremlin);
+
+      expect(withGremlin).toHaveLength(withoutGremlin.length + 1);
+      // The burst's own note is untouched either way — the gremlin is
+      // an addition, not a change to the burst's own voice.
+      expect(withGremlin.slice(0, withoutGremlin.length)).toEqual(
+        withoutGremlin,
+      );
+
+      const gremlin = withGremlin[withGremlin.length - 1];
+      expect(gremlin?.kind).toBe("tone");
+      expect(gremlin?.startOffsetMs).toBe(spec.burstDurationMs);
+      // Either the squeak or the slide-down — never a change to the
+      // pitch of the burst's own voice, which stays under withoutGremlin.
+      if (gremlin?.waveform === "sine") {
+        expect(gremlin.frequencyHz).toBe(spec.sound.pitch * 4);
+        expect(gremlin.frequencyEndHz).toBeNull();
+      } else {
+        expect(gremlin?.waveform).toBe("triangle");
+        expect(gremlin?.frequencyHz).toBe(spec.sound.pitch);
+        expect(gremlin?.frequencyEndHz).toBe(spec.sound.pitch * 0.4);
+      }
+    });
+
+    it("adds nothing when gremlinChance is 0", () => {
+      const spec = fireworkSpec({ sound: { pitch: 613, timbre: "sharp" } });
+      const cue: Cue = { kind: "burst", spec };
+
+      const voices = planSillyVoices(cue, withGremlinChance(0));
+
+      expect(voices).toHaveLength(1); // just sharp's own voice
+    });
+
+    it("draws the gremlin roll and choice from the seed: same seed, same result", () => {
+      const spec = fireworkSpec({ sound: { pitch: 613, timbre: "sharp" } });
+      const cue: Cue = { kind: "burst", spec };
+      const gremlinConfig = withGremlinChance(0.5);
+
+      const first = planSillyVoices(cue, gremlinConfig);
+      const second = planSillyVoices(cue, gremlinConfig);
 
       expect(second).toEqual(first);
     });
