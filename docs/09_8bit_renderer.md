@@ -283,6 +283,11 @@ export function toPixel( // 6
   grid: { readonly columns: number; readonly rows: number },
 ): number | null; // flat row-major offset, or clipped
 
+export function pixelCentreY( // exported at 13, for pixelBackdrop.ts's sky
+  row: number,
+  grid: { readonly columns: number; readonly rows: number },
+): number;
+
 export function discCells( // 7
   centre: { readonly x: number; readonly y: number },
   radius: number, // world units
@@ -382,7 +387,7 @@ function createTarget(): {
 ```
 
 The real side, and the only place in the project that names `ImageData`, in
-`main.ts`:
+`main.ts` — one of these per canvas, background and sprites alike:
 
 ```ts
 const context = canvas.getContext("2d");
@@ -467,18 +472,18 @@ invisible at runtime.
 
 ## File layout
 
-| Path                                        | Role                                                    |
-| ------------------------------------------- | ------------------------------------------------------- |
-| `docs/09_8bit_renderer.md`                  | This plan, written before cycle 1                       |
-| `src/audiovisual/color.ts`                  | Cycle 1 — gains `nearestHue`, absorbs `hueDistance`     |
-| `src/audiovisual/adapters/ramp.ts`          | Cycle 2 — new, `rampLevel`                              |
-| `src/audiovisual/adapters/pixelGrid.ts`     | Cycles 3–12 — pure frame → index buffer                 |
-| `src/audiovisual/adapters/pixelBackdrop.ts` | Cycles 13–15 — pure backdrop → index buffer             |
-| `src/audiovisual/adapters/pixel.ts`         | Cycles 16–17 — `toRgba`, `PixelTarget`, the factory     |
-| `src/audiovisual/config.ts`                 | The `pixel` slice, cycles 3, 4, 10, 13, 14, 15, 16      |
-| `src/audiovisual/adapters/emojiGrid.ts`     | Cycles 1–2 — rewritten onto the shared helpers          |
-| `src/main.ts`                               | Cycle 18 — registry widened, viewport read, `ImageData` |
-| `index.html`                                | Cycle 19 — the canvas CSS                               |
+| Path                                        | Role                                                                                           |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `docs/09_8bit_renderer.md`                  | This plan, written before cycle 1                                                              |
+| `src/audiovisual/color.ts`                  | Cycle 1 — gains `nearestHue`, absorbs `hueDistance`                                            |
+| `src/audiovisual/adapters/ramp.ts`          | Cycle 2 — new, `rampLevel`                                                                     |
+| `src/audiovisual/adapters/pixelGrid.ts`     | Cycles 3–12 — pure frame → index buffer (`pixelCentreY` exported at 13 for `pixelBackdrop.ts`) |
+| `src/audiovisual/adapters/pixelBackdrop.ts` | Cycles 13–15 — pure backdrop → index buffer                                                    |
+| `src/audiovisual/adapters/pixel.ts`         | Cycles 16–17 — `toRgba`, `PixelTarget`, the factory                                            |
+| `src/audiovisual/config.ts`                 | The `pixel` slice, cycles 3, 4, 10, 13, 14, 15, 16                                             |
+| `src/audiovisual/adapters/emojiGrid.ts`     | Cycles 1–2 — rewritten onto the shared helpers                                                 |
+| `src/main.ts`                               | Cycle 18 — registry widened, viewport read, `ImageData`                                        |
+| `index.html`                                | Cycle 19 — the canvas CSS                                                                      |
 
 ---
 
@@ -767,7 +772,7 @@ Checked against the installed toolchain, not recalled:
   as cycle 11's initial-value rule. `toRgba`'s palette lookup is the exception:
   a real throw, because an out-of-range index is a config error.
 - **`new ImageData(pixels, w, h)` rejects a bare `Uint8ClampedArray`** under
-  TS 6 — hence the explicit `<ArrayBuffer>` generic argument in cycles 15 and 16.
+  TS 6 — hence the explicit `<ArrayBuffer>` generic argument in cycles 16 and 17.
 - **`ImageData` does not exist at runtime in node** but its type does, because
   tsconfig includes `"DOM"`. A test would typecheck and then throw. The port
   keeps it out.
@@ -831,7 +836,9 @@ grep -rE "Math.random|Date.now|performance.now|location|innerWidth|devicePixelRa
 # no calls. The pre-existing hit in webAudio.ts is a comment.
 
 grep -rn "ImageData\|getContext\|document\." src/audiovisual/
-# no hits. Those three live only in main.ts.
+# no calls. pixel.ts's own hits are its doc comments explaining the port,
+# same as webAudio.ts's Math.random hit above; the real calls live only
+# in main.ts.
 ```
 
 Manual, in `npm run dev`:
