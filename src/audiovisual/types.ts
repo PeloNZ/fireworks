@@ -121,3 +121,16 @@ export interface GroundPoint {
   readonly x: number; // world units, -50..50 inclusive
   readonly height: number; // world y of the ridge at this x
 } // backdrop cycle 5
+
+/** Everything behind the fireworks, built once per page load and never
+ * changed after. Painted bottom to top in field order: sky, then bodies,
+ * then ground. `bodies` is itself in paint order — later entries draw over
+ * earlier ones, which is what makes the moon beat a star sharing its cell
+ * without any overlap test. Deliberately not part of `Frame`: nothing here
+ * varies frame to frame, and a backdrop drawn as sprites would compete
+ * with the fireworks for cells. See docs/06_world_backdrop.md. */
+export interface Backdrop {
+  readonly sky: SkyGradient;
+  readonly bodies: readonly CelestialBody[];
+  readonly ground: readonly GroundPoint[];
+} // backdrop cycle 7

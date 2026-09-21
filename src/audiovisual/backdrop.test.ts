@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildBackdrop,
   buildBodies,
   buildGround,
   buildSky,
   groundHeightAt,
   skyBrightnessAt,
 } from "./backdrop.ts";
+import { hashString } from "../action/random.ts";
 import { defaultAudioVisualConfig } from "./config.ts";
 import type { GroundPoint, SkyGradient } from "./types.ts";
 
@@ -288,5 +290,41 @@ describe("groundHeightAt", () => {
   it("clamps outside the polyline instead of extrapolating off the end of it", () => {
     expect(groundHeightAt(ground, -1000)).toBeCloseTo(10);
     expect(groundHeightAt(ground, 1000)).toBeCloseTo(20);
+  });
+});
+
+// Cycle 7: the whole backdrop from one seed. The assertion below is really
+// about the seeding convention: each concern gets its own stream, derived
+// by hashing a distinguishing suffix, exactly as spec.ts documents. Reusing
+// createRandom(seed) three times would replay one sequence and correlate
+// the sky's horizon with the first star's x and the first hill's height.
+
+describe("buildBackdrop", () => {
+  const config = defaultAudioVisualConfig.backdrop;
+
+  it("composes sky, bodies and ground, each drawn from its own hashed stream", () => {
+    const seed = 12345;
+    const sky = buildSky(hashString(`${seed.toString()}:sky`), config);
+
+    expect(buildBackdrop(seed, config)).toEqual({
+      sky,
+      // The bodies stream is separate, but the sky itself is an input —
+      // that is how a lit horizon thins the star field (cycle 4).
+      bodies: buildBodies(hashString(`${seed.toString()}:bodies`), config, sky),
+      ground: buildGround(hashString(`${seed.toString()}:ground`), config),
+    });
+  });
+
+  it("returns the same backdrop for the same seed", () => {
+    expect(buildBackdrop(99, config)).toEqual(buildBackdrop(99, config));
+  });
+
+  it("varies all three parts independently when the seed changes", () => {
+    const first = buildBackdrop(1, config);
+    const second = buildBackdrop(2, config);
+
+    expect(first.sky).not.toEqual(second.sky);
+    expect(first.bodies).not.toEqual(second.bodies);
+    expect(first.ground).not.toEqual(second.ground);
   });
 });

@@ -7,11 +7,16 @@
 // bright it is, so an ASCII grid and a future Canvas draw the same sky
 // from the same seed.
 
-import { createRandom } from "../action/random.ts";
+import { createRandom, hashString } from "../action/random.ts";
 import type { NumberRange } from "../action/config.ts";
 import type { Vec3 } from "../action/types.ts";
 import type { AudioVisualConfig } from "./config.ts";
-import type { CelestialBody, GroundPoint, SkyGradient } from "./types.ts";
+import type {
+  Backdrop,
+  CelestialBody,
+  GroundPoint,
+  SkyGradient,
+} from "./types.ts";
 
 // World space is 100 units tall, `y` growing up — the same extent
 // asciiGrid.ts maps onto rows. Duplicated deliberately rather than
@@ -203,4 +208,29 @@ export function buildGround(
     });
   }
   return points;
+}
+
+/**
+ * Builds the whole backdrop from one page-load seed.
+ *
+ * Each concern draws from **its own** stream, derived by hashing a
+ * distinguishing suffix — the convention `src/action/spec.ts` documents in
+ * full. Calling `createRandom(seed)` three times instead would restart the
+ * same sequence three times and hand the sky's horizon, the first star's
+ * `x` and the first hill's height the identical first fraction,
+ * correlating three values that must vary independently.
+ *
+ * The sky is built first because the bodies depend on it: a lit horizon
+ * thins the star field.
+ */
+export function buildBackdrop(
+  seed: number,
+  config: AudioVisualConfig["backdrop"],
+): Backdrop {
+  const sky = buildSky(hashString(`${seed.toString()}:sky`), config);
+  return {
+    sky,
+    bodies: buildBodies(hashString(`${seed.toString()}:bodies`), config, sky),
+    ground: buildGround(hashString(`${seed.toString()}:ground`), config),
+  };
 }
