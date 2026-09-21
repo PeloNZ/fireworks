@@ -5,6 +5,28 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Fireworks! 🔥</title>
+    <style>
+      /* The brightness ramp assumes more ink means more light, so the page
+         has to be dark for it to read the right way round. On the browser
+         default of dark text on white, a dim sky becomes grey smudges, the
+         brightest firework is the darkest thing on screen, and a sunset
+         cannot be shown at all. See docs/06_world_backdrop.md. */
+      body {
+        margin: 0;
+        padding: 1rem;
+        background: #05060a;
+        color: #cfd6e6;
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+      }
+      /* Character cells are roughly twice as tall as they are wide, and at
+         the default leading of about 1.2 a 40-row grid shows visible gaps
+         between rows — a filled sky reads as a dotted field rather than a
+         continuous one. This matters as much as the colour does. */
+      pre {
+        margin: 0;
+        line-height: 1;
+      }
+    </style>
   </head>
   <body>
     <div id="app"></div>
