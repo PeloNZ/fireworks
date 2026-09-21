@@ -7,8 +7,10 @@ import { defaultWorldConfig } from "./action/worldConfig.ts";
 import { createActionLayer } from "./action/actionLayer.ts";
 import { createWorld } from "./action/world.ts";
 import { createSpecConsoleSink } from "./action/debug/consoleSink.ts";
+import { hashString } from "./action/random.ts";
 import { defaultAudioVisualConfig } from "./audiovisual/config.ts";
 import { createAudioVisualLayer } from "./audiovisual/audioVisualLayer.ts";
+import { buildBackdrop } from "./audiovisual/backdrop.ts";
 import { createAsciiRenderer } from "./audiovisual/adapters/ascii.ts";
 import { createWebAudioSink } from "./audiovisual/adapters/webAudio.ts";
 import type { FireworkPhase } from "./action/types.ts";
@@ -86,10 +88,25 @@ window.addEventListener(
   { once: true },
 );
 
+// A fresh sky on every page load, by explicit choice: nothing in the URL,
+// nothing stored, nothing surfaced. Refreshing until you get one you like
+// is the whole interaction. This file is the only place in any layer
+// allowed to read real nondeterminism — the same licence the
+// `now: () => performance.now()` above takes, and the reason
+// `grep -rE "Math.random|Date.now" src/audiovisual/` stays empty.
+// `Date.now()` alone would be nearly identical between two quick reloads,
+// so `Math.random()` supplies the entropy and `hashString` folds the pair
+// into the uint32 `createRandom` expects. See docs/06_world_backdrop.md.
+const backdropSeed = hashString(
+  `${Date.now().toString()}:${Math.random().toString()}`,
+);
+const backdrop = buildBackdrop(backdropSeed, defaultAudioVisualConfig.backdrop);
+
 const audioVisual = createAudioVisualLayer({
   renderer: createAsciiRenderer({
     target: grid,
     config: defaultAudioVisualConfig,
+    backdrop,
   }),
   audio: createWebAudioSink({
     context: audioContext,
