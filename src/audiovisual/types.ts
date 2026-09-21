@@ -4,6 +4,7 @@
 // first needs it. See docs/05_audio_visual_layer.md.
 
 import type { FireworkSpec, Vec3 } from "../action/types.ts";
+import type { AudioVisualConfig } from "./config.ts";
 
 /**
  * A colour as three floats in 0..1, the form every brightness and blend
@@ -93,6 +94,17 @@ export interface Voice {
  * frame, play them. Every adapter implements this and nothing more —
  * the same idea as `Renderer`. */
 export type AudioSink = (voices: readonly Voice[]) => void; // cycle 18
+
+/** How a sound set turns one cue into the voices it plays — a sound set's
+ * whole contract, the same idea as `Renderer` and `AudioSink`. Swapping
+ * this is how `?sound=` changes what a key sounds like; the sink stays
+ * the only thing that ever touches Web Audio. `planToneVoices` and
+ * `planSillyVoices` are the two implementations. See
+ * docs/08_sound_sets.md. */
+export type VoicePlanner = (
+  cue: Cue,
+  config: AudioVisualConfig,
+) => readonly Voice[]; // cycle 2, docs/08_sound_sets.md
 
 /** The sky's brightness at the two ends of world space, already capped to
  * `backdrop.skyMaxBrightness`. `zenith <= horizon` always: a sunset glows

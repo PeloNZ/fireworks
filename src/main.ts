@@ -15,6 +15,7 @@ import { createAsciiRenderer } from "./audiovisual/adapters/ascii.ts";
 import { createEmojiRenderer } from "./audiovisual/adapters/emoji.ts";
 import { createWebAudioSink } from "./audiovisual/adapters/webAudio.ts";
 import { selectRenderer } from "./audiovisual/selectRenderer.ts";
+import { planToneVoices } from "./audiovisual/voices/tones.ts";
 import type { TextTarget } from "./audiovisual/adapters/ascii.ts";
 import type { FireworkPhase } from "./action/types.ts";
 import type { Renderer } from "./audiovisual/types.ts";
@@ -131,6 +132,7 @@ const audioVisual = createAudioVisualLayer({
     context: audioContext,
     config: defaultAudioVisualConfig,
   }),
+  voicePlanner: planToneVoices,
   config: defaultAudioVisualConfig,
   worldConfig: defaultWorldConfig,
 });
