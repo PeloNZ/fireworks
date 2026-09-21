@@ -1,5 +1,11 @@
+import { createRandom } from "../../action/random.ts";
 import type { AudioVisualConfig } from "../config.ts";
 import type { Cue, Voice } from "../types.ts";
+
+// Scales a draw from `random()`'s [0, 1) into [min, max).
+function scaleTo(random: () => number, min: number, max: number): number {
+  return min + random() * (max - min);
+}
 
 // The slide-whistle launch glide: down near half the burst's own
 // pitch, up to three times it — much wider than tones' plain 200-900Hz
@@ -40,6 +46,53 @@ function planSillyLaunchVoice(
   ];
 }
 
+// A wobbling theremin, not a plain whistle: two sine voices a few Hz
+// apart beat against each other, and one shared LFO wobbles both. The
+// detune and the wobble rate are drawn per press, not fixed, so no two
+// presses of the same key hover quite the same way — requirement 6 in
+// docs/08_sound_effects.md. The base pitch itself is not drawn: it's
+// half spec.sound.pitch, same ratio tones' own flight voice uses, so
+// the key-to-pitch map still holds.
+const FLIGHT_PITCH_RATIO = 0.5;
+const FLIGHT_DETUNE_MIN_HZ = 2;
+const FLIGHT_DETUNE_MAX_HZ = 6;
+const FLIGHT_LFO_RATE_MIN_HZ = 4;
+const FLIGHT_LFO_RATE_MAX_HZ = 9;
+const FLIGHT_LFO_DEPTH_RATIO = 0.03;
+
+function planSillyFlightVoices(
+  cue: Cue,
+  config: AudioVisualConfig,
+): readonly Voice[] {
+  const pitch = cue.spec.sound.pitch;
+  const random = createRandom(cue.spec.seed);
+  const detuneHz = scaleTo(random, FLIGHT_DETUNE_MIN_HZ, FLIGHT_DETUNE_MAX_HZ);
+  const lfoRateHz = scaleTo(
+    random,
+    FLIGHT_LFO_RATE_MIN_HZ,
+    FLIGHT_LFO_RATE_MAX_HZ,
+  );
+  const base: Voice = {
+    kind: "tone",
+    waveform: "sine",
+    frequencyHz: pitch * FLIGHT_PITCH_RATIO,
+    frequencyEndHz: null,
+    durationMs: cue.spec.fuseMs,
+    envelope: config.audio.flight.envelope,
+    gain: config.audio.sets.silly.flightVoiceGain,
+    seed: cue.spec.seed,
+    filter: null,
+    startOffsetMs: 0,
+    pitchLfo: {
+      rateHz: lfoRateHz,
+      depth: pitch * FLIGHT_LFO_DEPTH_RATIO,
+    },
+    filterLfo: null,
+    effect: null,
+  };
+  return [base, { ...base, frequencyHz: base.frequencyHz + detuneHz }];
+}
+
 /**
  * The silly sound set: cartoonish, wobbly, a different surprise on
  * every press — but every voice's own pitch is still a fixed ratio of
@@ -56,6 +109,6 @@ export function planSillyVoices(
     case "burst":
       return []; // cycles 11-13 add soft, sharp and crackle
     case "flight":
-      return []; // cycle 10 adds this
+      return planSillyFlightVoices(cue, config);
   }
 }

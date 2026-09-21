@@ -114,6 +114,17 @@ export interface AudioVisualConfig {
       readonly envelope: Envelope;
       readonly gain: number;
     };
+    // Tunables the silly set's planner needs driven by a test with an
+    // unusual value — module constants in voices/silly.ts cover every
+    // fixed shape ratio that doesn't. See docs/08_sound_effects.md.
+    readonly sets: {
+      readonly silly: {
+        // Each of the flight voice's two detuned tones, before they sum —
+        // together must not exceed flight.gain, or a shell in the air
+        // gets louder than a burst.
+        readonly flightVoiceGain: number;
+      };
+    };
   };
 }
 
@@ -202,6 +213,11 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
         releaseMs: 150,
       }),
       gain: 0.18,
+    }),
+    sets: Object.freeze({
+      silly: Object.freeze({
+        flightVoiceGain: 0.09,
+      }),
     }),
   }),
 });
