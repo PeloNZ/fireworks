@@ -33,6 +33,14 @@ const config = {
   ...defaultAudioVisualConfig,
   audio: {
     ...defaultAudioVisualConfig.audio,
+    burst: {
+      envelope: {
+        attackMs: 4,
+        decayMs: 40,
+        sustainLevel: 0.35,
+        releaseMs: 180,
+      },
+    },
     launch: {
       durationMs: 333,
       envelope: {
@@ -131,6 +139,73 @@ describe("planSillyVoices", () => {
         expect(bounce.startOffsetMs).toBeCloseTo(expectedOffset);
         expectedOffset += expectedDuration;
       }
+    });
+  });
+
+  describe("burst — sharp, the clang", () => {
+    it("ring modulates a sawtooth at a seed-drawn ratio of its own pitch", () => {
+      const spec = fireworkSpec({ sound: { pitch: 613, timbre: "sharp" } });
+      const cue: Cue = { kind: "burst", spec };
+
+      const voices = planSillyVoices(cue, config);
+
+      expect(voices).toHaveLength(1);
+      const [voice] = voices;
+      expect(voice?.kind).toBe("tone");
+      expect(voice?.waveform).toBe("sawtooth");
+      // The carrier holds the burst's own pitch flat — only the ring
+      // modulator's frequency is drawn, not this one.
+      expect(voice?.frequencyHz).toBe(spec.sound.pitch);
+      expect(voice?.frequencyEndHz).toBeNull();
+      expect(voice?.durationMs).toBe(spec.burstDurationMs);
+      expect(voice?.gain).toBe(1);
+      expect(voice?.seed).toBe(spec.seed);
+      expect(voice?.filter).toBeNull();
+      expect(voice?.startOffsetMs).toBe(0);
+      expect(voice?.pitchLfo).toBeNull();
+      expect(voice?.filterLfo).toBeNull();
+      // Short and snappy — the same release shortening tones' own sharp
+      // uses, against an unusual burst envelope so a hardcoded release
+      // can't pass.
+      expect(voice?.envelope.attackMs).toBe(
+        config.audio.burst.envelope.attackMs,
+      );
+      expect(voice?.envelope.decayMs).toBe(config.audio.burst.envelope.decayMs);
+      expect(voice?.envelope.sustainLevel).toBe(
+        config.audio.burst.envelope.sustainLevel,
+      );
+      expect(voice?.envelope.releaseMs).toBeCloseTo(
+        config.audio.burst.envelope.releaseMs * 0.3,
+      );
+
+      expect(voice?.effect?.kind).toBe("ringmod");
+      const ratio =
+        voice?.effect?.kind === "ringmod"
+          ? voice.effect.frequencyHz / spec.sound.pitch
+          : 0;
+      expect(ratio).toBeGreaterThanOrEqual(1.4);
+      expect(ratio).toBeLessThanOrEqual(2.8);
+    });
+
+    it("draws the ratio from the seed: same seed same clang, different seed different clang", () => {
+      const specA = fireworkSpec({ sound: { pitch: 613, timbre: "sharp" } });
+      const cueA: Cue = { kind: "burst", spec: specA };
+      const cueA2: Cue = { kind: "burst", spec: specA };
+      const cueB: Cue = {
+        kind: "burst",
+        spec: fireworkSpec({
+          sound: { pitch: 613, timbre: "sharp" },
+          seed: specA.seed + 1,
+        }),
+      };
+
+      expect(planSillyVoices(cueA, config)).toEqual(
+        planSillyVoices(cueA2, config),
+      );
+
+      const [voiceA] = planSillyVoices(cueA, config);
+      const [voiceB] = planSillyVoices(cueB, config);
+      expect(voiceA?.effect).not.toEqual(voiceB?.effect);
     });
   });
 

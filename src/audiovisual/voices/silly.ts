@@ -148,6 +148,45 @@ function planSillySoftBurstVoices(
   return voices;
 }
 
+// A clang: a sawtooth at the burst's own pitch, ring modulated by a
+// frequency an awkward multiple of it — 1.4-2.8, drawn per press, never
+// a round number, so the sidebands stay off the harmonic series and the
+// clang stays inharmonic. Release shortened the same way tones' own
+// sharp shortens its release: snappy, not sustained.
+const SHARP_RATIO_MIN = 1.4;
+const SHARP_RATIO_MAX = 2.8;
+const SHARP_RELEASE_MULTIPLIER = 0.3;
+
+function planSillySharpBurstVoices(
+  cue: Cue,
+  config: AudioVisualConfig,
+): readonly Voice[] {
+  const pitch = cue.spec.sound.pitch;
+  const random = createRandom(cue.spec.seed);
+  const ratio = scaleTo(random, SHARP_RATIO_MIN, SHARP_RATIO_MAX);
+  const envelope = config.audio.burst.envelope;
+  return [
+    {
+      kind: "tone",
+      waveform: "sawtooth",
+      frequencyHz: pitch,
+      frequencyEndHz: null,
+      durationMs: cue.spec.burstDurationMs,
+      envelope: {
+        ...envelope,
+        releaseMs: envelope.releaseMs * SHARP_RELEASE_MULTIPLIER,
+      },
+      gain: 1,
+      seed: cue.spec.seed,
+      filter: null,
+      startOffsetMs: 0,
+      pitchLfo: null,
+      filterLfo: null,
+      effect: { kind: "ringmod", frequencyHz: pitch * ratio },
+    },
+  ];
+}
+
 function planSillyBurstVoices(
   cue: Cue,
   config: AudioVisualConfig,
@@ -156,7 +195,7 @@ function planSillyBurstVoices(
     case "soft":
       return planSillySoftBurstVoices(cue, config);
     case "sharp":
-      return []; // cycle 12 adds this
+      return planSillySharpBurstVoices(cue, config);
     case "crackle":
       return []; // cycle 13 adds this
   }
