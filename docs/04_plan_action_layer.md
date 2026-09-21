@@ -112,7 +112,7 @@ type FireworkPhase =
   | "flying" // in the air, powered or ballistic
   | "exploding" // burst effects playing
   | "finished"; // ready to remove
-// cycle 10; exported in cycle 12 (stepPhase)
+// cycle 10
 
 // The live object. Built from a spec, changed every step, never sent
 // anywhere — it stays inside the simulation.
@@ -208,8 +208,8 @@ point is a repeatable sequence, not cryptographic quality.
 
 ```
 armed --(launchDurationMs/2)--> launching --(launchDurationMs/2)--> flying
-flying --(fuseRemainingMs <= 0)--> exploding
-exploding --(burstDurationMs)--> finished --> removed from the world
+armed, launching, flying --(fuseRemainingMs <= 0)--> exploding
+exploding --(spec.burstDurationMs)--> finished --> removed from the world
 ```
 
 Rules:
@@ -220,9 +220,10 @@ Rules:
 2. **Fuel reaching zero is not a phase transition.** Thrust stops, the shell keeps flying, the arc becomes
    ballistic. It stays in `flying`. A rocket that runs out of fuel doesn't stop being a rocket in flight —
    it just stops being pushed.
-3. The fuse runs from spawn and ignores every other timer, so a burst can happen during `launching` or
-   while fuel still burns. This is what makes a short-fuse firework possible, and it is why fuse is a
-   separate field from fuel rather than "burst when fuel runs out."
+3. The fuse runs from spawn and ignores every other timer. It is checked in every phase except `exploding`
+   and `finished`, so a burst can happen during `armed`, during `launching`, or while fuel still burns in
+   `flying`. This is what makes a short-fuse firework possible, and it is why fuse is a separate field from
+   fuel rather than "burst when fuel runs out."
 4. Gravity, wind and drag apply during `launching`, `flying` and `exploding`. Not during `armed`, which
    has not launched, and not during `finished`, which is gone.
 5. `finished` is a phase, not a deletion. An entity enters it, the renderer gets one snapshot showing it,
