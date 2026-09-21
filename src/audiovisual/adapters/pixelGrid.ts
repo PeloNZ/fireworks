@@ -46,3 +46,33 @@ export function indexFor(
       return rampLevel(sprite.brightness, pixel.trail);
   }
 }
+
+/**
+ * How far world `x` reaches left and right of centre for this grid's
+ * shape. `toCell`'s grid is fixed at world `x ∈ [-50, 50)`, but the pixel
+ * grid fills whatever viewport it is given, so its width is derived from
+ * `columns`/`rows` instead: one pixel is always `100 / rows` world units
+ * tall (world `y ∈ [0, 100)` maps across every row), and forcing pixels
+ * square makes the same true of width, so the visible half-width is
+ * `50 * columns / rows`. A square grid (`columns === rows`) reproduces
+ * `toCell`'s own ±50 box exactly.
+ */
+export function worldHalfWidth(grid: {
+  readonly columns: number;
+  readonly rows: number;
+}): number {
+  return (50 * grid.columns) / grid.rows;
+}
+
+/**
+ * The world `x` at the horizontal centre of `column` — the pixel-grid
+ * counterpart of `columnCentreX`, using `worldHalfWidth` instead of a
+ * fixed ±50.
+ */
+export function pixelCentreX(
+  column: number,
+  grid: { readonly columns: number; readonly rows: number },
+): number {
+  const halfWidth = worldHalfWidth(grid);
+  return -halfWidth + ((2 * halfWidth) / grid.columns) * (column + 0.5);
+}

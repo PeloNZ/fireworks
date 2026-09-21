@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { indexFor, sparkIndex } from "./pixelGrid.ts";
+import {
+  indexFor,
+  pixelCentreX,
+  sparkIndex,
+  worldHalfWidth,
+} from "./pixelGrid.ts";
 import { defaultAudioVisualConfig } from "../config.ts";
 import type { AudioVisualConfig } from "../config.ts";
 import type { Rgb, Sprite } from "../types.ts";
@@ -99,5 +104,36 @@ describe("indexFor", () => {
         config,
       ),
     ).toBe(5);
+  });
+});
+
+// Cycle 5: the grid fills the viewport, so its width is derived from its
+// shape rather than fixed at world x in [-50, 50) the way toCell's grid
+// is. columns !== rows here, so a copy of columnCentreX's fixed ±50
+// assumption fails.
+const wideGrid = { columns: 10, rows: 8 };
+
+describe("worldHalfWidth", () => {
+  it("scales with columns/rows rather than assuming a square world", () => {
+    expect(worldHalfWidth(wideGrid)).toBe(62.5);
+  });
+});
+
+describe("pixelCentreX", () => {
+  it("centres the leftmost and rightmost columns inside worldHalfWidth", () => {
+    expect(pixelCentreX(0, wideGrid)).toBe(-56.25);
+    expect(pixelCentreX(9, wideGrid)).toBe(56.25);
+  });
+
+  it("keeps pixels square: width and height agree for two different grids", () => {
+    // A pixel's width is 2*worldHalfWidth/columns; its height is always
+    // 100/rows, since world y in [0,100) maps across every row regardless
+    // of shape. Square pixels are a property of the formula, not of a
+    // chosen resolution.
+    for (const grid of [wideGrid, { columns: 3, rows: 3 }]) {
+      const pixelWidth = (2 * worldHalfWidth(grid)) / grid.columns;
+      const pixelHeight = 100 / grid.rows;
+      expect(pixelWidth).toBeCloseTo(pixelHeight);
+    }
   });
 });
