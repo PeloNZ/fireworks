@@ -32,9 +32,9 @@ function fakeAdapter(): ControllerAdapter & {
   };
 }
 
-// Cycle 0 (docs/04_plan_action_layer.md's Part 0): a fake FocusLossSource,
-// same shape as fakeAdapter above — a port a test can trigger directly,
-// standing in for a real blur/visibilitychange listener.
+// Cycle 8 (docs/03_plan_control_layer.md): a fake FocusLossSource, same
+// shape as fakeAdapter above — a port a test can trigger directly, standing
+// in for a real blur/visibilitychange listener.
 function fakeFocusLossSource(): FocusLossSource & { trigger: () => void } {
   let onFocusLoss: (() => void) | null = null;
   return {

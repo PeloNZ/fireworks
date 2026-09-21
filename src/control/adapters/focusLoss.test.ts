@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { createWindowFocusLoss } from "./focusLoss.ts";
 
-// Part 0, cycle 0b (docs/04_plan_action_layer.md): the real implementation
-// of FocusLossSource. Fake targets, same idea as "Why a fake target beats
+// Cycle 8 (docs/03_plan_control_layer.md): the real implementation of
+// FocusLossSource. Fake targets, same idea as "Why a fake target beats
 // jsdom" for the keyboard adapter — a plain object with the two methods
 // this file actually calls, no jsdom.
 
