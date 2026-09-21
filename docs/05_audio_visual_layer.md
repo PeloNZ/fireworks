@@ -182,8 +182,8 @@ one side of the screen reappear on the other, which is not how a firework behave
 
 Two sprites can land in the same character cell — a shell passing through where a spark trail already
 sits, say. A grid cell holds exactly one character, so something has to decide which sprite wins. This
-layer's rule is the simplest one that looks right: whichever sprite is brighter (`brightness * a
-weighting of its colour`) writes the cell. This is a crude stand-in for what a real renderer calls
+layer's rule is the simplest one that looks right: whichever sprite has the higher `brightness` writes
+the cell. This is a crude stand-in for what a real renderer calls
 **blending** — combining what's already drawn with what's being drawn on top, usually by adding light
 together rather than replacing it outright. A brightness ramp of characters — a space for nothing, `.`
 for dim, up through `@` for the brightest — is the entire "colour palette" an ASCII grid has, so "brighter
@@ -488,8 +488,8 @@ Test-driven, same discipline as the other two layers: write the failing test fir
 code to pass, one commit per cycle. Three passes, each ending with something to see or hear, because
 watching behaviour early matters more here than finishing every function before wiring anything up.
 
-**Before cycle 1**: `src/audiovisual/` does not exist yet. `vitest`, `tsc`, `eslint`, `knip` are already
-configured project-wide.
+**Before cycle 1 — done**: `src/audiovisual/` did not exist yet. `vitest`, `tsc`, `eslint`, `knip` were
+already configured project-wide.
 
 ### Pass A — shells on screen
 

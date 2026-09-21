@@ -10,9 +10,9 @@ The Control layer is built. `src/control/` has tested `buildSignal`, `interpretK
 
 The Action layer is built. `src/action/` has tested `hashString`, `createRandom`, `deriveSeeds`, the vector helpers (`add`, `scale`, `magnitude`, `normalise`), `pickLaunch`, `pickPattern`, `pickPalette`, `pickSound`, `buildFireworkSpec`, `createFirework`, `stepPhysics`, `stepPhase`, `createWorld`, `resolveAction`, `createActionLayer`, `formatFirework`, and `createSpecConsoleSink` functions — see `docs/04_plan_action_layer.md` for the build plan and cycle order.
 
-`src/main.ts` wires the keyboard adapter through the control layer to the Action layer as its sink, steps the resulting world on a `requestAnimationFrame` loop, and logs each firework's phase changes to the console. It exposes `window.controlLayer` and `window.actionWorld` for poking in devtools.
+`src/main.ts` wires the keyboard adapter through the control layer to the Action layer as its sink, steps the resulting world on a `requestAnimationFrame` loop, and logs each firework's phase changes to the console. It also draws that world every frame through the AudioVisual layer's ASCII renderer, into a `<pre>` element. It exposes `window.controlLayer` and `window.actionWorld` for poking in devtools.
 
-The AudioVisual layer is planned but not built. See `docs/05_audio_visual_layer.md` for the build plan and cycle order: an ASCII renderer, closed-form sparks and trails, and synthesised sound effects via the Web Audio API.
+The AudioVisual layer is partly built. `src/audiovisual/` has tested `parseHexColor`, `lerpVec3`, `buildFrame`, `rasteriseFrame`, `createAsciiRenderer`, and `createAudioVisualLayer` functions, which turn Action's snapshot into an ASCII grid of a firework shell — see `docs/05_audio_visual_layer.md` for the build plan and cycle order. Pass A (shells rendering to the grid) is complete; sparks, trails, and synthesised sound effects via the Web Audio API are still ahead.
 
 ## Commands
 
