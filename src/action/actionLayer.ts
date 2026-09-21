@@ -1,7 +1,8 @@
 import type { ActionConfig } from "./config.ts";
 import { buildFireworkSpec } from "./spec.ts";
+import type { createWorld } from "./world.ts";
 import type { FireworkSpec } from "./types.ts";
-import type { ControlEvent } from "../control/types.ts";
+import type { ControlEvent, ControlEventSink } from "../control/types.ts";
 
 /**
  * Turns one `ControlEvent` into the fireworks it produces. A `"single"`
@@ -15,4 +16,21 @@ export function resolveAction(
   config: ActionConfig,
 ): readonly FireworkSpec[] {
   return [buildFireworkSpec(event.signal, config)];
+}
+
+/**
+ * Wires `resolveAction` to a world: returns a plain function matching
+ * `ControlEventSink`'s shape, the same idea as `createConsoleSink` in the
+ * Control layer. Each resolved spec is spawned into `world`, in order.
+ */
+export function createActionLayer(options: {
+  readonly world: ReturnType<typeof createWorld>;
+  readonly config: ActionConfig;
+}): ControlEventSink {
+  const { world, config } = options;
+  return (event) => {
+    for (const spec of resolveAction(event, config)) {
+      world.spawn(spec);
+    }
+  };
 }

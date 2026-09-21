@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { defaultActionConfig } from "./config.ts";
-import { resolveAction } from "./actionLayer.ts";
+import { createActionLayer, resolveAction } from "./actionLayer.ts";
 import { buildFireworkSpec } from "./spec.ts";
 import type { ControlEvent, ControlSignal } from "../control/types.ts";
 
@@ -33,5 +33,43 @@ describe("resolveAction", () => {
     const event: ControlEvent = { kind: "single", signal: signal() };
 
     expect(Array.isArray(resolveAction(event, defaultActionConfig))).toBe(true);
+  });
+});
+
+// Cycle 15 (docs/04_plan_action_layer.md): createActionLayer wraps
+// resolveAction and world.spawn into a plain function matching
+// ControlEventSink's shape — the same idea as the Control layer's
+// createConsoleSink. Tests use a fake world (a port, matching the shape
+// createWorld returns), not the real one, so this cycle tests wiring only.
+
+function fakeWorld() {
+  return { spawn: vi.fn(), step: vi.fn(), entities: vi.fn(), alpha: vi.fn() };
+}
+
+describe("createActionLayer", () => {
+  it("spawns one entity into the world per resolved spec, in order", () => {
+    const world = fakeWorld();
+    const sink = createActionLayer({ world, config: defaultActionConfig });
+    const eventA: ControlEvent = {
+      kind: "single",
+      signal: signal({ id: "KeyA", timestamp: 100 }),
+    };
+    const eventB: ControlEvent = {
+      kind: "single",
+      signal: signal({ id: "KeyB", timestamp: 200 }),
+    };
+
+    sink(eventA);
+    sink(eventB);
+
+    expect(world.spawn).toHaveBeenCalledTimes(2);
+    expect(world.spawn).toHaveBeenNthCalledWith(
+      1,
+      buildFireworkSpec(eventA.signal, defaultActionConfig),
+    );
+    expect(world.spawn).toHaveBeenNthCalledWith(
+      2,
+      buildFireworkSpec(eventB.signal, defaultActionConfig),
+    );
   });
 });
