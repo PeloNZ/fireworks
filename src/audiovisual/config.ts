@@ -142,6 +142,7 @@ export interface AudioVisualConfig {
     // this has to be darker than the sky, not brighter, unlike
     // asciiBackdrop's groundFillBrightness.
     readonly ground: number;
+    readonly palette: readonly string[]; // 16 hex colours, indexed above
   };
   // Only the Web Audio adapter and its planning functions read this,
   // nested under its own key for the same reason ascii is.
@@ -286,6 +287,28 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     // darker than every reachable sky index, so the ground reads as
     // solid ground rather than blending into the horizon it meets.
     ground: 0,
+    // PICO-8's 16-colour palette. Every index above is a position in
+    // this array: 0 black, 1 dark blue, 7 off-white, 8..14 the bright,
+    // saturated colours sparkHues indexes, 15 the palest colour (the
+    // moon's own). See docs/09_8bit_renderer.md.
+    palette: Object.freeze([
+      "#000000",
+      "#1D2B53",
+      "#7E2553",
+      "#008751",
+      "#AB5236",
+      "#5F574F",
+      "#C2C3C7",
+      "#FFF1E8",
+      "#FF004D",
+      "#FFA300",
+      "#FFEC27",
+      "#00E436",
+      "#29ADFF",
+      "#83769C",
+      "#FF77A8",
+      "#FFCCAA",
+    ]),
   }),
   audio: Object.freeze({
     lookaheadMs: 30,
