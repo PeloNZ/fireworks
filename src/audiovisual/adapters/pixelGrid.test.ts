@@ -3,6 +3,7 @@ import {
   indexFor,
   pixelCentreX,
   sparkIndex,
+  toPixel,
   worldHalfWidth,
 } from "./pixelGrid.ts";
 import { defaultAudioVisualConfig } from "../config.ts";
@@ -135,5 +136,29 @@ describe("pixelCentreX", () => {
       const pixelHeight = 100 / grid.rows;
       expect(pixelWidth).toBeCloseTo(pixelHeight);
     }
+  });
+});
+
+// Cycle 6: the flat row-major offset a point falls on, or null when
+// clipped. columns !== rows in wideGrid rules out confusing
+// row*columns+column with column*rows+row.
+describe("toPixel", () => {
+  it("maps a pixel centre back to that pixel's flat offset", () => {
+    // Row 3, column 5's centre: x = pixelCentreX(5, wideGrid), y = the
+    // world y whose row (by toCell's own row formula) is 3.
+    const x = pixelCentreX(5, wideGrid);
+    const y = (100 * (wideGrid.rows - 3 - 0.5)) / wideGrid.rows;
+
+    expect(toPixel(x, y, wideGrid)).toBe(3 * wideGrid.columns + 5);
+  });
+
+  it("clips a point beyond worldHalfWidth to null", () => {
+    expect(toPixel(100, 50, wideGrid)).toBeNull();
+    expect(toPixel(-100, 50, wideGrid)).toBeNull();
+  });
+
+  it("clips y at the top and bottom of the half-open box", () => {
+    expect(toPixel(0, 100, wideGrid)).toBeNull();
+    expect(toPixel(0, -1, wideGrid)).toBeNull();
   });
 });

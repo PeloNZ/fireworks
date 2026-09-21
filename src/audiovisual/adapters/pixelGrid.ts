@@ -76,3 +76,31 @@ export function pixelCentreX(
   const halfWidth = worldHalfWidth(grid);
   return -halfWidth + ((2 * halfWidth) / grid.columns) * (column + 0.5);
 }
+
+/**
+ * Maps a world point onto a flat row-major pixel offset
+ * (`row * columns + column`), flipping `y` — world `y` grows up, pixel
+ * rows grow down, the same rule `toCell` uses. Returns `null` when the
+ * point falls outside the grid, which is what clips a sprite rather than
+ * wrapping it to the opposite edge.
+ *
+ * The box is half-open on every side, exactly as `toCell`'s is, but its
+ * width comes from `worldHalfWidth` instead of a fixed ±50 — the pixel
+ * grid fills whatever viewport it is given. The `y` mapping is unchanged
+ * from `toCell`, since world `y ∈ [0, 100)` never varies with the grid's
+ * shape.
+ */
+export function toPixel(
+  x: number,
+  y: number,
+  grid: { readonly columns: number; readonly rows: number },
+): number | null {
+  const { columns, rows } = grid;
+  const halfWidth = worldHalfWidth(grid);
+  const column = Math.floor(((x + halfWidth) / (2 * halfWidth)) * columns);
+  const row = rows - 1 - Math.floor((y / 100) * rows);
+  if (column < 0 || column >= columns || row < 0 || row >= rows) {
+    return null;
+  }
+  return row * columns + column;
+}
