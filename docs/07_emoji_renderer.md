@@ -404,7 +404,7 @@ both complete and green.
 
 ### Pass A — the shared seam
 
-1. **`contestCells` in `adapters/cells.ts`.** A frame with two sprites landing in one cell asserts the
+1. **`contestCells` in `adapters/cells.ts` — done.** A frame with two sprites landing in one cell asserts the
    returned grid holds the winning **sprite itself**, `kind` and `color` intact — an implementation that
    returns characters cannot pass this. Two tie-break cases, because the rule has two halves: a strictly
    brighter later sprite takes the cell, and an equally bright later sprite does not, so the earlier one
