@@ -8,7 +8,9 @@ See `docs/01_intent.md` for the full vision and the three-layer design (Control,
 
 The Control layer is built. `src/control/` has tested `buildSignal`, `interpretKeyEvent`, `createHistory`, `formatControlEvent`, `createKeyboardAdapter`, `createConsoleSink`, and `createControlLayer` functions. `src/main.ts` is the dev harness: it wires a real keyboard adapter and console sink through the control layer and exposes the running layer on `window.controlLayer` — see `docs/03_plan_control_layer.md` for the build plan and cycle order.
 
-The Action and AudioVisual layers do not exist yet.
+The Action layer is in progress. `src/action/` has tested `hashString`, `createRandom`, `deriveSeeds`, the vector helpers (`add`, `scale`, `magnitude`, `normalise`), `pickLaunch`, `pickPattern`, `pickPalette`, and `pickSound` functions — see `docs/04_plan_action_layer.md` for the build plan and cycle order.
+
+The AudioVisual layer does not exist yet.
 
 ## Commands
 
@@ -40,4 +42,5 @@ All application code is written test-first. See `CLAUDE.md`'s "Development tacti
 - `docs/01_intent.md` — vision, gameplay loop, the three-layer design.
 - `docs/02_spec.md` — the Control layer spec.
 - `docs/03_plan_control_layer.md` — the Control layer's build plan and cycle order.
+- `docs/04_plan_action_layer.md` — the Action layer's build plan and cycle order.
 - `CLAUDE.md` — guidance for Claude Code working in this repo, including build gotchas.

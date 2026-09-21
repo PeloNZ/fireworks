@@ -179,7 +179,7 @@ The hypothesis in `01_intent.md`: pressing the same key feels familiar without e
 both derived from the signal, no stored state:
 
 1. **`key`** — `hashString(signal.id)`. The same physical key always gives the same number. This picks
-   the **family**: the launch angle, which pattern, which colour palette, which pitch.
+   the **family**: the launch angle, which pattern, which colour palette, which pitch and timbre.
 2. **`press`** — `hashString(signal.id + ":" + Math.floor(signal.timestamp))`. Different every press.
    This picks the **variation**: launch speed, thrust, fuel, fuse, which colours from the family, particle
    count, duration.
@@ -425,10 +425,6 @@ config, not the default, so a hardcoded implementation fails — same discipline
     `requestAnimationFrame` loop feeds real elapsed milliseconds into `world.step`. Expose the world on
     `window` beside the existing `window.controlLayer`, for the same devtools-poking reason.
 
-Cycles 6 through 8 are cosmetic and nothing renders yet at that point — they can be deferred to after
-cycle 13 if reaching a moving, if colourless, firework sooner is more motivating than building every trait
-picker up front.
-
 Wiring note for cycle 17: pass the sink as a wrapped call (`(event) => sink(event)`), not a bare method
 reference. ESLint's `no-unbound-method` blocks detaching a method from its object, the same trap cycles 5
 and 7 of the Control layer plan hit.
@@ -483,8 +479,7 @@ and 7 of the Control layer plan hit.
   - Its `x` position drifts consistently in one direction over the flight — wind is doing real work.
   - Press the same key ten times in a row. The launch angle stays the same each time; speed, fuel and fuse
     vary.
-  - Press ten different keys. Angles differ between keys, and once cycles 6–8 land, so do pattern and
-    colour family.
+  - Press ten different keys. Angles differ between keys, and so do pattern, colour family, and sound.
   - Set `wind` and `gravity` to `{ x: 0, y: 0, z: 0 }` in the config and reload: flight becomes a straight
     line, confirming the physics has no other hidden force baked in.
   - Grep `src/action/` for `Math.random`, `Date.now`, and `performance.now` — no hits.
