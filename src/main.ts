@@ -7,10 +7,13 @@ import { defaultWorldConfig } from "./action/worldConfig.ts";
 import { createActionLayer } from "./action/actionLayer.ts";
 import { createWorld } from "./action/world.ts";
 import { createSpecConsoleSink } from "./action/debug/consoleSink.ts";
+import { defaultAudioVisualConfig } from "./audiovisual/config.ts";
+import { createAudioVisualLayer } from "./audiovisual/audioVisualLayer.ts";
+import { createAsciiRenderer } from "./audiovisual/adapters/ascii.ts";
 import type { FireworkPhase } from "./action/types.ts";
 
-// The dev harness: Control -> Action -> a fixed-step firework simulation,
-// traced to the console. This file is the only thing in either layer
+// The dev harness: Control -> Action -> AudioVisual, an ASCII grid drawn
+// on a fixed-step render loop. This file is the only thing in any layer
 // that isn't unit tested — it's wiring, not logic, proven by pressing keys
 // in a real browser instead of by a test. See "Why a fake target beats
 // jsdom" in docs/03_plan_control_layer.md and "File layout" in
@@ -59,21 +62,46 @@ window.actionWorld = world;
 
 layer.start();
 
+const app = document.querySelector<HTMLDivElement>("#app");
+const heading = document.createElement("p");
+heading.textContent = "Fireworks — AudioVisual layer dev harness.";
+const instructions = document.createElement("p");
+instructions.textContent = "Press any key. Open the console to see events.";
+const grid = document.createElement("pre");
+if (app) {
+  app.append(heading, instructions, grid);
+}
+
+const audioVisual = createAudioVisualLayer({
+  renderer: createAsciiRenderer({
+    target: grid,
+    config: defaultAudioVisualConfig,
+  }),
+  config: defaultAudioVisualConfig,
+});
+
 // Traces each firework through its phases in the console — one line per
 // phase change, not per animation frame, so the log stays readable.
-// formatFirework (cycle 16) and createSpecConsoleSink (cycle 17) do the
-// actual formatting and printing; this loop only decides when to call it.
+// formatFirework and createSpecConsoleSink do the actual formatting and
+// printing; this loop only decides when to call it.
 const specSink = createSpecConsoleSink();
 const lastLoggedPhase = new Map<string, FireworkPhase>();
 let lastFrameTime: number | null = null;
 
 function frame(now: number): void {
-  const elapsedMs = lastFrameTime === null ? 0 : now - lastFrameTime;
+  const rawElapsedMs = lastFrameTime === null ? 0 : now - lastFrameTime;
   lastFrameTime = now;
+  // Clamped below the shortest phase Action can produce (100ms at default
+  // config), so a backgrounded tab's return never runs an unbounded burst
+  // of physics steps in one turn, and the AudioVisual layer's phase
+  // watcher (cycle 16) never misses a transition. See "Why the elapsed
+  // time is clamped" in docs/05_audio_visual_layer.md.
+  const elapsedMs = Math.min(rawElapsedMs, defaultAudioVisualConfig.maxFrameMs);
   world.step(elapsedMs);
 
+  const entities = world.entities();
   const liveIds = new Set<string>();
-  for (const firework of world.entities()) {
+  for (const firework of entities) {
     liveIds.add(firework.spec.id);
     if (lastLoggedPhase.get(firework.spec.id) !== firework.phase) {
       lastLoggedPhase.set(firework.spec.id, firework.phase);
@@ -90,15 +118,8 @@ function frame(now: number): void {
     }
   }
 
+  audioVisual.present({ entities, alpha: world.alpha(), elapsedMs });
+
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-
-const app = document.querySelector<HTMLDivElement>("#app");
-if (app) {
-  const heading = document.createElement("p");
-  heading.textContent = "Fireworks — Action layer dev harness.";
-  const instructions = document.createElement("p");
-  instructions.textContent = "Press any key. Open the console to see events.";
-  app.append(heading, instructions);
-}

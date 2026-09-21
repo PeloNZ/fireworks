@@ -5,11 +5,12 @@ import type { Renderer } from "../types.ts";
 /**
  * The minimal slice of a DOM element this renderer needs — a "port", the
  * same pattern createKeyboardAdapter's `KeyEventLike` uses. A real `<pre>`
- * element satisfies it; tests use a plain object instead. See "Why a fake
- * target beats jsdom" in docs/03_plan_control_layer.md.
+ * element satisfies it (`Node.textContent` is typed `string | null`);
+ * tests use a plain object instead. See "Why a fake target beats jsdom"
+ * in docs/03_plan_control_layer.md.
  */
 export interface TextTarget {
-  textContent: string;
+  textContent: string | null;
 }
 
 /**
