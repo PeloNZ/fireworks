@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { sparkIndex } from "./pixelGrid.ts";
+import { indexFor, sparkIndex } from "./pixelGrid.ts";
 import { defaultAudioVisualConfig } from "../config.ts";
 import type { AudioVisualConfig } from "../config.ts";
-import type { Rgb } from "../types.ts";
+import type { Rgb, Sprite } from "../types.ts";
 
 // Cycle 3 (docs/09_8bit_renderer.md): the pixel renderer is the emoji
 // renderer with a palette index where the glyph was -- sparkIndex is
@@ -57,5 +57,47 @@ describe("sparkIndex", () => {
 
   it("picks by hue once saturation clears the floor", () => {
     expect(sparkIndex(atHue(10, 0.6), pixel)).toBe(3);
+  });
+});
+
+// Cycle 4: indexFor dispatches on sprite.kind, mirroring emojiGrid's
+// glyphFor exactly. pixel.shell and pixel.trail arrive together with
+// sparkIndex's dispatch because noImplicitReturns plus the three-member
+// kind union forbid a partial switch.
+describe("indexFor", () => {
+  function sprite(overrides: Partial<Sprite> = {}): Sprite {
+    return {
+      kind: "shell",
+      position: { x: 0, y: 0, z: 0 },
+      size: 1,
+      color: atHue(10),
+      brightness: 1,
+      ...overrides,
+    };
+  }
+
+  it("returns the shell index for a shell, regardless of its colour", () => {
+    const config = { ...pixel, shell: 2 };
+
+    expect(indexFor(sprite({ kind: "shell", color: atHue(200) }), config)).toBe(
+      2,
+    );
+  });
+
+  it("returns sparkIndex's answer for a spark", () => {
+    expect(indexFor(sprite({ kind: "spark", color: atHue(200) }), pixel)).toBe(
+      12,
+    );
+  });
+
+  it("picks a trail's index from brightness alone, ignoring its colour", () => {
+    const config = { ...pixel, trail: [4, 5, 6] };
+
+    expect(
+      indexFor(
+        sprite({ kind: "trail", color: atHue(200), brightness: 0.5 }),
+        config,
+      ),
+    ).toBe(5);
   });
 });

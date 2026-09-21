@@ -104,6 +104,14 @@ export interface AudioVisualConfig {
     }[];
     readonly desaturated: number; // below saturationFloor, hue means nothing
     readonly saturationFloor: number;
+    readonly shell: number;
+    // Faded to bright. trail[0] must equal blank (cycle 10): a trail's
+    // dimmest index has to be the same blank a too-dim sprite would
+    // otherwise draw as, or a decaying trail keeps winning its pixel with
+    // a visible colour long after the ASCII renderer would show nothing
+    // there. See "Why a trail's glyph ramp has to end on the blank" in
+    // docs/07_emoji_renderer.md -- the same rule, one renderer over.
+    readonly trail: readonly number[];
   };
   // Only the Web Audio adapter and its planning functions read this,
   // nested under its own key for the same reason ascii is.
@@ -223,6 +231,8 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     ),
     desaturated: 7, // #FFF1E8, PICO-8's off-white
     saturationFloor: 0.15,
+    shell: 7,
+    trail: Object.freeze([0, 5, 6]),
   }),
   audio: Object.freeze({
     lookaheadMs: 30,
