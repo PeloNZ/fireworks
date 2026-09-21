@@ -3,7 +3,7 @@
 // imports yet as dead code, so a type lands here only in the cycle that
 // first needs it. See docs/05_audio_visual_layer.md.
 
-import type { Vec3 } from "../action/types.ts";
+import type { FireworkSpec, Vec3 } from "../action/types.ts";
 
 /**
  * A colour as three floats in 0..1, the form every brightness and blend
@@ -35,3 +35,11 @@ export interface Frame {
 /** A renderer's whole contract: given a frame, draw it. Every adapter
  * (ASCII today, others later) implements this and nothing more. */
 export type Renderer = (frame: Frame) => void; // cycle 5
+
+/** A discrete "this just happened," read off Action's phase machine —
+ * see `createPhaseWatcher` in phases.ts. Rendering redraws everything
+ * from scratch every frame; sound needs an instant, not a snapshot. */
+export interface Cue {
+  readonly kind: "launch" | "burst";
+  readonly spec: FireworkSpec;
+} // cycle 16
