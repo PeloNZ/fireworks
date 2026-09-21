@@ -2,7 +2,7 @@
 // same discipline as types.ts — see docs/04_plan_action_layer.md's Config
 // section for the full shape this grows toward.
 
-import type { FireworkPattern, FireworkTimbre } from "./types.ts";
+import type { FireworkPattern, FireworkTimbre, Vec3 } from "./types.ts";
 
 /** A closed numeric range, `min` to `max` inclusive. Not `Range` — the DOM
  * library already defines a global `Range`, and shadowing it would make
@@ -13,6 +13,7 @@ export interface NumberRange {
 }
 
 export interface ActionConfig {
+  readonly launchOrigin: Vec3;
   readonly launchSpeed: NumberRange;
   readonly launchAngle: NumberRange; // degrees from vertical
   readonly thrust: NumberRange;
@@ -21,6 +22,8 @@ export interface ActionConfig {
   readonly patterns: readonly FireworkPattern[];
   readonly palettes: readonly (readonly string[])[]; // colour families
   readonly paletteSize: number; // colours drawn per firework
+  readonly particleCount: NumberRange;
+  readonly burstDurationMs: NumberRange;
   readonly sound: {
     readonly pitch: NumberRange;
     readonly timbres: readonly FireworkTimbre[];
@@ -28,6 +31,7 @@ export interface ActionConfig {
 }
 
 export const defaultActionConfig: ActionConfig = Object.freeze({
+  launchOrigin: Object.freeze({ x: 0, y: 0, z: 0 }),
   launchSpeed: Object.freeze({ min: 30, max: 55 }),
   launchAngle: Object.freeze({ min: -25, max: 25 }),
   thrust: Object.freeze({ min: 20, max: 40 }),
@@ -72,6 +76,8 @@ export const defaultActionConfig: ActionConfig = Object.freeze({
     ]),
   ]),
   paletteSize: 3,
+  particleCount: Object.freeze({ min: 40, max: 120 }),
+  burstDurationMs: Object.freeze({ min: 600, max: 1200 }),
   sound: Object.freeze({
     pitch: Object.freeze({ min: 220, max: 880 }),
     timbres: Object.freeze<readonly FireworkTimbre[]>([

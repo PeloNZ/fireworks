@@ -42,3 +42,27 @@ export interface Seeds {
   readonly key: number;
   readonly press: number;
 }
+
+/**
+ * The recipe: everything decided once at key press, built by
+ * `buildFireworkSpec` in spec.ts. Never changes after that — it's what a
+ * second machine would need to show the identical firework, once
+ * multiplayer exists. `seed` is separate from `Seeds` above: it exists only
+ * for AudioVisual's per-particle jitter, not for picking any of this
+ * spec's own fields.
+ */
+export interface FireworkSpec {
+  readonly id: string;
+  readonly launchedAt: number;
+  readonly origin: Vec3;
+  readonly velocity: Vec3;
+  readonly thrust: number;
+  readonly fuelMs: number;
+  readonly fuseMs: number;
+  readonly pattern: FireworkPattern;
+  readonly colors: readonly string[];
+  readonly particleCount: number;
+  readonly burstDurationMs: number;
+  readonly sound: FireworkSound;
+  readonly seed: number;
+}
