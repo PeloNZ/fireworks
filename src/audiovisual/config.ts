@@ -37,6 +37,10 @@ export interface AudioVisualConfig {
     readonly celestialMinHeight: number;
     readonly groundPoints: number; // skyline control points; must be >= 2
     readonly groundHeight: NumberRange; // world y per control point
+    // Ramp level for the mass below the ridge. Must exceed
+    // skyMaxBrightness, or the ground lands on the same ramp character as
+    // the horizon it meets and the landform becomes invisible.
+    readonly groundFillBrightness: number;
   };
   // Only the ASCII adapter reads this — nested under its own key for the
   // same reason ControlConfig nests `keyboard`: the shape says who owns it.
@@ -95,6 +99,7 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     celestialMinHeight: 35,
     groundPoints: 9,
     groundHeight: Object.freeze({ min: 5, max: 14 }),
+    groundFillBrightness: 0.4,
   }),
   ascii: Object.freeze({
     columns: 80,

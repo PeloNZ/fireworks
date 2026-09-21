@@ -1,32 +1,47 @@
 import { describe, expect, it } from "vitest";
 import { rasteriseBackdrop } from "./asciiBackdrop.ts";
 import { defaultAudioVisualConfig } from "../config.ts";
+import type { AudioVisualConfig } from "../config.ts";
 import type { Backdrop } from "../types.ts";
 
-// Cycle 8 (docs/06_world_backdrop.md): the sky gradient onto rows. Unlike
-// rasteriseFrame, this walks cells and asks the core what the world looks
-// like at each cell's centre — a backdrop has to cover the whole
+// Cycles 8-10 (docs/06_world_backdrop.md): the backdrop onto characters.
+// Unlike rasteriseFrame, this walks cells and asks the core what the world
+// looks like at each cell's centre — a backdrop has to cover the whole
 // rectangle, including the top row, which a sprite at y = 100 cannot reach
 // because the render box is half-open there.
 //
-// A five-character ramp with no space in it, so a cell that accidentally
-// drew nothing shows up as a failure instead of passing as a space. Three
-// columns by two rows keeps every cell hand-checkable, and the row centres
-// (y = 75 and y = 25) avoid any .5 rounding tie, so these assertions do not
-// quietly depend on how Math.round breaks them.
-// Unusual glyphs too, so the real defaults ("*", "O", "o", "^") cannot
-// pass by accident.
-const ascii = {
-  ...defaultAudioVisualConfig.ascii,
-  columns: 3,
-  rows: 2,
-  ramp: "abcde",
-  backdropGlyphs: { star: "S", moon: "M", planet: "P", ridge: "R" },
-};
+// Every fixture uses a five-character ramp with no space in it, so a cell
+// that accidentally drew nothing shows up as a failure instead of passing
+// as a space, and unusual glyphs, so the real defaults ("*", "O", "o",
+// "^") cannot pass by accident.
+
+function config(overrides: {
+  readonly ascii?: Partial<AudioVisualConfig["ascii"]>;
+  readonly backdrop?: Partial<AudioVisualConfig["backdrop"]>;
+}): AudioVisualConfig {
+  return {
+    ...defaultAudioVisualConfig,
+    ascii: {
+      ...defaultAudioVisualConfig.ascii,
+      ramp: "abcde",
+      backdropGlyphs: { star: "S", moon: "M", planet: "P", ridge: "R" },
+      ...overrides.ascii,
+    },
+    backdrop: {
+      ...defaultAudioVisualConfig.backdrop,
+      ...overrides.backdrop,
+    },
+  };
+}
+
+// Three columns by two rows keeps every cell hand-checkable, and the row
+// centres (y = 75 and y = 25) avoid any .5 rounding tie, so these
+// assertions do not quietly depend on how Math.round breaks them.
+const smallGrid = config({ ascii: { columns: 3, rows: 2 } });
 
 // Ground flat at height 0 draws nothing, since no row's centre is at or
-// below it — which keeps this fixture green unedited through cycles 9 and
-// 10, when bodies and ground start drawing.
+// below it — which is what keeps the cycle 8 and 9 fixtures unaffected by
+// the ground painting added in cycle 10.
 function backdrop(overrides: Partial<Backdrop> = {}): Backdrop {
   return {
     sky: { horizon: 1, zenith: 0 },
@@ -45,24 +60,19 @@ describe("rasteriseBackdrop", () => {
     // is buildSky's job, in the core, not the adapter's.
     // Row 0's centre is y = 75, so brightness 0.25 -> ramp index 1 -> "b".
     // Row 1's centre is y = 25, so brightness 0.75 -> ramp index 3 -> "d".
-    expect(rasteriseBackdrop(backdrop(), ascii)).toBe(
+    expect(rasteriseBackdrop(backdrop(), smallGrid)).toBe(
       ["bbb", "ddd"].join("\n"),
     );
   });
 
   it("fills every cell of the grid, so a firework never composites onto a hole", () => {
-    const grid = rasteriseBackdrop(backdrop(), ascii);
-    const lines = grid.split("\n");
+    const lines = rasteriseBackdrop(backdrop(), smallGrid).split("\n");
 
-    expect(lines).toHaveLength(ascii.rows);
+    expect(lines).toHaveLength(smallGrid.ascii.rows);
     for (const line of lines) {
-      expect(line).toHaveLength(ascii.columns);
+      expect(line).toHaveLength(smallGrid.ascii.columns);
     }
   });
-
-  // Cycle 9: bodies over the sky, each as its own fixed glyph. Positions
-  // map to cells through exactly the mapping rasteriseFrame uses, so a
-  // moon and a spark at one world point land in one cell.
 
   it("draws each body as its kind's glyph, with later bodies over earlier ones", () => {
     const withBodies = backdrop({
@@ -77,7 +87,7 @@ describe("rasteriseBackdrop", () => {
       ],
     });
 
-    expect(rasteriseBackdrop(withBodies, ascii)).toBe(
+    expect(rasteriseBackdrop(withBodies, smallGrid)).toBe(
       ["Mbb", "SdP"].join("\n"),
     );
   });
@@ -87,6 +97,49 @@ describe("rasteriseBackdrop", () => {
       bodies: [{ kind: "moon", position: { x: 1000, y: 50, z: 0 } }],
     });
 
-    expect(rasteriseBackdrop(offScreen, ascii)).toBe(["bbb", "ddd"].join("\n"));
+    expect(rasteriseBackdrop(offScreen, smallGrid)).toBe(
+      ["bbb", "ddd"].join("\n"),
+    );
+  });
+
+  describe("the ground, painted last", () => {
+    // Four by four, a black sky so every non-ground cell is "a" and the
+    // ground's own characters are unmistakable, and a skyline sloping from
+    // height 15 at the left edge to 100 at the right. An unusual fill
+    // brightness of 0.5 lands on ramp index 2 -> "c", so a hardcoded fill
+    // character fails.
+    //
+    // Column centres are x = -37.5, -12.5, 12.5, 37.5, giving heights
+    // 25.625, 46.875, 68.125 and 89.375. Row centres are y = 87.5, 62.5,
+    // 37.5 and 12.5. No comparison ties, so the staircase is exact.
+    const slope = config({
+      ascii: { columns: 4, rows: 4 },
+      backdrop: { groundFillBrightness: 0.5 },
+    });
+    const sloped = backdrop({
+      sky: { horizon: 0, zenith: 0 },
+      ground: [
+        { x: -50, height: 15 },
+        { x: 50, height: 100 },
+      ],
+    });
+
+    it("marks the topmost ground cell in each column with the ridge glyph and fills below it", () => {
+      expect(rasteriseBackdrop(sloped, slope)).toBe(
+        ["aaaR", "aaRc", "aRcc", "Rccc"].join("\n"),
+      );
+    });
+
+    it("covers a body that sits inside the landform, since the ground paints last", () => {
+      // Row 3, column 0 — a ridge cell in the fixture above.
+      const buried = {
+        ...sloped,
+        bodies: [{ kind: "star" as const, position: { x: -40, y: 10, z: 0 } }],
+      };
+
+      expect(rasteriseBackdrop(buried, slope)).toBe(
+        ["aaaR", "aaRc", "aRcc", "Rccc"].join("\n"),
+      );
+    });
   });
 });
