@@ -1,6 +1,6 @@
 import { createRandom } from "../../action/random.ts";
 import type { AudioVisualConfig } from "../config.ts";
-import type { Cue, Voice } from "../types.ts";
+import type { Cue, Envelope, Voice } from "../types.ts";
 
 // Scales a draw from `random()`'s [0, 1) into [min, max).
 function scaleTo(random: () => number, min: number, max: number): number {
@@ -187,6 +187,96 @@ function planSillySharpBurstVoices(
   ];
 }
 
+// A fizz: a bandpass-filtered noise body run through a flanger — a
+// whoosh with movement, not a flat bang — plus a scatter of short
+// square-wave squeaks instead of tones' own noise micro-bursts.
+// crackleCount is shared with tones — it already exists under
+// config.audio for exactly this purpose. The body's own filter sits at
+// a fixed bright frequency, the same reasoning tones' crackle
+// micro-bursts use: broadband noise genuinely carries energy up there,
+// unlike a single tone, so there's nothing to track per firework.
+const CRACKLE_BODY_FILTER_HZ = 4000;
+const CRACKLE_BODY_FILTER_Q = 8;
+const CRACKLE_FLANGER_DELAY_MS = 4;
+const CRACKLE_FLANGER_FEEDBACK = 0.4;
+const CRACKLE_FLANGER_LFO_RATE_HZ = 0.4;
+const CRACKLE_FLANGER_LFO_DEPTH_SECONDS = 0.002;
+const CRACKLE_MICRO_TONE_RATIO_MIN = 3;
+const CRACKLE_MICRO_TONE_RATIO_MAX = 8;
+const CRACKLE_MICRO_TONE_DURATION_MS = 30;
+const CRACKLE_MICRO_TONE_GAIN = 0.5;
+const CRACKLE_MICRO_TONE_ENVELOPE: Envelope = {
+  attackMs: 1,
+  decayMs: 0,
+  sustainLevel: 1,
+  releaseMs: 15,
+};
+
+function planSillyCrackleBurstVoices(
+  cue: Cue,
+  config: AudioVisualConfig,
+): readonly Voice[] {
+  const pitch = cue.spec.sound.pitch;
+  const random = createRandom(cue.spec.seed);
+
+  const body: Voice = {
+    kind: "noise",
+    waveform: "sine", // unused — noise has no oscillator to shape
+    frequencyHz: CRACKLE_BODY_FILTER_HZ,
+    frequencyEndHz: null,
+    durationMs: cue.spec.burstDurationMs,
+    envelope: config.audio.burst.envelope,
+    gain: 1,
+    seed: cue.spec.seed,
+    filter: {
+      kind: "bandpass",
+      frequencyHz: CRACKLE_BODY_FILTER_HZ,
+      q: CRACKLE_BODY_FILTER_Q,
+    },
+    startOffsetMs: 0,
+    pitchLfo: null,
+    filterLfo: null,
+    effect: {
+      kind: "flanger",
+      delayMs: CRACKLE_FLANGER_DELAY_MS,
+      feedback: CRACKLE_FLANGER_FEEDBACK,
+      lfo: {
+        rateHz: CRACKLE_FLANGER_LFO_RATE_HZ,
+        depth: CRACKLE_FLANGER_LFO_DEPTH_SECONDS,
+      },
+    },
+  };
+
+  const microTones: Voice[] = Array.from(
+    { length: config.audio.crackleCount },
+    () => {
+      const ratio = scaleTo(
+        random,
+        CRACKLE_MICRO_TONE_RATIO_MIN,
+        CRACKLE_MICRO_TONE_RATIO_MAX,
+      );
+      const startOffsetMs = random() * cue.spec.burstDurationMs;
+      return {
+        kind: "tone",
+        waveform: "square",
+        frequencyHz: pitch * ratio,
+        frequencyEndHz: null,
+        durationMs: CRACKLE_MICRO_TONE_DURATION_MS,
+        envelope: CRACKLE_MICRO_TONE_ENVELOPE,
+        gain: CRACKLE_MICRO_TONE_GAIN,
+        seed: cue.spec.seed,
+        filter: null,
+        startOffsetMs,
+        pitchLfo: null,
+        filterLfo: null,
+        effect: null,
+      };
+    },
+  );
+
+  return [body, ...microTones];
+}
+
 function planSillyBurstVoices(
   cue: Cue,
   config: AudioVisualConfig,
@@ -197,7 +287,7 @@ function planSillyBurstVoices(
     case "sharp":
       return planSillySharpBurstVoices(cue, config);
     case "crackle":
-      return []; // cycle 13 adds this
+      return planSillyCrackleBurstVoices(cue, config);
   }
 }
 

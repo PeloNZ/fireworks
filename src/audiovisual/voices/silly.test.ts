@@ -41,6 +41,7 @@ const config = {
         releaseMs: 180,
       },
     },
+    crackleCount: 4,
     launch: {
       durationMs: 333,
       envelope: {
@@ -206,6 +207,65 @@ describe("planSillyVoices", () => {
       const [voiceA] = planSillyVoices(cueA, config);
       const [voiceB] = planSillyVoices(cueB, config);
       expect(voiceA?.effect).not.toEqual(voiceB?.effect);
+    });
+  });
+
+  describe("burst — crackle, the fizz", () => {
+    it("plans a flanged noise body plus crackleCount square-wave micro-tones", () => {
+      const spec = fireworkSpec({ sound: { pitch: 613, timbre: "crackle" } });
+      const cue: Cue = { kind: "burst", spec };
+
+      const voices = planSillyVoices(cue, config);
+
+      expect(voices).toHaveLength(1 + config.audio.crackleCount);
+      const [body, ...microTones] = voices;
+      expect(body?.kind).toBe("noise");
+      expect(body?.filter?.kind).toBe("bandpass");
+      expect(body?.durationMs).toBe(spec.burstDurationMs);
+      expect(body?.envelope).toEqual(config.audio.burst.envelope);
+      expect(body?.seed).toBe(spec.seed);
+      expect(body?.startOffsetMs).toBe(0);
+      expect(body?.pitchLfo).toBeNull();
+      expect(body?.filterLfo).toBeNull();
+      // Flanged, not ring modulated or phased — squeaks over a
+      // whooshing body, not a clang or a swirl.
+      expect(body?.effect?.kind).toBe("flanger");
+
+      expect(microTones).toHaveLength(config.audio.crackleCount);
+      for (const microTone of microTones) {
+        expect(microTone.kind).toBe("tone");
+        expect(microTone.waveform).toBe("square");
+        expect(microTone.filter).toBeNull();
+        expect(microTone.effect).toBeNull();
+        // Short blips, quieter than the body, each pitched between 3
+        // and 8 times the burst's own — squeaks, not static.
+        expect(microTone.durationMs).toBeLessThan(body?.durationMs ?? 0);
+        expect(microTone.gain).toBeGreaterThan(0);
+        expect(microTone.gain).toBeLessThan(1);
+        expect(microTone.frequencyHz).toBeGreaterThanOrEqual(
+          spec.sound.pitch * 3,
+        );
+        expect(microTone.frequencyHz).toBeLessThanOrEqual(spec.sound.pitch * 8);
+        expect(microTone.startOffsetMs).toBeGreaterThanOrEqual(0);
+        expect(microTone.startOffsetMs).toBeLessThan(spec.burstDurationMs);
+      }
+      // Staggered, not all at once — with a real generator, this many
+      // draws landing on the exact same offset is vanishingly unlikely.
+      const offsets = new Set(microTones.map((v) => v.startOffsetMs));
+      expect(offsets.size).toBeGreaterThan(1);
+      // Different pitches too, not one repeated squeak.
+      const pitches = new Set(microTones.map((v) => v.frequencyHz));
+      expect(pitches.size).toBeGreaterThan(1);
+    });
+
+    it("is deterministic: the same spec produces the same fizz", () => {
+      const spec = fireworkSpec({ sound: { pitch: 613, timbre: "crackle" } });
+      const cue: Cue = { kind: "burst", spec };
+
+      const first = planSillyVoices(cue, config);
+      const second = planSillyVoices(cue, config);
+
+      expect(second).toEqual(first);
     });
   });
 
