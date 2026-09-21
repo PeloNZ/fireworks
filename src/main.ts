@@ -10,6 +10,7 @@ import { createSpecConsoleSink } from "./action/debug/consoleSink.ts";
 import { defaultAudioVisualConfig } from "./audiovisual/config.ts";
 import { createAudioVisualLayer } from "./audiovisual/audioVisualLayer.ts";
 import { createAsciiRenderer } from "./audiovisual/adapters/ascii.ts";
+import { createWebAudioSink } from "./audiovisual/adapters/webAudio.ts";
 import type { FireworkPhase } from "./action/types.ts";
 
 // The dev harness: Control -> Action -> AudioVisual, an ASCII grid drawn
@@ -72,9 +73,26 @@ if (app) {
   app.append(heading, instructions, grid);
 }
 
+// Browsers refuse to make sound before the user has interacted with the
+// page — create the context any time, but only resume it once a keydown
+// has actually happened. `{ once: true }` removes this listener after it
+// fires, so it never runs again for the rest of the session.
+const audioContext = new AudioContext();
+window.addEventListener(
+  "keydown",
+  () => {
+    void audioContext.resume();
+  },
+  { once: true },
+);
+
 const audioVisual = createAudioVisualLayer({
   renderer: createAsciiRenderer({
     target: grid,
+    config: defaultAudioVisualConfig,
+  }),
+  audio: createWebAudioSink({
+    context: audioContext,
     config: defaultAudioVisualConfig,
   }),
   config: defaultAudioVisualConfig,

@@ -2,14 +2,16 @@ import { describe, expect, it, vi } from "vitest";
 import { createAudioVisualLayer } from "./audioVisualLayer.ts";
 import { buildFrame } from "./frame.ts";
 import { createTrails } from "./trails.ts";
+import { planVoices } from "./voices.ts";
 import { defaultAudioVisualConfig } from "./config.ts";
 import { defaultWorldConfig } from "../action/worldConfig.ts";
 import type { Firework, FireworkSpec } from "../action/types.ts";
 
 // Cycle 6 (docs/05_audio_visual_layer.md): createAudioVisualLayer wires
-// Action's snapshot to a renderer port, one call per frame. present()
-// already takes elapsedMs, per decision 5's fixed shape, but nothing
-// reads it until cycle 19 wires in sound cues.
+// Action's snapshot to a renderer port, one call per frame. Cycle 19
+// wires an audio port in too: present() watches for phase transitions
+// and turns any cue into voices via planVoices, calling audio with the
+// result every time, even when it's empty.
 
 function fireworkSpec(overrides: Partial<FireworkSpec> = {}): FireworkSpec {
   return {
@@ -50,6 +52,7 @@ describe("createAudioVisualLayer", () => {
     const renderer = vi.fn();
     const layer = createAudioVisualLayer({
       renderer,
+      audio: vi.fn(),
       config: defaultAudioVisualConfig,
       worldConfig: defaultWorldConfig,
     });
@@ -75,6 +78,53 @@ describe("createAudioVisualLayer", () => {
         worldConfig: defaultWorldConfig,
         trails,
       }),
+    );
+  });
+
+  it("calls audio with no voices when nothing has transitioned yet", () => {
+    const audio = vi.fn();
+    const layer = createAudioVisualLayer({
+      renderer: vi.fn(),
+      audio,
+      config: defaultAudioVisualConfig,
+      worldConfig: defaultWorldConfig,
+    });
+
+    layer.present({
+      entities: [firework({ phase: "flying" })],
+      alpha: 0,
+      elapsedMs: 16,
+    });
+
+    expect(audio).toHaveBeenCalledTimes(1);
+    expect(audio).toHaveBeenCalledWith([]);
+  });
+
+  it("calls audio with the planned voices when a firework enters exploding", () => {
+    const audio = vi.fn();
+    const layer = createAudioVisualLayer({
+      renderer: vi.fn(),
+      audio,
+      config: defaultAudioVisualConfig,
+      worldConfig: defaultWorldConfig,
+    });
+    const spec = fireworkSpec();
+    layer.present({
+      entities: [firework({ spec, phase: "flying" })],
+      alpha: 0,
+      elapsedMs: 16,
+    });
+
+    layer.present({
+      entities: [firework({ spec, phase: "exploding" })],
+      alpha: 0,
+      elapsedMs: 16,
+    });
+
+    expect(audio).toHaveBeenCalledTimes(2);
+    expect(audio).toHaveBeenNthCalledWith(
+      2,
+      planVoices({ kind: "burst", spec }, defaultAudioVisualConfig),
     );
   });
 });
