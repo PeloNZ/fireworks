@@ -178,5 +178,18 @@ export function discCells(
       }
     }
   }
+
+  if (offsets.length === 0) {
+    // A radius smaller than the spacing between pixel centres covers no
+    // centre at all -- true of every spark at this renderer's resolution
+    // -- so the pixel the centre itself falls in is painted instead. A
+    // centre outside the grid stays invisible rather than smearing onto
+    // the border: toPixel returns null there, same as everywhere else.
+    const centrePixel = toPixel(centre.x, centre.y, grid);
+    if (centrePixel !== null) {
+      offsets.push(centrePixel);
+    }
+  }
+
   return offsets;
 }

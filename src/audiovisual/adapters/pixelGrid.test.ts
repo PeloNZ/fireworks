@@ -179,4 +179,15 @@ describe("discCells", () => {
       24, 25, 33, 34, 35, 36, 43, 44, 45, 46, 54, 55,
     ]);
   });
+
+  it("still paints one pixel when the radius covers no pixel centre", () => {
+    // This is the cycle the whole renderer depends on. wideGrid's nearest
+    // pixel centre to {x:0,y:50} is ~8.84 world units away, so a pure
+    // distance test at radius 0.1 finds nothing -- and at 160 rows a
+    // spark's real radius is under one pixel, so without this fallback
+    // every spark in the game would be invisible.
+    const offsets = discCells({ x: 0, y: 50 }, 0.1, wideGrid);
+
+    expect(Array.from(offsets)).toEqual([toPixel(0, 50, wideGrid)]);
+  });
 });
