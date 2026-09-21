@@ -11,40 +11,11 @@
 // character. A glyph is a rendering decision; the core decides only what
 // is where and how bright it is.
 
-import { rampChar, toCell } from "./asciiGrid.ts";
+import { rampChar } from "./asciiGrid.ts";
+import { columnCentreX, rowCentreY, toCell } from "./cells.ts";
 import { groundHeightAt, skyBrightnessAt } from "../backdrop.ts";
 import type { AudioVisualConfig } from "../config.ts";
 import type { Backdrop } from "../types.ts";
-
-// World space is 100 units tall and 100 wide, `x` from -50, `y` growing
-// up — the same extents asciiGrid.ts maps onto cells, hardcoded there too.
-// Deliberately not promoted into WorldConfig: that would touch Action's
-// tested physics config for no behaviour change. See
-// docs/06_world_backdrop.md.
-const WORLD_TOP = 100;
-const WORLD_LEFT = -50;
-const WORLD_WIDTH = 100;
-
-/**
- * The world `y` at the vertical centre of `row` — the exact inverse of
- * asciiGrid.ts's `row = rows - 1 - floor((y / 100) * rows)`.
- *
- * Centres rather than edges, so the drawn sky is the true gradient rounded
- * to the nearest cell with no systematic bias up or down.
- */
-function rowCentreY(row: number, rows: number): number {
-  return (WORLD_TOP * (rows - row - 0.5)) / rows;
-}
-
-/**
- * The world `x` at the horizontal centre of `column` — the inverse of
- * asciiGrid.ts's `column = floor(((x + 50) / 100) * columns)`. Centres
- * again, so the drawn skyline is the true height rounded to the nearest
- * cell with no bias left or right.
- */
-function columnCentreX(column: number, columns: number): number {
-  return WORLD_LEFT + (WORLD_WIDTH * (column + 0.5)) / columns;
-}
 
 /**
  * Rasterises the static backdrop to one grid string, the same shape
