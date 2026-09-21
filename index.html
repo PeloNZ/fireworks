@@ -26,6 +26,15 @@
         margin: 0;
         line-height: 1;
       }
+      /* An emoji cell is close to square already at line-height 1, unlike
+         a monospace character cell, which is roughly twice as tall as it
+         is wide. Composing the 40x40 emoji grid at line-height 1 would
+         therefore stretch the world vertically; this compresses row
+         spacing back down until the cell reads square again. Tuned by eye
+         against a rendered `ring` burst — see docs/07_emoji_renderer.md. */
+      pre.emoji {
+        line-height: 1.2;
+      }
     </style>
   </head>
   <body>
