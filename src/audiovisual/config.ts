@@ -44,6 +44,16 @@ export interface AudioVisualConfig {
     readonly columns: number;
     readonly rows: number;
     readonly ramp: string; // dimmest to brightest, one character per level
+    // Fixed per kind rather than drawn from the ramp: a body is an object,
+    // and an object should read as itself instead of as a brightness
+    // level. In config rather than as module constants only so a test can
+    // drive unusual glyphs and a hardcoded "O" fails.
+    readonly backdropGlyphs: {
+      readonly star: string;
+      readonly moon: string;
+      readonly planet: string;
+      readonly ridge: string; // the skyline's topmost cell in each column
+    };
   };
   // Only the Web Audio adapter and its planning functions read this,
   // nested under its own key for the same reason ascii is.
@@ -90,6 +100,12 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     columns: 80,
     rows: 40,
     ramp: " .:-=+*#%@",
+    backdropGlyphs: Object.freeze({
+      star: "*",
+      moon: "O",
+      planet: "o",
+      ridge: "^",
+    }),
   }),
   audio: Object.freeze({
     lookaheadMs: 30,

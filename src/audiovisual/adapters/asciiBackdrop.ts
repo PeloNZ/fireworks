@@ -11,7 +11,7 @@
 // character. A glyph is a rendering decision; the core decides only what
 // is where and how bright it is.
 
-import { rampChar } from "./asciiGrid.ts";
+import { rampChar, toCell } from "./asciiGrid.ts";
 import { skyBrightnessAt } from "../backdrop.ts";
 import type { AudioVisualConfig } from "../config.ts";
 import type { Backdrop } from "../types.ts";
@@ -38,6 +38,11 @@ function rowCentreY(row: number, rows: number): number {
  * `rasteriseFrame` produces: `ascii.rows` lines of `ascii.columns`
  * characters, joined with `"\n"`.
  *
+ * Painted bottom to top — the sky fills every cell, then bodies draw over
+ * it in their array order, later winning. There is no brightness contest
+ * anywhere in here: inside the backdrop, later simply wins, which is what
+ * makes a moon beat a star sharing its cell without any overlap test.
+ *
  * Every cell is filled, so the foreground always has something to
  * composite onto. Built once, at renderer construction — nothing in a
  * backdrop changes frame to frame.
@@ -48,10 +53,26 @@ export function rasteriseBackdrop(
 ): string {
   const { columns, rows, ramp } = ascii;
 
-  const lines: string[] = [];
+  const cells: string[][] = [];
   for (let row = 0; row < rows; row++) {
     const brightness = skyBrightnessAt(backdrop.sky, rowCentreY(row, rows));
-    lines.push(rampChar(brightness, ramp).repeat(columns));
+    cells.push(new Array<string>(columns).fill(rampChar(brightness, ramp)));
   }
-  return lines.join("\n");
+
+  for (const body of backdrop.bodies) {
+    const cell = toCell(body.position.x, body.position.y, ascii);
+    if (cell === null) {
+      continue;
+    }
+    const line = cells[cell.row];
+    if (line === undefined) {
+      // toCell already rejected any row outside [0, rows), and the loop
+      // above pushed exactly `rows` lines. noUncheckedIndexedAccess can't
+      // see that.
+      throw new Error("unreachable: cell row outside the grid");
+    }
+    line[cell.column] = ascii.backdropGlyphs[body.kind];
+  }
+
+  return cells.map((line) => line.join("")).join("\n");
 }
