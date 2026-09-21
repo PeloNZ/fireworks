@@ -117,15 +117,20 @@ describe("createWorld", () => {
     expect(world.entities()).toHaveLength(1);
   });
 
-  it("removes a firework once it reaches finished", () => {
+  it("gives one entities() snapshot of a firework as finished before removing it", () => {
     // fuse ends the flight after exactly one tick, burst ends after one
     // more — both tuned to STEP_MS so the transitions land on tick
-    // boundaries exactly.
+    // boundaries exactly. A caller's usual render loop is step() then
+    // entities() — rule 5 promises that loop sees "finished" for one
+    // iteration before the entity disappears, not zero.
     const world = createWorld({ worldConfig, config: actionConfig });
     world.spawn(stillSpec({ fuseMs: STEP_MS, burstDurationMs: STEP_MS }));
 
     world.step(STEP_MS);
     expect(world.entities()[0]?.phase).toBe("exploding");
+
+    world.step(STEP_MS);
+    expect(world.entities()[0]?.phase).toBe("finished");
 
     world.step(STEP_MS);
     expect(world.entities()).toHaveLength(0);

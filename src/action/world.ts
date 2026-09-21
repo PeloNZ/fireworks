@@ -62,14 +62,23 @@ export function createWorld(options: {
     },
 
     /** Advances the simulation by `elapsedMs` of real time, running zero
-     * or more fixed-size ticks. `finished` fireworks are removed at the
-     * end of each tick they reach it in. */
+     * or more fixed-size ticks.
+     *
+     * A firework that reaches `finished` during this call is *not* removed
+     * here — it stays in `entities()` through this call, so a caller
+     * following the usual `step()` then `entities()` render-loop pattern
+     * gets exactly one snapshot showing it finished (see "The state
+     * machine" rule 5 in docs/04_plan_action_layer.md: a burst that
+     * vanished the instant its timer expired would give AudioVisual no
+     * frame in which to end the effect). It's removed here instead, at the
+     * start of the *next* `step()` call — after the caller has had that
+     * one chance to see it. */
     step(elapsedMs: number): void {
+      fireworks = fireworks.filter((firework) => firework.phase !== "finished");
+
       accumulatorMs += elapsedMs;
       while (accumulatorMs >= worldConfig.stepMs) {
-        fireworks = fireworks
-          .map(tick)
-          .filter((firework) => firework.phase !== "finished");
+        fireworks = fireworks.map(tick);
         accumulatorMs -= worldConfig.stepMs;
       }
     },
