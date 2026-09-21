@@ -1,6 +1,7 @@
+import { contestCells } from "./cells.ts";
 import { hueOf, saturationOf } from "../color.ts";
 import type { AudioVisualConfig } from "../config.ts";
-import type { Rgb, Sprite } from "../types.ts";
+import type { Frame, Rgb, Sprite } from "../types.ts";
 
 // The emoji half of the frame renderer: turning a sprite's colour and
 // brightness into one glyph. Grown one cycle at a time — see
@@ -94,4 +95,25 @@ export function glyphFor(
     case "trail":
       return rampGlyph(sprite.brightness, emoji.trail);
   }
+}
+
+/**
+ * Renders a frame's display list to a grid of glyphs — `emoji.rows` rows
+ * of `emoji.columns` cell strings, an array of arrays rather than one
+ * joined string, since an emoji is more than one UTF-16 code unit and
+ * joining early would make every later cell-by-cell operation (the
+ * backdrop composite, cycle 6) index into the wrong place.
+ *
+ * Which sprite wins each cell is `contestCells`'s job, shared with the
+ * ASCII adapter. This function only decides what glyph the winner
+ * becomes, and fills every other cell with `emoji.blank`.
+ */
+export function rasteriseEmojiFrame(
+  frame: Frame,
+  emoji: AudioVisualConfig["emoji"],
+): readonly string[][] {
+  const cells = contestCells(frame, emoji);
+  return cells.map((row) =>
+    row.map((sprite) => (sprite ? glyphFor(sprite, emoji) : emoji.blank)),
+  );
 }

@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { glyphFor, rampGlyph, sparkGlyph } from "./emojiGrid.ts";
+import {
+  glyphFor,
+  rampGlyph,
+  rasteriseEmojiFrame,
+  sparkGlyph,
+} from "./emojiGrid.ts";
 import { defaultAudioVisualConfig } from "../config.ts";
 import type { AudioVisualConfig } from "../config.ts";
-import type { Rgb, Sprite } from "../types.ts";
+import type { Frame, Rgb, Sprite } from "../types.ts";
 
 // Cycle 3 (docs/07_emoji_renderer.md): the fact ASCII discards — colour —
 // becomes a glyph. An unusual two-entry hue table, so the real seven-entry
@@ -118,5 +123,44 @@ describe("glyphFor", () => {
         config,
       ),
     ).toBe("dim");
+  });
+});
+
+// Cycle 5: the whole grid, as an array of rows of cell strings — never a
+// joined string, since an emoji is more than one UTF-16 code unit. A 3x2
+// grid with an unusual glyph set, so the real defaults can't pass.
+describe("rasteriseEmojiFrame", () => {
+  it("flips y and centres x, filling every empty cell with the blank glyph", () => {
+    const config: AudioVisualConfig["emoji"] = {
+      ...emoji,
+      columns: 3,
+      rows: 2,
+      blank: ".",
+      shell: "Q",
+      sparkHues: [{ hue: 0, glyph: "R" }],
+    };
+    const frame: Frame = {
+      sprites: [
+        {
+          kind: "shell",
+          position: { x: -50, y: 90, z: 0 },
+          size: 1,
+          color: { r: 1, g: 1, b: 1 },
+          brightness: 1,
+        },
+        {
+          kind: "spark",
+          position: { x: 40, y: 10, z: 0 },
+          size: 1,
+          color: atHue(0),
+          brightness: 1,
+        },
+      ],
+    };
+
+    expect(rasteriseEmojiFrame(frame, config)).toEqual([
+      ["Q", ".", "."],
+      [".", ".", "R"],
+    ]);
   });
 });
