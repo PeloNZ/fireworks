@@ -4,8 +4,20 @@
 
 export interface AudioVisualConfig {
   readonly shellSize: number; // world units, radius
+  // Only the ASCII adapter reads this — nested under its own key for the
+  // same reason ControlConfig nests `keyboard`: the shape says who owns it.
+  readonly ascii: {
+    readonly columns: number;
+    readonly rows: number;
+    readonly ramp: string; // dimmest to brightest, one character per level
+  };
 }
 
 export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
   shellSize: 1.5,
+  ascii: Object.freeze({
+    columns: 80,
+    rows: 40,
+    ramp: " .:-=+*#%@",
+  }),
 });
