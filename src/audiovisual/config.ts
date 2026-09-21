@@ -120,6 +120,7 @@ export interface AudioVisualConfig {
     // The colour a pixel nothing draws on shows -- black, so it reads as
     // night sky rather than a visible "nothing here" colour.
     readonly blank: number;
+    readonly sky: readonly number[]; // dim to bright
   };
   // Only the Web Audio adapter and its planning functions read this,
   // nested under its own key for the same reason ascii is.
@@ -248,6 +249,10 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     columns: 284,
     rows: 160,
     blank: 0,
+    // The same progression as emoji.sky, indexing PICO-8's darks and its
+    // one warm colour: black, night blue, sky blue, lavender, sunset
+    // orange.
+    sky: Object.freeze([0, 1, 13, 12, 9]),
   }),
   audio: Object.freeze({
     lookaheadMs: 30,

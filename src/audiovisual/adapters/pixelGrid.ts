@@ -104,9 +104,10 @@ function rowIndexFor(
 /**
  * The world `y` at the vertical centre of `row` — the pixel-grid
  * counterpart of `rowCentreY`, over `grid.rows` alone, since the `y`
- * mapping never varies with the grid's width.
+ * mapping never varies with the grid's width. Exported for
+ * `pixelBackdrop.ts`, which samples the sky once per row.
  */
-function pixelCentreY(
+export function pixelCentreY(
   row: number,
   grid: { readonly columns: number; readonly rows: number },
 ): number {
