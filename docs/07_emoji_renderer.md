@@ -415,29 +415,29 @@ both complete and green.
 
 ### Pass B — colour becomes a glyph
 
-2. **`hueOf` and `saturationOf` in `color.ts`.** Hand-made values, checkable by eye: pure red is hue 0,
+2. **`hueOf` and `saturationOf` in `color.ts` — done.** Hand-made values, checkable by eye: pure red is hue 0,
    pure green 120, pure blue 240; a grey has saturation 0 and pure red has saturation 1; a grey's hue is
    0, not `NaN` — the division this arithmetic invites at zero saturation, guarded rather than left to
    surface as a silent `NaN` three functions downstream.
-3. **`sparkGlyph` in `adapters/emojiGrid.ts`, and the `emoji` config key.** Unusual table
+3. **`sparkGlyph` in `adapters/emojiGrid.ts`, and the `emoji` config key — done.** Unusual table
    `[{ hue: 10, glyph: "A" }, { hue: 200, glyph: "B" }]`, so the real default table cannot pass. The
    load-bearing case: a colour at hue 350 picks `"A"`, not `"B"` — the wraparound "Hue, and why the
    wraparound matters" describes above; a plain absolute-difference comparison picks `"B"` and fails.
    Plus: a colour below `saturationFloor` returns `desaturated` regardless of its hue, and a colour just
    above the floor does not. This cycle is also where `AudioVisualConfig.emoji` is introduced, since
    this is the first function that needs it.
-4. **`rampGlyph` and `glyphFor`.** `rampGlyph` mirrors `rampChar`, over an array instead of a string:
+4. **`rampGlyph` and `glyphFor` — done.** `rampGlyph` mirrors `rampChar`, over an array instead of a string:
    clamped to `[0, 1]`, rounded to the nearest index, dimmest first. Asserted on an unusual three-entry
    list, including that brightness `0` returns the **first** entry — the one a two-entry list could not
    distinguish from an off-by-one, which is why the fixture needs three. `glyphFor` dispatches on
    `sprite.kind`: `"shell"` always returns `emoji.shell`, whatever the sprite's colour;
    `"spark"` returns `sparkGlyph`'s answer; `"trail"` returns `rampGlyph` over `emoji.trail`, so a
    trail's colour never enters the decision, only its brightness.
-5. **`rasteriseEmojiFrame`.** A 3-by-2 grid with an unusual glyph set, asserted as the complete
+5. **`rasteriseEmojiFrame` — done.** A 3-by-2 grid with an unusual glyph set, asserted as the complete
    `readonly string[][]`. Cells nothing lands in hold `emoji.blank`. One sprite in the top row and one
    in the bottom proves the `y` flip and `x` centring `contestCells` already handles survive being
    called with the `emoji` slice of config instead of `ascii`.
-6. **`overlayEmojiGrid`.** Base `[["a","b"],["c","d"]]` under foreground `[["X","-"],["-","Y"]]` with
+6. **`overlayEmojiGrid` — done.** Base `[["a","b"],["c","d"]]` under foreground `[["X","-"],["-","Y"]]` with
    `blank: "-"` gives `[["X","b"],["c","Y"]]`. A second case names the trap directly, the emoji-grid
    counterpart of `overlayGrid`'s own second case: a blank cell over a blank cell stays blank, and the
    row and column counts of the result never differ from the inputs', so the two grids cannot drift
