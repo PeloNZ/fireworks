@@ -76,6 +76,7 @@ function planBurstVoices(
     seed: cue.spec.seed,
     filter: null,
     startOffsetMs: 0,
+    pitchLfo: null,
   };
 
   switch (cue.spec.sound.timbre) {
@@ -117,6 +118,7 @@ function planBurstVoices(
           seed: cue.spec.seed,
           filter: CRACKLE_NOISE_FILTER,
           startOffsetMs: random() * cue.spec.burstDurationMs,
+          pitchLfo: null,
         }),
       );
       return [main, ...crackles];
@@ -148,6 +150,7 @@ function planLaunchVoice(
         q: LAUNCH_FILTER_Q,
       },
       startOffsetMs: 0,
+      pitchLfo: null,
     },
   ];
 }
@@ -168,6 +171,7 @@ function planFlightVoice(
       seed: cue.spec.seed,
       filter: null,
       startOffsetMs: 0,
+      pitchLfo: null,
     },
   ];
 }

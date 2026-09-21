@@ -148,6 +148,7 @@ describe("createAudioVisualLayer", () => {
       seed: 0,
       filter: null,
       startOffsetMs: 0,
+      pitchLfo: null,
     };
     const voicePlanner: VoicePlanner = vi.fn(() => [fakeVoice]);
     const layer = createAudioVisualLayer({

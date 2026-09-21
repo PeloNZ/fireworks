@@ -1,6 +1,6 @@
 import { createRandom } from "../../action/random.ts";
 import type { AudioVisualConfig } from "../config.ts";
-import type { AudioSink, Voice } from "../types.ts";
+import type { AudioSink, Lfo, Voice } from "../types.ts";
 
 /**
  * The minimal slice of a real `AudioParam` this sink needs — a "port",
@@ -14,9 +14,9 @@ interface AudioParamLike {
 }
 
 /** The minimal slice of a real `AudioNode` this sink needs: something it
- * can connect another node into. */
+ * can connect another node — or, for modulation, an `AudioParam` — into. */
 interface AudioNodeLike {
-  connect(destination: AudioNodeLike): void;
+  connect(destination: AudioNodeLike | AudioParamLike): void;
 }
 
 interface GainNodeLike extends AudioNodeLike {
@@ -144,6 +144,30 @@ function scheduleEnvelope(
   gain.linearRampToValueAtTime(0, endTime);
 }
 
+/**
+ * Wobbles `param` by adding a slow oscillator's output, scaled by
+ * `lfo.depth`, into it — vibrato on a pitch, wah on a filter cutoff. Runs
+ * on the same clock as the voice it modulates: started at `startTime`,
+ * stopped `durationSeconds` later, so it never outlives the sound it
+ * shapes and never needs its own cleanup.
+ */
+function attachLfo(
+  context: AudioContextLike,
+  lfo: Lfo,
+  param: AudioParamLike,
+  startTime: number,
+  durationSeconds: number,
+): void {
+  const oscillator = context.createOscillator();
+  oscillator.frequency.setValueAtTime(lfo.rateHz, startTime);
+  const depth = context.createGain();
+  depth.gain.setValueAtTime(lfo.depth, startTime);
+  oscillator.connect(depth);
+  depth.connect(param);
+  oscillator.start(startTime);
+  oscillator.stop(startTime + durationSeconds);
+}
+
 function createToneSource(
   context: AudioContextLike,
   voice: Voice,
@@ -159,6 +183,15 @@ function createToneSource(
     startTime,
     durationSeconds,
   );
+  if (voice.pitchLfo) {
+    attachLfo(
+      context,
+      voice.pitchLfo,
+      oscillator.frequency,
+      startTime,
+      durationSeconds,
+    );
+  }
   return oscillator;
 }
 

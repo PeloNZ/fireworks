@@ -133,6 +133,7 @@ const toneVoice: Voice = {
   seed: 1,
   filter: null,
   startOffsetMs: 0,
+  pitchLfo: null,
 };
 
 const noiseVoice: Voice = {
@@ -146,6 +147,7 @@ const noiseVoice: Voice = {
   seed: 7,
   filter: null,
   startOffsetMs: 0,
+  pitchLfo: null,
 };
 
 // An unusual lookahead/gain/cap, not the defaults, so hardcoded values
@@ -423,6 +425,49 @@ describe("createWebAudioSink — playtesting fixes", () => {
       { method: "setValueAtTime", value: 200, time: 10.02 },
       { method: "linearRampToValueAtTime", value: 900, time: 11.02 },
     ]);
+  });
+
+  it("adds a pitch LFO wobbling a tone voice's own frequency, on the voice's own clock", () => {
+    const { context, oscillators, gains } = fakeContext(10);
+    const sink = createWebAudioSink({ context, config });
+    const wobbly: Voice = {
+      ...toneVoice,
+      pitchLfo: { rateHz: 6, depth: 30 },
+    };
+
+    sink([wobbly]);
+
+    // oscillators[0] is the tone; oscillators[1] is the LFO.
+    expect(oscillators).toHaveLength(2);
+    const lfo = oscillators[1];
+    expect(lfo?.frequency.calls).toEqual([
+      { method: "setValueAtTime", value: 6, time: 10.02 },
+    ]);
+    // Started and stopped on the voice's own clock — a forgotten start()
+    // gives silent modulation and throws no error, so this is asserted
+    // explicitly rather than assumed.
+    expect(lfo?.start).toHaveBeenCalledWith(10.02);
+    expect(lfo?.stop).toHaveBeenCalledWith(11.02);
+
+    // gains: [0] master, [1] the LFO's own depth gain (built while the
+    // tone source is still being built), [2] the voice's own gain.
+    expect(gains).toHaveLength(3);
+    const depth = gains[1];
+    expect(depth?.gain.calls).toEqual([
+      { method: "setValueAtTime", value: 30, time: 10.02 },
+    ]);
+    expect(lfo?.connect).toHaveBeenCalledWith(depth);
+    expect(depth?.connect).toHaveBeenCalledWith(oscillators[0]?.frequency);
+  });
+
+  it("adds no LFO machinery when pitchLfo is null", () => {
+    const { context, oscillators, gains } = fakeContext(10);
+    const sink = createWebAudioSink({ context, config });
+
+    sink([toneVoice]);
+
+    expect(oscillators).toHaveLength(1);
+    expect(gains).toHaveLength(2);
   });
 
   it("never schedules a frequency above 16kHz, the ceiling of what's audible", () => {

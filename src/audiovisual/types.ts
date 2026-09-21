@@ -64,6 +64,15 @@ export interface Filter {
   readonly q: number; // resonance / narrowness
 } // cycle 22
 
+/** A slow oscillator added to an `AudioParam`, making a value waver
+ * instead of holding still — vibrato on a pitch, wah on a filter cutoff.
+ * `depth` is in the target param's own units: Hz for a pitch or a
+ * cutoff. See "Modulation" in docs/08_sound_sets.md. */
+export interface Lfo {
+  readonly rateHz: number;
+  readonly depth: number;
+} // cycle 4, docs/08_sound_sets.md
+
 /** One scheduled sound, built once and played once — see `planToneVoices`
  * in voices/tones.ts. `frequencyEndHz` of `null` means a constant pitch; a value
  * is a glide target (cycle 20) — the oscillator's own pitch for a
@@ -88,6 +97,9 @@ export interface Voice {
   readonly seed: number; // drives a "noise" voice's noise buffer
   readonly filter: Filter | null; // cycle 22
   readonly startOffsetMs: number; // cycle 22
+  // A wobble on this voice's own pitch — only meaningful for a "tone",
+  // since a "noise" voice has no single pitch to wobble.
+  readonly pitchLfo: Lfo | null; // cycle 4, docs/08_sound_sets.md
 } // cycle 17, grows
 
 /** An audio port's whole contract: given the voices planned for this
