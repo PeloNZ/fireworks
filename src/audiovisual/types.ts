@@ -63,3 +63,8 @@ export interface Voice {
   readonly durationMs: number;
   readonly envelope: Envelope;
 } // cycle 17, grows
+
+/** An audio port's whole contract: given the voices planned for this
+ * frame, play them. Every adapter implements this and nothing more —
+ * the same idea as `Renderer`. */
+export type AudioSink = (voices: readonly Voice[]) => void; // cycle 18

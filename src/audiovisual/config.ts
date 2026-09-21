@@ -29,6 +29,12 @@ export interface AudioVisualConfig {
   // Only the Web Audio adapter and its planning functions read this,
   // nested under its own key for the same reason ascii is.
   readonly audio: {
+    // Scheduling headroom on the audio clock — a voice starts at
+    // currentTime + lookaheadMs, giving the audio thread time to start it
+    // exactly on time regardless of any delay in the calling JavaScript.
+    readonly lookaheadMs: number;
+    readonly masterGain: number; // 0..1, overall volume
+    readonly maxVoices: number; // hard cap on simultaneous scheduled voices
     readonly burst: {
       readonly envelope: Envelope;
     };
@@ -49,6 +55,9 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     ramp: " .:-=+*#%@",
   }),
   audio: Object.freeze({
+    lookaheadMs: 30,
+    masterGain: 0.8,
+    maxVoices: 16,
     burst: Object.freeze({
       envelope: Object.freeze({
         attackMs: 5,
