@@ -372,10 +372,8 @@ interface Frame {
 
 type Renderer = (frame: Frame) => void; // cycle 5
 
-type CueKind = "launch" | "burst"; // cycle 16
-
 interface Cue {
-  readonly kind: CueKind;
+  readonly kind: "launch" | "burst";
   readonly spec: FireworkSpec;
 } // cycle 16
 
@@ -386,26 +384,23 @@ interface Envelope {
   readonly releaseMs: number;
 } // cycle 17
 
-type FilterKind = "lowpass" | "highpass" | "bandpass"; // cycle 22
-
 interface Filter {
-  readonly kind: FilterKind;
+  readonly kind: "lowpass" | "highpass" | "bandpass";
   readonly frequencyHz: number;
   readonly q: number; // resonance / narrowness
 } // cycle 22
 
-type VoiceKind = "tone" | "noise"; // cycle 17 (tone), cycle 20 (noise)
-
 // One scheduled sound. Built once, played once, then discarded.
 interface Voice {
-  readonly kind: VoiceKind;
+  readonly kind: "tone" | "noise";
   readonly frequencyHz: number;
   readonly frequencyEndHz: number | null; // cycle 20: a glide target; null = constant pitch
   readonly durationMs: number;
   readonly envelope: Envelope;
-  readonly filter: Filter | null; // cycle 22; null = no filter stage
-  readonly gain: number; // 0..1, before masterGain
   readonly seed: number; // cycle 21: drives the noise buffer, when kind is "noise"
+  readonly filter: Filter | null; // cycle 22; null = no filter stage
+  readonly startOffsetMs: number; // cycle 22: start later than the cue's own start;
+  // 0 for every voice except crackle's staggered micro-bursts
 } // cycle 17, grows through 20-22
 
 type AudioSink = (voices: readonly Voice[]) => void; // cycle 18
@@ -444,7 +439,7 @@ interface AudioVisualConfig {
       readonly envelope: Envelope;
     };
     readonly burst: {
-      readonly envelope: Envelope; // base envelope; timbre may adjust decay/release
+      readonly envelope: Envelope; // base envelope; timbre may adjust release
     };
   };
 }
@@ -601,15 +596,16 @@ thing — shell and spark alike — trails a fading streak behind it.
     `createBuffer`, `currentTime`, `destination`), each returning a fake node recording what was called
     on it. Assert: the node chain connects in the right order (oscillator or noise source → filter, if
     any → gain → the sink's shared master gain → destination); the envelope's four stages are scheduled
-    as `gain.gain` calls in order; a voice starts at `context.currentTime + config.lookaheadMs / 1000`
-    (converting milliseconds to the audio clock's seconds); a call passing more than `config.maxVoices`
-    voices at once schedules only the first `config.maxVoices` and drops the rest, rather than throwing
-    or ignoring the whole call.
-19. **Wire audio in.** `createAudioVisualLayer` gains an `audio: AudioSink` option; `present` now also
-    calls `createPhaseWatcher().cues(entities)`, turns each cue into voices via `planVoices`, and calls
-    `audio` with the combined list. `src/main.ts` creates a real `AudioContext`, calls `context.resume()`
-    inside the existing keyboard adapter's first keydown handling (see "The gesture requirement" above),
-    and passes `createWebAudioSink({ context, config: defaultAudioVisualConfig })` as the `audio` port.
+    as `gain.gain` calls in order; a voice starts at
+    `context.currentTime + config.audio.lookaheadMs / 1000` (converting milliseconds to the audio clock's
+    seconds); a call passing more than `config.audio.maxVoices` voices at once schedules only the first
+    `config.audio.maxVoices` and drops the rest, rather than throwing or ignoring the whole call.
+19. **Wire audio in.** `createAudioVisualLayer` gains an `audio: AudioSink` option and now instantiates
+    one `createPhaseWatcher()` alongside its trails store; `present` calls its `cues(entities)`, turns
+    each cue into voices via `planVoices`, and calls `audio` with the combined list. `src/main.ts` creates
+    a real `AudioContext`, and resumes it from a `{ once: true }` `keydown` listener on `window` — a
+    listener of its own, separate from `createKeyboardAdapter` (see "The gesture requirement" above) —
+    then passes `createWebAudioSink({ context, config: defaultAudioVisualConfig })` as the `audio` port.
 
     **Payoff**: a firework bursts, and it beeps.
 
@@ -625,9 +621,14 @@ thing — shell and spark alike — trails a fading streak behind it.
 22. **Timbre.** `planVoices`'s burst case grows a filter chosen from `cue.spec.sound.timbre`:
     `"soft"` — a low-frequency lowpass filter and a longer release; `"sharp"` — a high-frequency,
     high-Q bandpass filter and a short, snappy release; `"crackle"` — the same bandpass as `"sharp"`,
-    plus `config.audio.crackleCount` extra short `"noise"` voices with tiny durations, staggered across
-    the burst's duration at offsets drawn from `createRandom(cue.spec.seed)`. Each timbre is asserted as
-    its own case, checked against an unusual `crackleCount` so a hardcoded count of extra voices fails.
+    plus `config.audio.crackleCount` extra short `"noise"` voices with tiny durations, sharing the same
+    bandpass filter, staggered across the burst's duration at offsets drawn from
+    `createRandom(cue.spec.seed)`. Each timbre is asserted as its own case, checked against an unusual
+    `crackleCount` so a hardcoded count of extra voices fails.
+    `createWebAudioSink` gains a `BiquadFilterNode`, inserted between a voice's source and its own gain
+    whenever `voice.filter` is set, and schedules each voice at its own
+    `baseStartTime + voice.startOffsetMs / 1000` rather than one shared time for the whole batch — what
+    makes crackle's stagger audible.
 
 **Payoff**: three kinds of bang, clearly different from each other, and stable per key — the same
 key always sounds the same way, the same hypothesis `01_intent.md` states for sight extended to sound.
@@ -647,8 +648,8 @@ key always sounds the same way, the same hypothesis `01_intent.md` states for si
 | `src/audiovisual/sparks.ts`             | Cycles 8–13                                                                                       |
 | `src/audiovisual/trails.ts`             | Cycle 14                                                                                          |
 | `src/audiovisual/phases.ts`             | Cycle 16                                                                                          |
-| `src/audiovisual/voices.ts`             | Cycles 17, 20, 22                                                                                 |
-| `src/audiovisual/adapters/webAudio.ts`  | Cycles 18, 21                                                                                     |
+| `src/audiovisual/voices.ts`             | Cycles 17, 20, 21, 22                                                                             |
+| `src/audiovisual/adapters/webAudio.ts`  | Cycles 18, 21, 22                                                                                 |
 | `src/main.ts`                           | Cycle 7 (visuals), cycle 19 (audio) — adds rendering alongside Action's console sink, which stays |
 
 ## Out of scope
