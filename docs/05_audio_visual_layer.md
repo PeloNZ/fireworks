@@ -512,7 +512,7 @@ already configured project-wide.
 5. **`createAsciiRenderer({ target, config })`.** A fake target — a plain object shaped like
    `{ textContent: "" }`, not a real DOM node — records exactly one write per call to the returned
    `Renderer`, and that write equals what `rasteriseFrame` would produce for the same frame.
-6. **`createAudioVisualLayer({ renderer, config, worldConfig })`.** Returns `present({ entities, alpha,
+6. **`createAudioVisualLayer({ renderer, config })`.** Returns `present({ entities, alpha,
 elapsedMs })`. Calling `present` once calls the fake renderer exactly once, with the frame
    `buildFrame` would build from the same `entities` and `alpha`.
 7. **Extend `src/main.ts`.** Control→Action wiring and the `requestAnimationFrame` loop already exist
@@ -678,7 +678,9 @@ key always sounds the same way, the same hypothesis `01_intent.md` states for si
   enforces this the same as the other two layers.
 - `npm run build` — still produces a working `dist/`.
 - `grep -rE "Math.random|Date.now|performance.now" src/audiovisual/` — no hits.
-  `performance.now` is used exactly once in the whole project, in `src/main.ts`'s frame loop.
+  `performance.now` is used exactly once in the whole project, in the `now: () => performance.now()`
+  callback `src/main.ts` passes to `createControlLayer` — not inside the frame loop itself, which reads
+  its elapsed time from `requestAnimationFrame`'s own timestamp argument.
 - Manual, in `npm run dev`:
   - Press a key. A single character rises, arcs, and slows, then bursts into a spread of characters that
     fan outward and sag, then fade and vanish.
