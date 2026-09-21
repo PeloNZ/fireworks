@@ -190,4 +190,25 @@ describe("discCells", () => {
 
     expect(Array.from(offsets)).toEqual([toPixel(0, 50, wideGrid)]);
   });
+
+  it("slides off the edge instead of popping out, with no wraparound", () => {
+    // Centre x=-70 is outside worldHalfWidth (62.5), so an implementation
+    // that clips on the centre -- as both existing renderers do -- would
+    // return []. Only column 0's centre (-56.25) is close enough for any
+    // radius-20 disc to reach; rows 3 and 4 are the only ones near
+    // enough on y. Nothing here is a column-9 offset, which is the
+    // no-wraparound check.
+    const offsets = discCells({ x: -70, y: 50 }, 20, wideGrid);
+
+    expect(Array.from(offsets)).toEqual([30, 40]);
+  });
+
+  it("returns nothing for a centre and radius that never reach the grid", () => {
+    // Proves the sub-pixel fallback does not clamp an off-grid centre
+    // onto the nearest column, which would smear a departing sprite
+    // along the border.
+    const offsets = discCells({ x: -80, y: 50 }, 5, wideGrid);
+
+    expect(Array.from(offsets)).toEqual([]);
+  });
 });
