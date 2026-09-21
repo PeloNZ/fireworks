@@ -36,6 +36,7 @@ function fakeContext(currentTime: number, sampleRate = 44100) {
   const buffers: ReturnType<typeof fakeBuffer>[] = [];
   const bufferSources: ReturnType<typeof fakeBufferSource>[] = [];
   const filters: ReturnType<typeof fakeFilter>[] = [];
+  const delays: ReturnType<typeof fakeDelay>[] = [];
   const destination = { connect: vi.fn() };
 
   function fakeOscillator() {
@@ -58,6 +59,12 @@ function fakeContext(currentTime: number, sampleRate = 44100) {
       type: "",
       frequency: fakeAudioParam(),
       Q: fakeAudioParam(),
+      connect: vi.fn(),
+    };
+  }
+  function fakeDelay() {
+    return {
+      delayTime: fakeAudioParam(),
       connect: vi.fn(),
     };
   }
@@ -109,6 +116,11 @@ function fakeContext(currentTime: number, sampleRate = 44100) {
       filters.push(filter);
       return filter;
     }),
+    createDelay: vi.fn(() => {
+      const delay = fakeDelay();
+      delays.push(delay);
+      return delay;
+    }),
   };
 
   return {
@@ -118,6 +130,7 @@ function fakeContext(currentTime: number, sampleRate = 44100) {
     buffers,
     bufferSources,
     filters,
+    delays,
     destination,
   };
 }
@@ -631,6 +644,68 @@ describe("createWebAudioSink — playtesting fixes", () => {
     // output, unlike a phaser's separate fan-out and convergence points.
     expect(tone?.connect).toHaveBeenCalledWith(ring);
     expect(ring?.connect).toHaveBeenCalledWith(gains[1]);
+  });
+
+  it("flanges: dry mixed with a delayed, fed-back copy, the delay time swept by one LFO", () => {
+    const { context, oscillators, gains, delays } = fakeContext(10);
+    const sink = createWebAudioSink({ context, config });
+    const flanged: Voice = {
+      ...toneVoice,
+      effect: {
+        kind: "flanger",
+        delayMs: 3,
+        feedback: 0.5,
+        lfo: { rateHz: 0.4, depth: 0.002 },
+      },
+    };
+
+    sink([flanged]);
+
+    // One delay line, its time set from delayMs converted to seconds.
+    expect(delays).toHaveLength(1);
+    const delay = delays[0];
+    expect(delay?.delayTime.calls[0]).toEqual({
+      method: "setValueAtTime",
+      value: 0.003,
+      time: 10.02,
+    });
+
+    // oscillators[0] is the tone; [1] is the LFO sweeping the delay.
+    expect(oscillators).toHaveLength(2);
+    const [tone, lfo] = oscillators;
+    expect(lfo?.frequency.calls).toEqual([
+      { method: "setValueAtTime", value: 0.4, time: 10.02 },
+    ]);
+    expect(lfo?.start).toHaveBeenCalledWith(10.02);
+    expect(lfo?.stop).toHaveBeenCalledWith(11.02);
+
+    // gains: [0] master, [1] voice gain, [2] input (fan-out), [3] output
+    // (convergence), [4] feedback, [5] the LFO's own depth gain.
+    expect(gains).toHaveLength(6);
+    const [, voiceGain, input, output, feedback, depth] = gains;
+    expect(feedback?.gain.calls).toEqual([
+      { method: "setValueAtTime", value: 0.5, time: 10.02 },
+    ]);
+    expect(depth?.gain.calls).toEqual([
+      { method: "setValueAtTime", value: 0.002, time: 10.02 },
+    ]);
+    expect(lfo?.connect).toHaveBeenCalledWith(depth);
+    expect(depth?.connect).toHaveBeenCalledWith(delay?.delayTime);
+
+    // Dry path: input straight to output.
+    expect(input?.connect).toHaveBeenCalledWith(output);
+    // Wet path: input into the delay, delay into output.
+    expect(input?.connect).toHaveBeenCalledWith(delay);
+    expect(delay?.connect).toHaveBeenCalledWith(output);
+    // The feedback loop: some of the delayed signal fed back into the
+    // delay's own input, deepening the notches.
+    expect(delay?.connect).toHaveBeenCalledWith(feedback);
+    expect(feedback?.connect).toHaveBeenCalledWith(delay);
+
+    // The voice's own source feeds the effect's input, and the effect's
+    // output feeds the voice's own gain.
+    expect(tone?.connect).toHaveBeenCalledWith(input);
+    expect(output?.connect).toHaveBeenCalledWith(voiceGain);
   });
 
   it("never schedules a frequency above 16kHz, the ceiling of what's audible", () => {

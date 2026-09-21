@@ -2,6 +2,7 @@ import { createRandom } from "../../action/random.ts";
 import type { AudioVisualConfig } from "../config.ts";
 import type {
   AudioSink,
+  FlangerEffect,
   Lfo,
   PhaserEffect,
   RingmodEffect,
@@ -66,6 +67,12 @@ interface BiquadFilterNodeLike extends AudioNodeLike {
   readonly Q: AudioParamLike;
 }
 
+/** A flanger's delay line — the only node with an `AudioParam` for its
+ * own timing rather than its tone or volume. */
+interface DelayNodeLike extends AudioNodeLike {
+  readonly delayTime: AudioParamLike;
+}
+
 /** The minimal slice of a real `AudioContext` this sink needs. A real
  * `AudioContext` satisfies this; tests use a plain object instead. */
 export interface AudioContextLike {
@@ -81,6 +88,7 @@ export interface AudioContextLike {
     sampleRate: number,
   ): AudioBufferLike;
   createBiquadFilter(): BiquadFilterNodeLike;
+  createDelay(maxDelaySeconds: number): DelayNodeLike;
 }
 
 // Roughly the top of adult human hearing, and comfortably past where
@@ -328,6 +336,45 @@ function buildRingmod(
   return { input: ring, output: ring };
 }
 
+// createDelay's own ceiling on how far a delay line can ever be swept —
+// comfortably past the 1-10ms a flanger's own delayMs plus its LFO's
+// depth ever reaches, so nothing this layer plans can overrun it.
+const MAX_DELAY_SECONDS = 1;
+
+/**
+ * A flanger: the source mixed with a copy of itself run through a
+ * delay line, some of the delayed output fed back into the delay's own
+ * input to deepen the notches a fixed-delay mix alone would give, the
+ * delay time itself swept by `effect.lfo` — a fixed tone colour turns
+ * into a moving one, the jet-whoosh. Dry and wet both feed a shared
+ * `output`, the same mixing shape a phaser uses.
+ */
+function buildFlanger(
+  context: AudioContextLike,
+  effect: FlangerEffect,
+  startTime: number,
+  durationSeconds: number,
+): EffectNodes {
+  const input = context.createGain();
+  const output = context.createGain();
+  input.connect(output); // dry path
+
+  const delay = context.createDelay(MAX_DELAY_SECONDS);
+  delay.delayTime.setValueAtTime(effect.delayMs / 1000, startTime);
+  input.connect(delay);
+
+  const feedback = context.createGain();
+  feedback.gain.setValueAtTime(effect.feedback, startTime);
+  delay.connect(feedback);
+  feedback.connect(delay); // feeds the delayed signal back into itself
+
+  delay.connect(output); // wet path
+
+  attachLfo(context, effect.lfo, [delay.delayTime], startTime, durationSeconds);
+
+  return { input, output };
+}
+
 /**
  * A voice's effect, if it has one — a node graph beyond a single
  * filter stage, inserted between the filter (if any) and the voice's
@@ -345,6 +392,8 @@ function buildEffect(
       return buildPhaser(context, effect, startTime, durationSeconds);
     case "ringmod":
       return buildRingmod(context, effect, startTime, durationSeconds);
+    case "flanger":
+      return buildFlanger(context, effect, startTime, durationSeconds);
   }
 }
 

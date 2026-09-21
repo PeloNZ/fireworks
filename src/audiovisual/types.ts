@@ -65,9 +65,10 @@ export interface Filter {
 } // cycle 22, "allpass" added cycle 6 (docs/08_sound_effects.md)
 
 /** A slow oscillator added to an `AudioParam`, making a value waver
- * instead of holding still — vibrato on a pitch, wah on a filter cutoff.
- * `depth` is in the target param's own units: Hz for a pitch or a
- * cutoff. See "Modulation" in docs/08_sound_effects.md. */
+ * instead of holding still — vibrato on a pitch, wah on a filter
+ * cutoff, or (cycle 8) a flanger's own delay time. `depth` is in the
+ * target param's own units: Hz for a pitch or a cutoff, seconds for a
+ * delay time. See "Modulation" in docs/08_sound_effects.md. */
 export interface Lfo {
   readonly rateHz: number;
   readonly depth: number;
@@ -93,11 +94,25 @@ export interface RingmodEffect {
   readonly frequencyHz: number;
 } // cycle 7, docs/08_sound_effects.md
 
+/** A flanger: the source mixed with a copy of itself delayed by
+ * `delayMs`, some of that delayed copy fed back into the delay
+ * (`feedback`, 0..1) to deepen the notches, the delay time itself swept
+ * by `lfo` — a jet-whoosh, from a fixed tone colour sliding as the
+ * delay moves. See "Comb filtering" in docs/08_sound_effects.md.
+ * `lfo.depth` is in the same units as `delayMs` scheduling — seconds,
+ * `delayTime`'s own unit — not Hz like a pitch or filter LFO's depth. */
+export interface FlangerEffect {
+  readonly kind: "flanger";
+  readonly delayMs: number;
+  readonly feedback: number;
+  readonly lfo: Lfo;
+} // cycle 8, docs/08_sound_effects.md
+
 /** A node graph inserted between a voice's filter (if any) and its own
  * gain — a swirl or a metallic edge no single filter or LFO can give on
  * its own. Declarative so that planning stays pure data; only the
  * sink's `buildEffect` ever touches Web Audio. */
-export type VoiceEffect = PhaserEffect | RingmodEffect; // grows through cycle 8
+export type VoiceEffect = PhaserEffect | RingmodEffect | FlangerEffect;
 
 /** One scheduled sound, built once and played once — see `planToneVoices`
  * in voices/tones.ts. `frequencyEndHz` of `null` means a constant pitch; a value
