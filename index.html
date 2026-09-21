@@ -35,6 +35,37 @@
       pre.emoji {
         line-height: 1.2;
       }
+      /* The two instruction lines have to out-rank both pixel canvases
+         regardless of z-index values: a positioned element with
+         z-index:0 or higher always paints above non-positioned content,
+         whatever the DOM order, so without this the text vanishes
+         whenever ?renderer=pixel is active. Harmless for ascii/emoji,
+         which never position anything here. */
+      #app > p {
+        position: relative;
+        z-index: 2;
+      }
+      /* Draws the internal buffer (a few hundred pixels) blown up to
+         fill the screen with hard block edges, not a blur — the whole
+         reason this renderer reads as 8-bit rather than as a blurry
+         low-res image. See docs/09_8bit_renderer.md. */
+      canvas.pixel {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        image-rendering: pixelated;
+      }
+      /* Two stacked planes, not one: the sky/scenery canvas painted once
+         and left alone, the sprite canvas cleared and redrawn every
+         frame. Neither uses z-index: -1 — that would paint behind the
+         page's own opaque background and vanish outright. */
+      canvas.pixel-background {
+        z-index: 0;
+      }
+      canvas.pixel-sprites {
+        z-index: 1;
+      }
     </style>
   </head>
   <body>
