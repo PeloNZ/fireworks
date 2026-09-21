@@ -1,0 +1,87 @@
+import { describe, expect, it } from "vitest";
+import { sparkDirections } from "./sparks.ts";
+import type { Vec3 } from "../action/types.ts";
+
+// Cycle 8 (docs/05_audio_visual_layer.md): the first piece of expanding a
+// burst into sparks — which way each one flies. Every pattern places
+// `count` unit vectors around a circle; what differs is how much random
+// jitter nudges each one off its evenly-spaced base angle, drawn from
+// `createRandom(seed)` so the same seed always gives the same burst shape.
+
+function angleOf(v: Vec3): number {
+  return Math.atan2(v.y, v.x);
+}
+
+// The shortest signed distance between two angles, wrapping through the
+// -pi/pi boundary correctly — a plain subtraction breaks the moment a
+// base angle passes pi.
+function angularDeviation(actual: number, base: number): number {
+  const diff = actual - base;
+  return Math.abs(((diff + Math.PI) % (Math.PI * 2)) - Math.PI);
+}
+
+function maxDeviationFromEvenSpread(directions: readonly Vec3[]): number {
+  const deviations = directions.map((v, i) => {
+    const base = (i / directions.length) * Math.PI * 2;
+    return angularDeviation(angleOf(v), base);
+  });
+  return Math.max(...deviations);
+}
+
+describe("sparkDirections", () => {
+  it("returns count unit vectors with z always 0", () => {
+    const directions = sparkDirections("peony", 7, 1);
+
+    expect(directions).toHaveLength(7);
+    for (const v of directions) {
+      expect(v.z).toBe(0);
+      expect(Math.hypot(v.x, v.y)).toBeCloseTo(1);
+    }
+  });
+
+  it("returns the same directions for the same seed on repeat calls", () => {
+    const first = sparkDirections("peony", 6, 42);
+    const second = sparkDirections("peony", 6, 42);
+
+    expect(second).toEqual(first);
+  });
+
+  it("ring spaces angles evenly with no jitter, ignoring the seed entirely", () => {
+    const withOneSeed = sparkDirections("ring", 4, 1);
+    const withAnotherSeed = sparkDirections("ring", 4, 999);
+
+    expect(withOneSeed).toEqual(withAnotherSeed);
+    expect(withOneSeed[0]?.x).toBeCloseTo(1);
+    expect(withOneSeed[0]?.y).toBeCloseTo(0);
+    expect(withOneSeed[1]?.x).toBeCloseTo(0);
+    expect(withOneSeed[1]?.y).toBeCloseTo(1);
+    expect(withOneSeed[2]?.x).toBeCloseTo(-1);
+    expect(withOneSeed[2]?.y).toBeCloseTo(0);
+    expect(withOneSeed[3]?.x).toBeCloseTo(0);
+    expect(withOneSeed[3]?.y).toBeCloseTo(-1);
+  });
+
+  it("peony jitters each angle so two seeds produce different bursts", () => {
+    const withOneSeed = sparkDirections("peony", 8, 1);
+    const withAnotherSeed = sparkDirections("peony", 8, 2);
+
+    expect(withOneSeed).not.toEqual(withAnotherSeed);
+  });
+
+  it("willow biases every direction toward the upper half", () => {
+    const directions = sparkDirections("willow", 9, 3);
+
+    for (const v of directions) {
+      expect(v.y).toBeGreaterThan(0);
+    }
+  });
+
+  it("chrysanthemum jitters wider than peony, given the same seed", () => {
+    const peony = sparkDirections("peony", 10, 7);
+    const chrysanthemum = sparkDirections("chrysanthemum", 10, 7);
+
+    expect(maxDeviationFromEvenSpread(chrysanthemum)).toBeGreaterThan(
+      maxDeviationFromEvenSpread(peony),
+    );
+  });
+});
