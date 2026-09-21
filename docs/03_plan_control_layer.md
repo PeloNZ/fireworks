@@ -156,8 +156,9 @@ check proves the wiring is real.
 ## Why the layer stops at emission
 
 `ControlEventSink` is the last thing this plan builds. There is deliberately no code here that reads a
-`ControlEvent` and decides "this means launch a firework" — that's the Action layer, and it doesn't
-exist yet. Keeping the boundary here means this plan's tests can assert exactly one thing about output:
+`ControlEvent` and decides "this means launch a firework" — that's the Action layer's job
+(`resolveAction`, see `docs/04_plan_action_layer.md`). Keeping the boundary here means this plan's tests
+can assert exactly one thing about output:
 "did the right `ControlEvent` get produced/logged" — not "did the right _firework_ happen," which would
 require Action to exist and would make a Control-layer test failure and an Action-layer test failure
 look the same from the outside.
