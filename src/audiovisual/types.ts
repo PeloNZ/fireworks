@@ -67,11 +67,11 @@ export interface Filter {
 /** A slow oscillator added to an `AudioParam`, making a value waver
  * instead of holding still — vibrato on a pitch, wah on a filter cutoff.
  * `depth` is in the target param's own units: Hz for a pitch or a
- * cutoff. See "Modulation" in docs/08_sound_sets.md. */
+ * cutoff. See "Modulation" in docs/08_sound_effects.md. */
 export interface Lfo {
   readonly rateHz: number;
   readonly depth: number;
-} // cycle 4, docs/08_sound_sets.md
+} // cycle 4, docs/08_sound_effects.md
 
 /** One scheduled sound, built once and played once — see `planToneVoices`
  * in voices/tones.ts. `frequencyEndHz` of `null` means a constant pitch; a value
@@ -99,7 +99,10 @@ export interface Voice {
   readonly startOffsetMs: number; // cycle 22
   // A wobble on this voice's own pitch — only meaningful for a "tone",
   // since a "noise" voice has no single pitch to wobble.
-  readonly pitchLfo: Lfo | null; // cycle 4, docs/08_sound_sets.md
+  readonly pitchLfo: Lfo | null; // cycle 4, docs/08_sound_effects.md
+  // A wobble on this voice's own filter cutoff — only meaningful when
+  // `filter` is set; there is no cutoff to wobble otherwise.
+  readonly filterLfo: Lfo | null; // cycle 5, docs/08_sound_effects.md
 } // cycle 17, grows
 
 /** An audio port's whole contract: given the voices planned for this
@@ -112,11 +115,11 @@ export type AudioSink = (voices: readonly Voice[]) => void; // cycle 18
  * this is how `?sound=` changes what a key sounds like; the sink stays
  * the only thing that ever touches Web Audio. `planToneVoices` and
  * `planSillyVoices` are the two implementations. See
- * docs/08_sound_sets.md. */
+ * docs/08_sound_effects.md. */
 export type VoicePlanner = (
   cue: Cue,
   config: AudioVisualConfig,
-) => readonly Voice[]; // cycle 2, docs/08_sound_sets.md
+) => readonly Voice[]; // cycle 2, docs/08_sound_effects.md
 
 /** The sky's brightness at the two ends of world space, already capped to
  * `backdrop.skyMaxBrightness`. `zenith <= horizon` always: a sunset glows

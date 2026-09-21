@@ -14,7 +14,7 @@ import type { Firework } from "../action/types.ts";
  * across frames: a trails store for shell trails, and a phase watcher
  * for sound cues. Which sound set plays is entirely the caller's
  * choice — this layer never imports a planner itself. See
- * docs/08_sound_sets.md.
+ * docs/08_sound_effects.md.
  */
 export function createAudioVisualLayer(options: {
   readonly renderer: Renderer;

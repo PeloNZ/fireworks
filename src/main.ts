@@ -128,7 +128,7 @@ grid.className = rendererName;
 
 // Which sound set plays is the same kind of lookup, against its own
 // table — a `?sound=` this project now has more than one entry for. See
-// docs/08_sound_sets.md.
+// docs/08_sound_effects.md.
 const { create: voicePlanner } = selectRenderer(
   new URLSearchParams(location.search).get("sound"),
   soundSets,

@@ -236,6 +236,15 @@ function createFilterNode(
     node.frequency.setValueAtTime(clampAudible(filter.frequencyHz), startTime);
   }
   node.Q.setValueAtTime(filter.q, startTime);
+  if (voice.filterLfo) {
+    attachLfo(
+      context,
+      voice.filterLfo,
+      node.frequency,
+      startTime,
+      durationSeconds,
+    );
+  }
   return node;
 }
 

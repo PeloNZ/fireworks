@@ -13,7 +13,7 @@ import type { Voice, VoicePlanner } from "./types.ts";
 // wires an audio port in too: present() watches for phase transitions
 // and turns any cue into voices via a given `voicePlanner`, calling audio
 // with the result every time, even when it's empty. Cycle 2
-// (docs/08_sound_sets.md) makes that planner a caller-supplied option
+// (docs/08_sound_effects.md) makes that planner a caller-supplied option
 // instead of always calling planToneVoices — a sound set swaps this
 // argument, not the audio sink.
 
@@ -149,6 +149,7 @@ describe("createAudioVisualLayer", () => {
       filter: null,
       startOffsetMs: 0,
       pitchLfo: null,
+      filterLfo: null,
     };
     const voicePlanner: VoicePlanner = vi.fn(() => [fakeVoice]);
     const layer = createAudioVisualLayer({

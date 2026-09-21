@@ -134,6 +134,7 @@ const toneVoice: Voice = {
   filter: null,
   startOffsetMs: 0,
   pitchLfo: null,
+  filterLfo: null,
 };
 
 const noiseVoice: Voice = {
@@ -148,6 +149,7 @@ const noiseVoice: Voice = {
   filter: null,
   startOffsetMs: 0,
   pitchLfo: null,
+  filterLfo: null,
 };
 
 // An unusual lookahead/gain/cap, not the defaults, so hardcoded values
@@ -465,6 +467,52 @@ describe("createWebAudioSink — playtesting fixes", () => {
     const sink = createWebAudioSink({ context, config });
 
     sink([toneVoice]);
+
+    expect(oscillators).toHaveLength(1);
+    expect(gains).toHaveLength(2);
+  });
+
+  it("adds a filter LFO wobbling a voice's own filter cutoff", () => {
+    const { context, oscillators, filters, gains } = fakeContext(10);
+    const sink = createWebAudioSink({ context, config });
+    const wahWah: Voice = {
+      ...toneVoice,
+      filter: { kind: "lowpass", frequencyHz: 500, q: 3 },
+      filterLfo: { rateHz: 2, depth: 200 },
+    };
+
+    sink([wahWah]);
+
+    // oscillators[0] is the tone; oscillators[1] is the filter LFO.
+    expect(oscillators).toHaveLength(2);
+    const lfo = oscillators[1];
+    expect(lfo?.frequency.calls).toEqual([
+      { method: "setValueAtTime", value: 2, time: 10.02 },
+    ]);
+    expect(lfo?.start).toHaveBeenCalledWith(10.02);
+    expect(lfo?.stop).toHaveBeenCalledWith(11.02);
+
+    // gains: [0] master, [1] voice gain (created before the filter node,
+    // unlike a pitch LFO's depth gain), [2] the filter LFO's depth gain.
+    expect(gains).toHaveLength(3);
+    const depth = gains[2];
+    expect(depth?.gain.calls).toEqual([
+      { method: "setValueAtTime", value: 200, time: 10.02 },
+    ]);
+    expect(lfo?.connect).toHaveBeenCalledWith(depth);
+    expect(depth?.connect).toHaveBeenCalledWith(filters[0]?.frequency);
+  });
+
+  it("builds no filter LFO when the voice has no filter, even if filterLfo is set", () => {
+    const { context, oscillators, gains } = fakeContext(10);
+    const sink = createWebAudioSink({ context, config });
+    const noFilter: Voice = {
+      ...toneVoice,
+      filter: null,
+      filterLfo: { rateHz: 2, depth: 200 },
+    };
+
+    sink([noFilter]);
 
     expect(oscillators).toHaveLength(1);
     expect(gains).toHaveLength(2);
