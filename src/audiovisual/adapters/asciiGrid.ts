@@ -3,9 +3,11 @@ import type { Frame } from "../types.ts";
 
 /**
  * Maps a brightness in 0..1 onto one character in `ramp`, dimmest to
- * brightest.
+ * brightest. Exported so the backdrop's sky and ground share this one
+ * mapping rather than keeping a second copy that can drift from it —
+ * see `rasteriseBackdrop` in asciiBackdrop.ts.
  */
-function rampChar(brightness: number, ramp: string): string {
+export function rampChar(brightness: number, ramp: string): string {
   const clamped = Math.min(1, Math.max(0, brightness));
   const index = Math.round(clamped * (ramp.length - 1));
   const char = ramp[index];
