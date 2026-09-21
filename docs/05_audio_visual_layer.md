@@ -517,11 +517,11 @@ elapsedMs })`. Calling `present` once calls the fake renderer exactly once, with
    `buildFrame` would build from the same `entities` and `alpha`.
 7. **Extend `src/main.ts`.** Control→Action wiring and the `requestAnimationFrame` loop already exist
    (`window.actionWorld`, `window.controlLayer`). Add a `<pre>` element for the grid, build
-   `createAudioVisualLayer({ renderer: createAsciiRenderer({ target, config }), config, worldConfig })`,
+   `createAudioVisualLayer({ renderer: createAsciiRenderer({ target, config }), config })`,
    and call its `present({ entities: world.entities(), alpha: world.alpha(), elapsedMs: clamped })`
    inside the existing loop, right after `world.step(clamped)` — `clamped` is the same
    `config.maxFrameMs`-clamped value already being passed to `step`. The console trace from
-   `createSpecConsoleSink` can stay or go; nothing in this plan depends on it.
+   `createSpecConsoleSink` stays, unchanged, alongside the new render call.
 
 **Payoff**: press a key, watch a single character rise, curve, and drift across the grid — gravity and
 wind both visibly doing real work, for the first time anywhere in this project.
@@ -628,22 +628,22 @@ key always sounds the same way, the same hypothesis `01_intent.md` states for si
 
 ## Critical files
 
-| Path                                    | Purpose                                                                  |
-| --------------------------------------- | ------------------------------------------------------------------------ |
-| `src/audiovisual/types.ts`              | The AudioVisual-layer contract, grown one cycle at a time                |
-| `src/audiovisual/config.ts`             | Rendering and audio tunables                                             |
-| `src/audiovisual/color.ts`              | Cycle 1                                                                  |
-| `src/audiovisual/interpolate.ts`        | Cycle 2                                                                  |
-| `src/audiovisual/frame.ts`              | Cycles 3, 12, 15                                                         |
-| `src/audiovisual/adapters/asciiGrid.ts` | Cycle 4                                                                  |
-| `src/audiovisual/adapters/ascii.ts`     | Cycle 5                                                                  |
-| `src/audiovisual/audioVisualLayer.ts`   | Cycles 6, 19                                                             |
-| `src/audiovisual/sparks.ts`             | Cycles 8–12                                                              |
-| `src/audiovisual/trails.ts`             | Cycle 14                                                                 |
-| `src/audiovisual/phases.ts`             | Cycle 16                                                                 |
-| `src/audiovisual/voices.ts`             | Cycles 17, 20, 22                                                        |
-| `src/audiovisual/adapters/webAudio.ts`  | Cycles 18, 21                                                            |
-| `src/main.ts`                           | Cycle 7 (visuals), cycle 19 (audio) — rewired from Action's console sink |
+| Path                                    | Purpose                                                                                           |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `src/audiovisual/types.ts`              | The AudioVisual-layer contract, grown one cycle at a time                                         |
+| `src/audiovisual/config.ts`             | Rendering and audio tunables                                                                      |
+| `src/audiovisual/color.ts`              | Cycle 1                                                                                           |
+| `src/audiovisual/interpolate.ts`        | Cycle 2                                                                                           |
+| `src/audiovisual/frame.ts`              | Cycles 3, 12, 15                                                                                  |
+| `src/audiovisual/adapters/asciiGrid.ts` | Cycle 4                                                                                           |
+| `src/audiovisual/adapters/ascii.ts`     | Cycle 5                                                                                           |
+| `src/audiovisual/audioVisualLayer.ts`   | Cycles 6, 19                                                                                      |
+| `src/audiovisual/sparks.ts`             | Cycles 8–12                                                                                       |
+| `src/audiovisual/trails.ts`             | Cycle 14                                                                                          |
+| `src/audiovisual/phases.ts`             | Cycle 16                                                                                          |
+| `src/audiovisual/voices.ts`             | Cycles 17, 20, 22                                                                                 |
+| `src/audiovisual/adapters/webAudio.ts`  | Cycles 18, 21                                                                                     |
+| `src/main.ts`                           | Cycle 7 (visuals), cycle 19 (audio) — adds rendering alongside Action's console sink, which stays |
 
 ## Out of scope
 
