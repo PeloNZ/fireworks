@@ -66,3 +66,33 @@ export interface FireworkSpec {
   readonly sound: FireworkSound;
   readonly seed: number;
 }
+
+/**
+ * A firework's stage, in order. Each exists so AudioVisual has a distinct
+ * set of effects to draw later — these are not physics modes, and physics
+ * runs the same integration through "launching", "flying" and "exploding"
+ * regardless of which one is active. See "The state machine" in
+ * docs/04_plan_action_layer.md.
+ *
+ * Not exported yet — `Firework` below is the only thing that names it so
+ * far, in this same file. It gets its own export in cycle 12 (`stepPhase`),
+ * the first cycle that needs to import it directly.
+ */
+type FireworkPhase =
+  "armed" | "launching" | "flying" | "exploding" | "finished";
+
+/**
+ * The live object: built once from a `FireworkSpec` by `createFirework`,
+ * then changed every step by `stepPhysics` and `stepPhase`. Never sent
+ * anywhere — it stays inside the simulation, unlike `FireworkSpec`.
+ */
+export interface Firework {
+  readonly spec: FireworkSpec;
+  readonly phase: FireworkPhase;
+  readonly position: Vec3;
+  readonly previousPosition: Vec3;
+  readonly velocity: Vec3;
+  readonly fuelRemainingMs: number;
+  readonly fuseRemainingMs: number;
+  readonly phaseElapsedMs: number;
+}
