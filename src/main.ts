@@ -13,10 +13,10 @@ import { createAudioVisualLayer } from "./audiovisual/audioVisualLayer.ts";
 import { buildBackdrop } from "./audiovisual/backdrop.ts";
 import { createAsciiRenderer } from "./audiovisual/adapters/ascii.ts";
 import { createEmojiRenderer } from "./audiovisual/adapters/emoji.ts";
+import { createPixelRenderer } from "./audiovisual/adapters/pixel.ts";
 import { createWebAudioSink } from "./audiovisual/adapters/webAudio.ts";
 import { selectRenderer } from "./audiovisual/selectRenderer.ts";
 import { soundSets } from "./audiovisual/voices/sets.ts";
-import type { TextTarget } from "./audiovisual/adapters/ascii.ts";
 import type { FireworkPhase } from "./action/types.ts";
 import type { Renderer } from "./audiovisual/types.ts";
 
@@ -71,14 +71,18 @@ window.actionWorld = world;
 layer.start();
 
 const app = document.querySelector<HTMLDivElement>("#app");
+if (app === null) {
+  // Every renderer below appends its own node straight into #app rather
+  // than into a fallback element, so a missing host means there is
+  // nowhere to render at all — worth an early, specific failure rather
+  // than a silently blank page.
+  throw new Error("main.ts: #app element not found");
+}
 const heading = document.createElement("p");
 heading.textContent = "Fireworks — AudioVisual layer dev harness.";
 const instructions = document.createElement("p");
 instructions.textContent = "Press any key. Open the console to see events.";
-const grid = document.createElement("pre");
-if (app) {
-  app.append(heading, instructions, grid);
-}
+app.append(heading, instructions);
 
 // Browsers refuse to make sound before the user has interacted with the
 // page — create the context any time, but only resume it once a keydown
@@ -111,20 +115,95 @@ const backdrop = buildBackdrop(backdropSeed, defaultAudioVisualConfig.backdrop);
 // the point of building a second renderer is that this project now has
 // more than one, and a third means one more entry here and nothing else.
 // Each entry is a closure over the config and backdrop above it, taking
-// only the target it will draw into. See "Selecting a renderer" in
-// docs/07_emoji_renderer.md.
-const renderers: Record<string, (target: TextTarget) => Renderer> = {
-  ascii: (target) =>
-    createAsciiRenderer({ target, config: defaultAudioVisualConfig, backdrop }),
-  emoji: (target) =>
-    createEmojiRenderer({ target, config: defaultAudioVisualConfig, backdrop }),
+// the element it will render into and appending whatever nodes it needs
+// — one `<pre>` for ascii/emoji, two stacked `<canvas>`es for pixel. See
+// "Selecting a renderer" in docs/07_emoji_renderer.md and "main.ts
+// registry" in docs/09_8bit_renderer.md.
+const renderers: Record<string, (host: HTMLElement) => Renderer> = {
+  ascii: (host) => {
+    const target = document.createElement("pre");
+    target.className = "ascii";
+    host.append(target);
+    return createAsciiRenderer({
+      target,
+      config: defaultAudioVisualConfig,
+      backdrop,
+    });
+  },
+  emoji: (host) => {
+    const target = document.createElement("pre");
+    target.className = "emoji";
+    host.append(target);
+    return createEmojiRenderer({
+      target,
+      config: defaultAudioVisualConfig,
+      backdrop,
+    });
+  },
+  // Fills the viewport with square pixels: rows is fixed (the
+  // chunkiness dial), columns is derived from the real window so the
+  // world's full height always fits and a ring burst stays round
+  // whatever shape the window is. See "The geometry" in
+  // docs/09_8bit_renderer.md.
+  pixel: (host) => {
+    const { rows } = defaultAudioVisualConfig.pixel;
+    const columns = Math.round((rows * window.innerWidth) / window.innerHeight);
+    const config = {
+      ...defaultAudioVisualConfig,
+      pixel: { ...defaultAudioVisualConfig.pixel, columns },
+    };
+
+    const background = document.createElement("canvas");
+    background.className = "pixel pixel-background";
+    background.width = columns;
+    background.height = rows;
+    const sprites = document.createElement("canvas");
+    sprites.className = "pixel pixel-sprites";
+    sprites.width = columns;
+    sprites.height = rows;
+    host.append(background, sprites);
+
+    const backgroundContext = background.getContext("2d");
+    const spritesContext = sprites.getContext("2d");
+    if (backgroundContext === null || spritesContext === null) {
+      throw new Error("pixel renderer: 2d canvas context unavailable");
+    }
+    // Without this, the browser bilinearly smooths the upscale from a
+    // few hundred pixels to the full viewport, and the whole 8-bit look
+    // dies. See docs/09_8bit_renderer.md.
+    backgroundContext.imageSmoothingEnabled = false;
+    spritesContext.imageSmoothingEnabled = false;
+
+    return createPixelRenderer({
+      background: {
+        paint: (pixels, width, height) => {
+          backgroundContext.putImageData(
+            new ImageData(pixels, width, height),
+            0,
+            0,
+          );
+        },
+      },
+      sprites: {
+        paint: (pixels, width, height) => {
+          spritesContext.putImageData(
+            new ImageData(pixels, width, height),
+            0,
+            0,
+          );
+        },
+      },
+      config,
+      backdrop,
+    });
+  },
 };
-const { name: rendererName, create: createRenderer } = selectRenderer(
+const { create: createRenderer } = selectRenderer(
   new URLSearchParams(location.search).get("renderer"),
   renderers,
   "ascii",
 );
-grid.className = rendererName;
+const renderer = createRenderer(app);
 
 // Which sound set plays is the same kind of lookup, against its own
 // table — a `?sound=` this project now has more than one entry for. See
@@ -136,7 +215,7 @@ const { create: voicePlanner } = selectRenderer(
 );
 
 const audioVisual = createAudioVisualLayer({
-  renderer: createRenderer(grid),
+  renderer,
   audio: createWebAudioSink({
     context: audioContext,
     config: defaultAudioVisualConfig,
