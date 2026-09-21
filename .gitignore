@@ -26,3 +26,4 @@ CLAUDE.local.md
 
 # Per-machine hook state (doc-sync-gate.sh loop guard)
 .claude/state/
+/.claude/worktrees/
