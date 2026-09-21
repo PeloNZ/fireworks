@@ -12,8 +12,12 @@ import { defaultAudioVisualConfig } from "./audiovisual/config.ts";
 import { createAudioVisualLayer } from "./audiovisual/audioVisualLayer.ts";
 import { buildBackdrop } from "./audiovisual/backdrop.ts";
 import { createAsciiRenderer } from "./audiovisual/adapters/ascii.ts";
+import { createEmojiRenderer } from "./audiovisual/adapters/emoji.ts";
 import { createWebAudioSink } from "./audiovisual/adapters/webAudio.ts";
+import { selectRenderer } from "./audiovisual/selectRenderer.ts";
+import type { TextTarget } from "./audiovisual/adapters/ascii.ts";
 import type { FireworkPhase } from "./action/types.ts";
+import type { Renderer } from "./audiovisual/types.ts";
 
 // The dev harness: Control -> Action -> AudioVisual, an ASCII grid drawn
 // on a fixed-step render loop. This file is the only thing in any layer
@@ -102,12 +106,27 @@ const backdropSeed = hashString(
 );
 const backdrop = buildBackdrop(backdropSeed, defaultAudioVisualConfig.backdrop);
 
+// Which renderer runs is a lookup in this table, not a two-way branch —
+// the point of building a second renderer is that this project now has
+// more than one, and a third means one more entry here and nothing else.
+// Each entry is a closure over the config and backdrop above it, taking
+// only the target it will draw into. See "Selecting a renderer" in
+// docs/07_emoji_renderer.md.
+const renderers: Record<string, (target: TextTarget) => Renderer> = {
+  ascii: (target) =>
+    createAsciiRenderer({ target, config: defaultAudioVisualConfig, backdrop }),
+  emoji: (target) =>
+    createEmojiRenderer({ target, config: defaultAudioVisualConfig, backdrop }),
+};
+const { name: rendererName, create: createRenderer } = selectRenderer(
+  new URLSearchParams(location.search).get("renderer"),
+  renderers,
+  "ascii",
+);
+grid.className = rendererName;
+
 const audioVisual = createAudioVisualLayer({
-  renderer: createAsciiRenderer({
-    target: grid,
-    config: defaultAudioVisualConfig,
-    backdrop,
-  }),
+  renderer: createRenderer(grid),
   audio: createWebAudioSink({
     context: audioContext,
     config: defaultAudioVisualConfig,

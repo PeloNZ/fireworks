@@ -445,7 +445,7 @@ both complete and green.
 
 ### Pass C — the emoji sky
 
-7. **`rasteriseEmojiBackdrop` — the sky.** Unusual fixture
+7. **`rasteriseEmojiBackdrop` — the sky — done.** Unusual fixture
    `{ columns: 3, rows: 2, sky: ["p", "q", "r", "s", "t"] }`, an uncapped sky
    `{ horizon: 1, zenith: 0 }` (capping is `buildSky`'s job, not this adapter's), and a flat ground at
    height `0` so it draws nothing yet. Row centres at `y = 75` and `y = 25` give brightnesses `0.25` and
@@ -454,12 +454,12 @@ both complete and green.
    fill **every** cell in this pass, before bodies or ground exist to paint over any of it — this is the
    contract `overlayEmojiGrid` leans on in cycle 6: it has no fallback for a base cell that is missing,
    because a correctly built backdrop never has one.
-8. **`rasteriseEmojiBackdrop` — bodies.** Unusual glyphs `{ star: "S", moon: "M", planet: "P" }`. Bodies
+8. **`rasteriseEmojiBackdrop` — bodies — done.** Unusual glyphs `{ star: "S", moon: "M", planet: "P" }`. Bodies
    place through the shared `toCell` from `adapters/cells.ts`, the same mapping sparks use, so a body
    and a spark at one world point land in the same cell. A star placed at the moon's own position
    asserts `"M"` wins — paint order doing the work of an overlap test, the same as the ASCII backdrop. A
    body placed outside the grid asserts it is clipped, not wrapped.
-9. **`rasteriseEmojiBackdrop` — ridge and fill.** A cell is ground when its row centre's `y` is at or
+9. **`rasteriseEmojiBackdrop` — ridge and fill — done.** A cell is ground when its row centre's `y` is at or
    below `groundHeightAt` at its column centre's `x`. The topmost ground cell in a column gets
    `backdropGlyphs.ridge`; every cell below it gets `backdropGlyphs.ground`. Fixture: 4 columns, 4 rows,
    a black sky, and a ground sloping from height `15` at `x = -50` to `100` at `x = 50` — a slope chosen
