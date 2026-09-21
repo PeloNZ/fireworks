@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sparkDirections, sparkSpeeds } from "./sparks.ts";
+import { sparkDirections, sparkPosition, sparkSpeeds } from "./sparks.ts";
 import { defaultAudioVisualConfig } from "./config.ts";
 import type { Vec3 } from "../action/types.ts";
 
@@ -136,5 +136,64 @@ describe("sparkSpeeds", () => {
     for (const speed of speeds) {
       expect(speed).toBeLessThan(midpoint);
     }
+  });
+});
+
+// Cycle 10: a spark's exact position under gravity alone (no drag) —
+// the same closed-form throw formula as a thrown ball. t is milliseconds
+// since the burst began (Firework.phaseElapsedMs), converted to seconds
+// internally so it matches gravity and speed's per-second units.
+
+const origin: Vec3 = { x: 0, y: 0, z: 0 };
+
+describe("sparkPosition", () => {
+  it("returns exactly origin at t=0", () => {
+    const position = sparkPosition(
+      origin,
+      { x: 1, y: 0, z: 0 },
+      10,
+      { x: 0, y: -18, z: 0 },
+      0,
+      0,
+    );
+
+    expect(position).toEqual(origin);
+  });
+
+  it("tracks the initial direction closely at a small t, before gravity's t-squared term has caught up", () => {
+    const position = sparkPosition(
+      origin,
+      { x: 1, y: 0, z: 0 },
+      100,
+      { x: 0, y: -18, z: 0 },
+      0,
+      1, // 1ms = 0.001s
+    );
+
+    expect(position.x).toBeCloseTo(0.1);
+    expect(position.y).toBeCloseTo(0);
+    expect(position.z).toBe(0);
+  });
+
+  it("doubling gravity doubles the downward sag at a fixed t", () => {
+    const direction: Vec3 = { x: 1, y: 0, z: 0 };
+    const sagWithOneGravity = -sparkPosition(
+      origin,
+      direction,
+      10,
+      { x: 0, y: -18, z: 0 },
+      0,
+      1000,
+    ).y;
+    const sagWithDoubledGravity = -sparkPosition(
+      origin,
+      direction,
+      10,
+      { x: 0, y: -36, z: 0 },
+      0,
+      1000,
+    ).y;
+
+    expect(sagWithDoubledGravity).toBeCloseTo(2 * sagWithOneGravity);
   });
 });

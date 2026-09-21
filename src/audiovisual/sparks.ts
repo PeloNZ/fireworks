@@ -124,3 +124,27 @@ export function sparkSpeeds(
       );
   }
 }
+
+/**
+ * A spark's exact position at `t` milliseconds since the burst began, under
+ * gravity alone — the same closed-form throw formula as a thrown ball,
+ * solved directly rather than stepped frame by frame. `_drag` is accepted
+ * now so the signature won't need to change for cycle 11's
+ * exponential-decay case; this cycle's formula doesn't yet read it.
+ */
+export function sparkPosition(
+  origin: Vec3,
+  direction: Vec3,
+  speed: number,
+  gravity: Vec3,
+  _drag: number,
+  t: number,
+): Vec3 {
+  const seconds = t / 1000;
+  const half = 0.5 * seconds * seconds;
+  return {
+    x: origin.x + direction.x * speed * seconds + gravity.x * half,
+    y: origin.y + direction.y * speed * seconds + gravity.y * half,
+    z: origin.z + direction.z * speed * seconds + gravity.z * half,
+  };
+}
