@@ -126,25 +126,49 @@ export function sparkSpeeds(
 }
 
 /**
- * A spark's exact position at `t` milliseconds since the burst began, under
- * gravity alone — the same closed-form throw formula as a thrown ball,
- * solved directly rather than stepped frame by frame. `_drag` is accepted
- * now so the signature won't need to change for cycle 11's
- * exponential-decay case; this cycle's formula doesn't yet read it.
+ * A spark's exact position at `t` milliseconds since the burst began.
+ * Solved directly rather than stepped frame by frame: with `drag` at `0`,
+ * the same closed-form throw formula as a thrown ball; with drag, velocity
+ * decays exponentially toward a terminal velocity (`gravity / drag`)
+ * instead of growing without bound, and position is the exact integral of
+ * that decay. `drag` of exactly `0` would divide by zero in the general
+ * formula, so it's handled as its own case rather than as a limit of it —
+ * the same reason `normalise` special-cases the zero vector in
+ * src/action/vector.ts.
  */
 export function sparkPosition(
   origin: Vec3,
   direction: Vec3,
   speed: number,
   gravity: Vec3,
-  _drag: number,
+  drag: number,
   t: number,
 ): Vec3 {
   const seconds = t / 1000;
-  const half = 0.5 * seconds * seconds;
+  const v0: Vec3 = {
+    x: direction.x * speed,
+    y: direction.y * speed,
+    z: direction.z * speed,
+  };
+
+  if (drag === 0) {
+    const half = 0.5 * seconds * seconds;
+    return {
+      x: origin.x + v0.x * seconds + gravity.x * half,
+      y: origin.y + v0.y * seconds + gravity.y * half,
+      z: origin.z + v0.z * seconds + gravity.z * half,
+    };
+  }
+
+  const terminal: Vec3 = {
+    x: gravity.x / drag,
+    y: gravity.y / drag,
+    z: gravity.z / drag,
+  };
+  const decay = (1 - Math.exp(-drag * seconds)) / drag;
   return {
-    x: origin.x + direction.x * speed * seconds + gravity.x * half,
-    y: origin.y + direction.y * speed * seconds + gravity.y * half,
-    z: origin.z + direction.z * speed * seconds + gravity.z * half,
+    x: origin.x + terminal.x * seconds + (v0.x - terminal.x) * decay,
+    y: origin.y + terminal.y * seconds + (v0.y - terminal.y) * decay,
+    z: origin.z + terminal.z * seconds + (v0.z - terminal.z) * decay,
   };
 }

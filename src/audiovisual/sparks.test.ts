@@ -196,4 +196,42 @@ describe("sparkPosition", () => {
 
     expect(sagWithDoubledGravity).toBeCloseTo(2 * sagWithOneGravity);
   });
+
+  // Cycle 11: with drag, velocity decays exponentially toward a terminal
+  // velocity (gravity / drag) instead of growing without bound. Position
+  // is the exact integral of that decay, not another Euler step.
+  it("matches the closed-form drag formula at a hand-computed point", () => {
+    const position = sparkPosition(
+      origin,
+      { x: 1, y: 0, z: 0 },
+      10,
+      { x: 0, y: -18, z: 0 },
+      2,
+      500, // 500ms = 0.5s
+    );
+
+    // k=2, t=0.5s: decay = (1 - e^-1) / 2 ≈ 0.3160603
+    // x: v_term.x=0, so x = 10 * decay
+    // y: v_term.y=-9, so y = -9*0.5 + (0-(-9))*decay
+    expect(position.x).toBeCloseTo(3.1606028, 5);
+    expect(position.y).toBeCloseTo(-1.6554575, 5);
+    expect(position.z).toBe(0);
+  });
+
+  it("falls back to the gravity-only formula when drag is exactly 0, instead of dividing by zero", () => {
+    const position = sparkPosition(
+      origin,
+      { x: 1, y: 0, z: 0 },
+      10,
+      { x: 0, y: -18, z: 0 },
+      0,
+      1000,
+    );
+
+    expect(position.x).toBeCloseTo(10);
+    expect(position.y).toBeCloseTo(-9);
+    expect(position.z).toBe(0);
+    expect(Number.isFinite(position.x)).toBe(true);
+    expect(Number.isFinite(position.y)).toBe(true);
+  });
 });
