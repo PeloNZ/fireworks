@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { sparkDirections } from "./sparks.ts";
+import { sparkDirections, sparkSpeeds } from "./sparks.ts";
+import { defaultAudioVisualConfig } from "./config.ts";
 import type { Vec3 } from "../action/types.ts";
 
 // Cycle 8 (docs/05_audio_visual_layer.md): the first piece of expanding a
@@ -83,5 +84,57 @@ describe("sparkDirections", () => {
     expect(maxDeviationFromEvenSpread(chrysanthemum)).toBeGreaterThan(
       maxDeviationFromEvenSpread(peony),
     );
+  });
+});
+
+// Cycle 9: how fast each spark flies. ring is uniform, so every spark
+// reaches the same radius and traces one expanding circle; peony and
+// chrysanthemum vary across the full range, so they fill a disc instead;
+// willow sits toward the low end, so a willow burst hangs rather than
+// exploding outward fast.
+
+// A deliberately unusual range, not the default, so a hardcoded speed
+// can't pass.
+const speedConfig = {
+  ...defaultAudioVisualConfig,
+  sparkSpeed: { min: 12, max: 19 },
+};
+
+describe("sparkSpeeds", () => {
+  it("returns every value inside config.sparkSpeed", () => {
+    const speeds = sparkSpeeds("peony", 20, 1, speedConfig);
+
+    for (const speed of speeds) {
+      expect(speed).toBeGreaterThanOrEqual(speedConfig.sparkSpeed.min);
+      expect(speed).toBeLessThanOrEqual(speedConfig.sparkSpeed.max);
+    }
+  });
+
+  it("ring returns a uniform speed for every spark, ignoring the seed", () => {
+    const withOneSeed = sparkSpeeds("ring", 5, 1, speedConfig);
+    const withAnotherSeed = sparkSpeeds("ring", 5, 999, speedConfig);
+
+    expect(withOneSeed).toEqual(withAnotherSeed);
+    const [first] = withOneSeed;
+    for (const speed of withOneSeed) {
+      expect(speed).toBe(first);
+    }
+  });
+
+  it("peony varies speed across the range, using the seed", () => {
+    const withOneSeed = sparkSpeeds("peony", 8, 1, speedConfig);
+    const withAnotherSeed = sparkSpeeds("peony", 8, 2, speedConfig);
+
+    expect(withOneSeed).not.toEqual(withAnotherSeed);
+  });
+
+  it("willow sits toward the low end of the range", () => {
+    const speeds = sparkSpeeds("willow", 10, 5, speedConfig);
+    const midpoint =
+      (speedConfig.sparkSpeed.min + speedConfig.sparkSpeed.max) / 2;
+
+    for (const speed of speeds) {
+      expect(speed).toBeLessThan(midpoint);
+    }
   });
 });
