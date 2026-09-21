@@ -60,3 +60,42 @@ export function saturationOf(color: Rgb): number {
   const min = Math.min(r, g, b);
   return max === 0 ? 0 : (max - min) / max;
 }
+
+/**
+ * The angular distance between two hues, measured the short way round the
+ * wheel — so hue 350 and hue 10 are 20 degrees apart, not 340. Without
+ * this, a nearest-hue search would treat deep red as the colour furthest
+ * from pure red instead of a near neighbour.
+ */
+function hueDistance(a: number, b: number): number {
+  const diff = Math.abs(a - b) % 360;
+  return diff > 180 ? 360 - diff : diff;
+}
+
+/**
+ * Picks the entry in `entries` whose `hue` is nearest `hue`, the short way
+ * round the wheel. Shared by every adapter that maps a colour onto a fixed
+ * table of hue-keyed choices — the emoji renderer's glyphs, the pixel
+ * renderer's palette indices — so the wraparound rule lives in one place
+ * rather than once per adapter. Searched exhaustively rather than sorted
+ * and binary-searched: each table has at most a handful of entries, and
+ * this runs once per spark per frame, not per pixel.
+ */
+export function nearestHue<T extends { readonly hue: number }>(
+  hue: number,
+  entries: readonly T[],
+): T {
+  let best: T | null = null;
+  let bestDistance = Infinity;
+  for (const entry of entries) {
+    const distance = hueDistance(hue, entry.hue);
+    if (distance < bestDistance) {
+      best = entry;
+      bestDistance = distance;
+    }
+  }
+  if (best === null) {
+    throw new Error("nearestHue: entries must not be empty");
+  }
+  return best;
+}

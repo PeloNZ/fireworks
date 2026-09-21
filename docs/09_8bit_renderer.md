@@ -267,7 +267,8 @@ export function rampLevel<T>(brightness: number, levels: readonly T[]): T;
 export function sparkIndex(color: Rgb, pixel: PixelConfig): number; // 3
 export function indexFor(sprite: Sprite, pixel: PixelConfig): number; // 4
 
-export function worldHalfWidth(grid: { // 5
+export function worldHalfWidth(grid: {
+  // 5
   readonly columns: number;
   readonly rows: number;
 }): number;

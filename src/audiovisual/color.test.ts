@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hueOf, parseHexColor, saturationOf } from "./color.ts";
+import { hueOf, nearestHue, parseHexColor, saturationOf } from "./color.ts";
 
 // Cycle 1 (docs/05_audio_visual_layer.md): every sprite's colour starts as
 // a FireworkSpec's CSS hex string and has to become the 0..1 floats every
@@ -68,5 +68,28 @@ describe("saturationOf", () => {
 
     expect(saturation).toBeGreaterThan(0);
     expect(saturation).toBeLessThan(1);
+  });
+});
+
+// Cycle 1 (docs/09_8bit_renderer.md): lifted out of the emoji adapter so a
+// second adapter can search a hue table without importing from another
+// adapter. A two-entry table, so a plain absolute-difference implementation
+// (which ignores the wraparound) can be told apart from a correct one.
+
+describe("nearestHue", () => {
+  const entries = [
+    { hue: 10, name: "A" },
+    { hue: 200, name: "B" },
+  ];
+
+  it("wraps around the wheel: 350 is 20 degrees from 10, not 340", () => {
+    // The load-bearing case. 350 is 340 degrees from 10 the long way and
+    // only 20 the short way — an implementation that skips hueDistance's
+    // wraparound picks B here instead of A.
+    expect(nearestHue(350, entries)).toBe(entries[0]);
+  });
+
+  it("throws on an empty table", () => {
+    expect(() => nearestHue(0, [])).toThrow();
   });
 });
