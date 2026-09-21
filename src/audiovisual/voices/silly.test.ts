@@ -54,6 +54,8 @@ const config = {
     sets: {
       silly: {
         flightVoiceGain: 0.11,
+        bounceCount: 3,
+        bounceDecay: 0.5,
       },
     },
   },
@@ -87,11 +89,49 @@ describe("planSillyVoices", () => {
     expect(voice?.pitchLfo?.depth).toBeCloseTo(spec.sound.pitch * 0.04);
   });
 
-  it("plans no burst voices yet — cycles 11-13 add soft, sharp and crackle", () => {
-    const spec = fireworkSpec();
-    const cue: Cue = { kind: "burst", spec };
+  describe("burst — soft, the boing", () => {
+    it("glides a square wave down with a fast wide LFO, then bounceCount bounces decaying by bounceDecay", () => {
+      const spec = fireworkSpec({ sound: { pitch: 613, timbre: "soft" } });
+      const cue: Cue = { kind: "burst", spec };
 
-    expect(planSillyVoices(cue, config)).toEqual([]);
+      const voices = planSillyVoices(cue, config);
+
+      const { bounceCount, bounceDecay } = config.audio.sets.silly;
+      expect(voices).toHaveLength(1 + bounceCount);
+      const [main, ...bounces] = voices;
+      expect(main?.kind).toBe("tone");
+      expect(main?.waveform).toBe("square");
+      // Starts high, glides down — the downward half of "move the pitch
+      // a long way, fast."
+      expect(main?.frequencyHz).toBe(spec.sound.pitch * 2);
+      expect(main?.frequencyEndHz).toBe(spec.sound.pitch * 0.75);
+      expect(main?.envelope).toEqual(config.audio.burst.envelope);
+      expect(main?.seed).toBe(spec.seed);
+      expect(main?.filter).toBeNull();
+      expect(main?.startOffsetMs).toBe(0);
+      expect(main?.effect).toBeNull();
+      // Fast and wide — scaled to this firework's own pitch, not fixed.
+      expect(main?.pitchLfo?.rateHz).toBe(16);
+      expect(main?.pitchLfo?.depth).toBeCloseTo(spec.sound.pitch * 0.15);
+
+      expect(bounces).toHaveLength(bounceCount);
+      let expectedGain = main?.gain ?? 0;
+      let expectedDuration = main?.durationMs ?? 0;
+      let expectedOffset = main?.durationMs ?? 0;
+      for (const bounce of bounces) {
+        expectedGain *= bounceDecay;
+        expectedDuration *= bounceDecay;
+        // Same shape as the main voice — only gain, duration and start
+        // offset change.
+        expect(bounce.waveform).toBe(main?.waveform);
+        expect(bounce.frequencyHz).toBe(main?.frequencyHz);
+        expect(bounce.frequencyEndHz).toBe(main?.frequencyEndHz);
+        expect(bounce.gain).toBeCloseTo(expectedGain);
+        expect(bounce.durationMs).toBeCloseTo(expectedDuration);
+        expect(bounce.startOffsetMs).toBeCloseTo(expectedOffset);
+        expectedOffset += expectedDuration;
+      }
+    });
   });
 
   describe("flight", () => {

@@ -123,6 +123,12 @@ export interface AudioVisualConfig {
         // together must not exceed flight.gain, or a shell in the air
         // gets louder than a burst.
         readonly flightVoiceGain: number;
+        // How many extra voices follow a "soft" burst's own downward
+        // glide, each one a bounce off the floor.
+        readonly bounceCount: number;
+        // Each bounce voice's gain and duration as a fraction of the
+        // one before it — how fast the bounces die out.
+        readonly bounceDecay: number;
       };
     };
   };
@@ -217,6 +223,8 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     sets: Object.freeze({
       silly: Object.freeze({
         flightVoiceGain: 0.09,
+        bounceCount: 2,
+        bounceDecay: 0.6,
       }),
     }),
   }),

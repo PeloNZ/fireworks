@@ -93,6 +93,75 @@ function planSillyFlightVoices(
   return [base, { ...base, frequencyHz: base.frequencyHz + detuneHz }];
 }
 
+// A boing: a square wave sliding down from twice the burst's own pitch
+// to three quarters of it, wobbled by a fast, wide LFO — the downward
+// half of "move the pitch a long way, fast." Then it bounces: each
+// extra voice is the same shape, starting where the last one ended
+// (`startOffsetMs`), at `bounceDecay` of its gain and duration — a
+// shrinking series of bounces off a floor, not one flat repeat.
+const SOFT_START_RATIO = 2;
+const SOFT_END_RATIO = 0.75;
+const SOFT_DURATION_MS = 250;
+const SOFT_LFO_RATE_HZ = 16;
+const SOFT_LFO_DEPTH_RATIO = 0.15;
+const SOFT_VOICE_GAIN = 1;
+
+function planSillySoftBurstVoices(
+  cue: Cue,
+  config: AudioVisualConfig,
+): readonly Voice[] {
+  const pitch = cue.spec.sound.pitch;
+  const main: Voice = {
+    kind: "tone",
+    waveform: "square",
+    frequencyHz: pitch * SOFT_START_RATIO,
+    frequencyEndHz: pitch * SOFT_END_RATIO,
+    durationMs: SOFT_DURATION_MS,
+    envelope: config.audio.burst.envelope,
+    gain: SOFT_VOICE_GAIN,
+    seed: cue.spec.seed,
+    filter: null,
+    startOffsetMs: 0,
+    pitchLfo: {
+      rateHz: SOFT_LFO_RATE_HZ,
+      depth: pitch * SOFT_LFO_DEPTH_RATIO,
+    },
+    filterLfo: null,
+    effect: null,
+  };
+
+  const { bounceCount, bounceDecay } = config.audio.sets.silly;
+  const voices: Voice[] = [main];
+  let previous = main;
+  let offset = main.durationMs;
+  for (let i = 0; i < bounceCount; i++) {
+    const bounce: Voice = {
+      ...previous,
+      gain: previous.gain * bounceDecay,
+      durationMs: previous.durationMs * bounceDecay,
+      startOffsetMs: offset,
+    };
+    voices.push(bounce);
+    offset += bounce.durationMs;
+    previous = bounce;
+  }
+  return voices;
+}
+
+function planSillyBurstVoices(
+  cue: Cue,
+  config: AudioVisualConfig,
+): readonly Voice[] {
+  switch (cue.spec.sound.timbre) {
+    case "soft":
+      return planSillySoftBurstVoices(cue, config);
+    case "sharp":
+      return []; // cycle 12 adds this
+    case "crackle":
+      return []; // cycle 13 adds this
+  }
+}
+
 /**
  * The silly sound set: cartoonish, wobbly, a different surprise on
  * every press — but every voice's own pitch is still a fixed ratio of
@@ -107,7 +176,7 @@ export function planSillyVoices(
     case "launch":
       return planSillyLaunchVoice(cue, config);
     case "burst":
-      return []; // cycles 11-13 add soft, sharp and crackle
+      return planSillyBurstVoices(cue, config);
     case "flight":
       return planSillyFlightVoices(cue, config);
   }
