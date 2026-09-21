@@ -15,6 +15,8 @@ export interface AudioVisualConfig {
   readonly shellSize: number; // world units, radius
   readonly sparkSize: number; // world units, radius
   readonly sparkSpeed: NumberRange; // world units per second, outward
+  readonly trailMaxPoints: number; // hard cap on trail points, oldest evicted first
+  readonly trailSpacingMs: number; // time between two spark-trail samples
   // Only the ASCII adapter reads this — nested under its own key for the
   // same reason ControlConfig nests `keyboard`: the shape says who owns it.
   readonly ascii: {
@@ -29,6 +31,8 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
   shellSize: 1.5,
   sparkSize: 0.6,
   sparkSpeed: Object.freeze({ min: 15, max: 40 }),
+  trailMaxPoints: 4,
+  trailSpacingMs: 40,
   ascii: Object.freeze({
     columns: 80,
     rows: 40,

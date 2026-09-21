@@ -176,6 +176,10 @@ export function sparkPosition(
   };
 }
 
+// Each trail point is dimmer than the last by this factor, per step back
+// in time — a plain geometric falloff, not tied to any physical quantity.
+const TRAIL_DECAY = 0.6;
+
 function colorAt(colors: Firework["spec"]["colors"], index: number): string {
   const color = colors[index];
   if (color === undefined) {
@@ -224,6 +228,7 @@ export function expandBurst(
       // entries — this loop never runs past either array's length.
       throw new Error("unreachable: spark index out of range");
     }
+    const color = parseHexColor(colorAt(spec.colors, i % spec.colors.length));
     sparks.push({
       kind: "spark",
       position: sparkPosition(
@@ -235,9 +240,35 @@ export function expandBurst(
         phaseElapsedMs,
       ),
       size: config.sparkSize,
-      color: parseHexColor(colorAt(spec.colors, i % spec.colors.length)),
+      color,
       brightness,
     });
+
+    // A trail point is the same closed-form sparkPosition, evaluated a
+    // little earlier — no state, nothing stored between frames. How many
+    // are available grows as phaseElapsedMs does, capped at
+    // config.trailMaxPoints; none exist before the first spacing interval
+    // has elapsed.
+    const availableTrailPoints = Math.min(
+      Math.floor(phaseElapsedMs / config.trailSpacingMs),
+      config.trailMaxPoints,
+    );
+    for (let k = 1; k <= availableTrailPoints; k++) {
+      sparks.push({
+        kind: "trail",
+        position: sparkPosition(
+          firework.position,
+          direction,
+          speed,
+          worldConfig.gravity,
+          worldConfig.drag,
+          phaseElapsedMs - k * config.trailSpacingMs,
+        ),
+        size: config.sparkSize,
+        color,
+        brightness: brightness * TRAIL_DECAY ** k,
+      });
+    }
   }
   return sparks;
 }

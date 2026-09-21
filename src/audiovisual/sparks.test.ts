@@ -394,4 +394,76 @@ describe("expandBurst", () => {
       expect(sparks).toEqual([]);
     },
   );
+
+  // Cycle 13: a spark's trail is the same closed-form sparkPosition,
+  // evaluated a little earlier — no state, nothing stored between frames.
+  // One spark keeps the numbers simple to hand-check.
+  const oneSparkConfig = {
+    ...defaultAudioVisualConfig,
+    trailSpacingMs: 50,
+    trailMaxPoints: 2,
+  };
+  const oneSparkSpec = fireworkSpec({ particleCount: 1 });
+
+  it("emits no trail points before trailSpacingMs has elapsed", () => {
+    const entity = firework({ spec: oneSparkSpec, phaseElapsedMs: 30 });
+
+    const sprites = expandBurst(entity, oneSparkConfig, defaultWorldConfig);
+
+    expect(sprites.every((s) => s.kind === "spark")).toBe(true);
+  });
+
+  it("emits a trail point at each spacing interval, positioned by sparkPosition, each dimmer than the last", () => {
+    const phaseElapsedMs = 120; // two full spacings (50, 100) have elapsed
+    const entity = firework({ spec: oneSparkSpec, phaseElapsedMs });
+    const [direction] = sparkDirections(
+      oneSparkSpec.pattern,
+      1,
+      oneSparkSpec.seed,
+    );
+    const [speed] = sparkSpeeds(
+      oneSparkSpec.pattern,
+      1,
+      oneSparkSpec.seed,
+      oneSparkConfig,
+    );
+    if (direction === undefined || speed === undefined) {
+      throw new Error("test fixture produced no sparks");
+    }
+
+    const sprites = expandBurst(entity, oneSparkConfig, defaultWorldConfig);
+    const trails = sprites.filter((s) => s.kind === "trail");
+
+    expect(trails).toHaveLength(2);
+    expect(trails[0]?.position).toEqual(
+      sparkPosition(
+        entity.position,
+        direction,
+        speed,
+        defaultWorldConfig.gravity,
+        defaultWorldConfig.drag,
+        phaseElapsedMs - 50,
+      ),
+    );
+    expect(trails[1]?.position).toEqual(
+      sparkPosition(
+        entity.position,
+        direction,
+        speed,
+        defaultWorldConfig.gravity,
+        defaultWorldConfig.drag,
+        phaseElapsedMs - 100,
+      ),
+    );
+    expect(trails[1]?.brightness).toBeLessThan(trails[0]?.brightness ?? 0);
+    expect(trails[0]?.brightness).toBeLessThan(sprites[0]?.brightness ?? 0);
+  });
+
+  it("caps trail points at config.trailMaxPoints even with far more elapsed time available", () => {
+    const entity = firework({ spec: oneSparkSpec, phaseElapsedMs: 5000 });
+
+    const sprites = expandBurst(entity, oneSparkConfig, defaultWorldConfig);
+
+    expect(sprites.filter((s) => s.kind === "trail")).toHaveLength(2);
+  });
 });
