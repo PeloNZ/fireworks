@@ -8,7 +8,8 @@ This document assumes no background in rendering or audio. Where a decision need
 the explanation is here in full, not linked out.
 
 **Out of scope here**: any renderer beyond ASCII, background music, stereo panning, and networking. This
-plan draws a character grid and plays two kinds of sound effect — a launch and a burst — nothing more.
+plan draws a character grid and plays three kinds of sound effect — a launch, a flight whistle, and a
+burst — nothing more.
 
 ## Why AudioVisual does not simulate sparks, and why it isn't the renderer either
 
@@ -306,9 +307,19 @@ pure tone. Web Audio has no built-in noise generator, so this layer builds one b
 noise, not `Math.random()`, so the same firework sounds the same every time it's replayed. A
 `BiquadFilterNode` afterward shapes that raw noise into something closer to a specific character — a
 lowpass filter (letting only low frequencies through) sounds duller and softer; a bandpass filter (only a
-narrow band around one frequency) sounds sharper and more focused; combined with a short or long envelope,
-this is enough to make `"soft"`, `"sharp"`, and `"crackle"` clearly distinct from each other with nothing
-but noise, a filter, and an envelope.
+narrow band around one frequency) sounds sharper and more focused. A tone's own filter has to track the
+tone's pitch rather than sit at some fixed frequency: `spec.sound.pitch` only ever runs 220–880Hz, so a
+filter fixed anywhere far outside that range attenuates the only frequency the oscillator actually
+produces, silencing it rather than shaping it. `"soft"` is a lowpass tuned safely above the tone's own
+pitch — it always passes the fundamental, only dulling what's above it — and `"sharp"` is a bandpass
+centred exactly on the pitch, which works because a bandpass filter has unity gain at its own centre
+frequency regardless of Q. A filter centred on a pure sine's only frequency does nothing else to shape it,
+so `"soft"` and `"sharp"` also use different oscillator waveforms (sine and sawtooth) — once both pass
+their fundamental cleanly, the waveform is what makes them sound different beyond release length alone.
+Noise has no single pitch to track, so `"crackle"`'s micro-bursts keep their own fixed, bright bandpass
+filter — broadband noise genuinely carries energy up there, unlike a pure tone. Combined with a short or
+long envelope, this is enough to make `"soft"`, `"sharp"`, and `"crackle"` clearly distinct from each
+other.
 
 ### One voice, one graph, then gone
 
@@ -328,9 +339,12 @@ to turn Action's continuous state into discrete **cues** — "this just happened
 
 `04_plan_action_layer.md` already built the phase machine for exactly this purpose: _"Each phase exists
 so AudioVisual has a distinct set of effects to draw later."_ Entering `launching` is the launch sound.
-Entering `exploding` is the burst sound. No change to Action is needed — this layer simply watches the
-phase Action already reports and remembers what it saw last time (`createPhaseWatcher`, decision 6's one
-sanctioned use of memory), emitting a cue exactly when a phase changes.
+Entering `flying` is the flight whistle — the one cue in this layer that isn't a one-shot: it fires once,
+but the sound it plans holds for the whole time a shell is airborne, so a key's family carries through
+launch, flight, and burst rather than falling silent in between. Entering `exploding` is the burst sound.
+No change to Action is needed — this layer simply watches the phase Action already reports and remembers
+what it saw last time (`createPhaseWatcher`, decision 6's one sanctioned use of memory), emitting a cue
+exactly when a phase changes.
 
 The one way this can go wrong is if a whole phase begins and ends between two observations — a phase this
 layer never sees, because no `entities()` call landed while it was current. The numbers rule this out:
@@ -373,9 +387,10 @@ interface Frame {
 type Renderer = (frame: Frame) => void; // cycle 5
 
 interface Cue {
-  readonly kind: "launch" | "burst";
+  readonly kind: "launch" | "burst" | "flight";
   readonly spec: FireworkSpec;
-} // cycle 16
+} // cycle 16; "flight" fires once, entering "flying" — a sustained sound
+// for as long as a shell is airborne, not a one-shot like the other two
 
 interface Envelope {
   readonly attackMs: number;
@@ -393,15 +408,19 @@ interface Filter {
 // One scheduled sound. Built once, played once, then discarded.
 interface Voice {
   readonly kind: "tone" | "noise";
+  readonly waveform: "sine" | "sawtooth" | "square" | "triangle"; // only meaningful for "tone"
   readonly frequencyHz: number;
-  readonly frequencyEndHz: number | null; // cycle 20: a glide target; null = constant pitch
+  readonly frequencyEndHz: number | null; // cycle 20: a glide target; null = constant pitch.
+  // The thing that glides is the oscillator's own pitch for a "tone", or
+  // the filter's cutoff for a "noise" — noise has no pitch of its own.
   readonly durationMs: number;
   readonly envelope: Envelope;
+  readonly gain: number; // 0..1, this voice's own peak, before the shared master gain
   readonly seed: number; // cycle 21: drives the noise buffer, when kind is "noise"
   readonly filter: Filter | null; // cycle 22; null = no filter stage
   readonly startOffsetMs: number; // cycle 22: start later than the cue's own start;
   // 0 for every voice except crackle's staggered micro-bursts
-} // cycle 17, grows through 20-22
+} // cycle 17, grows through 20-22; waveform and gain added by playtesting fixes
 
 type AudioSink = (voices: readonly Voice[]) => void; // cycle 18
 ```
@@ -440,6 +459,10 @@ interface AudioVisualConfig {
     };
     readonly burst: {
       readonly envelope: Envelope; // base envelope; timbre may adjust release
+    };
+    readonly flight: {
+      readonly envelope: Envelope;
+      readonly gain: number; // 0..1 — quiet, since it plays underneath everything else
     };
   };
 }
@@ -580,11 +603,11 @@ thing — shell and spark alike — trails a fading streak behind it.
 ### Pass C — sound
 
 16. **`createPhaseWatcher()`.** Returns `cues(entities): readonly Cue[]`. Calling it with a firework
-    entering `"launching"` for the first time gives a `"launch"` cue; entering `"exploding"` gives a
-    `"burst"` cue; the very first sighting of a firework in `"armed"` gives no cue (nothing changed —
-    there is no prior phase to compare against); a call where nothing's phase changed gives no cues;
-    an id present in one call and absent from the next is forgotten, not held onto expecting it to come
-    back.
+    entering `"launching"` for the first time gives a `"launch"` cue; entering `"flying"` gives a
+    `"flight"` cue; entering `"exploding"` gives a `"burst"` cue; the very first sighting of a firework in
+    `"armed"` gives no cue (nothing changed — there is no prior phase to compare against); a call where
+    nothing's phase changed gives no cues; an id present in one call and absent from the next is
+    forgotten, not held onto expecting it to come back.
 17. **`planVoices(cue, config): readonly Voice[]` — the beep.** A `"burst"` cue returns exactly one
     `"tone"` voice: `frequencyHz` equal to `cue.spec.sound.pitch`, `frequencyEndHz` of `null` (no glide
     yet), `durationMs` equal to `cue.spec.burstDurationMs`, and `config.audio.burst.envelope` used as
@@ -612,26 +635,50 @@ thing — shell and spark alike — trails a fading streak behind it.
 20. **The launch whoosh.** `planVoices` gains a case for `"launch"` cues: one `"noise"` voice, `durationMs`
     equal to `config.audio.launch.durationMs`, `frequencyHz` and `frequencyEndHz` both set so the sound
     rises over its duration (a glide upward, distinct from the burst's flat pitch), using
-    `config.audio.launch.envelope`.
+    `config.audio.launch.envelope`. The rise needs a real filter to carry it: noise has no pitch of its
+    own for an oscillator to glide, so the voice carries a lowpass filter starting at `frequencyHz`, and
+    `createWebAudioSink` sweeps that filter's own cutoff from `frequencyHz` to `frequencyEndHz` over the
+    voice's duration — the same `scheduleFrequency` helper an oscillator's own pitch glide uses for a
+    `"tone"` voice. Every frequency this sink schedules, on an oscillator or a filter, is clamped to
+    `MAX_AUDIBLE_HZ` (16000) first, a cheap ceiling against anything a future glide might overshoot.
 21. **`createNoiseBuffer(context, seed, durationMs): AudioBuffer`.** A fake `context.createBuffer` records
     the requested length and sample rate; the buffer's samples are filled from
     `createRandom(seed)` — asserted by checking the same seed always produces the same buffer contents,
     and two different seeds differ. `createWebAudioSink` uses this whenever a voice's `kind` is
     `"noise"`, feeding the buffer into a `BufferSourceNode` instead of an `OscillatorNode`.
-22. **Timbre.** `planVoices`'s burst case grows a filter chosen from `cue.spec.sound.timbre`:
-    `"soft"` — a low-frequency lowpass filter and a longer release; `"sharp"` — a high-frequency,
-    high-Q bandpass filter and a short, snappy release; `"crackle"` — the same bandpass as `"sharp"`,
-    plus `config.audio.crackleCount` extra short `"noise"` voices with tiny durations, sharing the same
-    bandpass filter, staggered across the burst's duration at offsets drawn from
-    `createRandom(cue.spec.seed)`. Each timbre is asserted as its own case, checked against an unusual
-    `crackleCount` so a hardcoded count of extra voices fails.
-    `createWebAudioSink` gains a `BiquadFilterNode`, inserted between a voice's source and its own gain
-    whenever `voice.filter` is set, and schedules each voice at its own
+22. **Timbre.** `planVoices`'s burst case grows a filter chosen from `cue.spec.sound.timbre`, every filter
+    tracking the tone's own `frequencyHz` rather than sitting at some fixed value — a filter that doesn't
+    track the pitch it's shaping can end up attenuating the only frequency the oscillator produces, since
+    `spec.sound.pitch` only ever runs 220–880Hz. `"soft"` is a lowpass at `1.8 ×` the tone's own pitch
+    (always above it, so the fundamental always passes; only what's above gets dulled) with a longer
+    release; `"sharp"` is a bandpass centred exactly on the tone's own pitch (unity gain at a bandpass's
+    own centre regardless of Q, so it can never silence what it's centred on) with a short, snappy
+    release. `"soft"` and `"sharp"` also use different oscillator waveforms — sine and sawtooth — since a
+    filter centred on a pure sine's only frequency shapes nothing else, and without a waveform difference
+    the two would sound identical once both pass their fundamental cleanly. `"crackle"` is `"sharp"`'s
+    tone plus `config.audio.crackleCount` extra short `"noise"` voices with tiny durations, staggered
+    across the burst's duration at offsets drawn from `createRandom(cue.spec.seed)` — these micro-bursts
+    carry their own fixed, bright bandpass filter (4000Hz), independent of the main tone's filter, since
+    broadband noise genuinely carries energy up there in a way a single tone doesn't. Each timbre is
+    asserted as its own case, checked against an unusual `crackleCount` so a hardcoded count of extra
+    voices fails. `createWebAudioSink` gains a `BiquadFilterNode`, inserted between a voice's source and
+    its own gain whenever `voice.filter` is set, and schedules each voice at its own
     `baseStartTime + voice.startOffsetMs / 1000` rather than one shared time for the whole batch — what
     makes crackle's stagger audible.
+23. **The flight whistle, `waveform`, and `gain`.** `planVoices` gains a case for `"flight"` cues: one
+    quiet, sustained `"tone"` voice, `frequencyHz` at half the burst's own pitch (an octave below, so a
+    key's family carries through without flight sounding like a held burst), lasting `spec.fuseMs`, using
+    `config.audio.flight.envelope`. A sustained whistle at full volume, overlapping bursts and other
+    fireworks' own whistles under one shared master gain, would dominate and clip, so `Voice` gains `gain`
+    — 0..1, this voice's own peak before the master — and every `planVoices` case sets one appropriate to
+    its role: full for the main burst, quieter for launch, quieter still for the flight tone and crackle's
+    many simultaneous micro-bursts. `scheduleEnvelope` takes this `gain` as its peak instead of hardcoding
+    one. `Voice` also gains `waveform` (`"sine" | "sawtooth" | "square" | "triangle"`, meaningful only for
+    `"tone"`), and `createWebAudioSink` sets an oscillator's `type` from it.
 
-**Payoff**: three kinds of bang, clearly different from each other, and stable per key — the same
-key always sounds the same way, the same hypothesis `01_intent.md` states for sight extended to sound.
+**Payoff**: three kinds of bang, clearly different from each other, stable per key — the same key always
+sounds the same way, the same hypothesis `01_intent.md` states for sight extended to sound — and a shell
+that whistles the whole time it's in the air, not just at launch and burst.
 
 ## Critical files
 
@@ -648,8 +695,8 @@ key always sounds the same way, the same hypothesis `01_intent.md` states for si
 | `src/audiovisual/sparks.ts`             | Cycles 8–13                                                                                       |
 | `src/audiovisual/trails.ts`             | Cycle 14                                                                                          |
 | `src/audiovisual/phases.ts`             | Cycle 16                                                                                          |
-| `src/audiovisual/voices.ts`             | Cycles 17, 20, 21, 22                                                                             |
-| `src/audiovisual/adapters/webAudio.ts`  | Cycles 18, 21, 22                                                                                 |
+| `src/audiovisual/voices.ts`             | Cycles 17, 20, 21, 22, 23                                                                         |
+| `src/audiovisual/adapters/webAudio.ts`  | Cycles 18, 21, 22, 23                                                                             |
 | `src/main.ts`                           | Cycle 7 (visuals), cycle 19 (audio) — adds rendering alongside Action's console sink, which stays |
 
 ## Out of scope
