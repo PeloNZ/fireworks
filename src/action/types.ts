@@ -73,12 +73,8 @@ export interface FireworkSpec {
  * runs the same integration through "launching", "flying" and "exploding"
  * regardless of which one is active. See "The state machine" in
  * docs/04_plan_action_layer.md.
- *
- * Not exported yet — `Firework` below is the only thing that names it so
- * far, in this same file. It gets its own export in cycle 12 (`stepPhase`),
- * the first cycle that needs to import it directly.
  */
-type FireworkPhase =
+export type FireworkPhase =
   "armed" | "launching" | "flying" | "exploding" | "finished";
 
 /**

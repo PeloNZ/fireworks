@@ -24,6 +24,7 @@ export interface ActionConfig {
   readonly paletteSize: number; // colours drawn per firework
   readonly particleCount: NumberRange;
   readonly burstDurationMs: NumberRange;
+  readonly launchDurationMs: number; // armed -> launching -> flying
   readonly sound: {
     readonly pitch: NumberRange;
     readonly timbres: readonly FireworkTimbre[];
@@ -78,6 +79,7 @@ export const defaultActionConfig: ActionConfig = Object.freeze({
   paletteSize: 3,
   particleCount: Object.freeze({ min: 40, max: 120 }),
   burstDurationMs: Object.freeze({ min: 600, max: 1200 }),
+  launchDurationMs: 200,
   sound: Object.freeze({
     pitch: Object.freeze({ min: 220, max: 880 }),
     timbres: Object.freeze<readonly FireworkTimbre[]>([
