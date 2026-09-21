@@ -1,4 +1,8 @@
+import { paintFrame } from "./pixelGrid.ts";
+import { paintBackdrop } from "./pixelBackdrop.ts";
 import { parseHexColor } from "../color.ts";
+import type { AudioVisualConfig } from "../config.ts";
+import type { Backdrop, Renderer } from "../types.ts";
 
 // The thin pixel renderer: owns the canvas port and the last step from
 // palette indices to real colour. Everything upstream of this file
@@ -39,4 +43,59 @@ export function toRgba(
   }
 
   return result;
+}
+
+/**
+ * The minimal slice of a canvas 2D context this renderer needs — a
+ * "port", the same pattern `TextTarget` and `AudioContextLike` are. A
+ * real `putImageData` call satisfies it; tests use a plain object that
+ * records what it was called with instead. See "Why a fake target beats
+ * jsdom" in docs/03_plan_control_layer.md.
+ */
+export interface PixelTarget {
+  paint(
+    pixels: Uint8ClampedArray<ArrayBuffer>,
+    width: number,
+    height: number,
+  ): void;
+}
+
+/**
+ * Builds a `Renderer` that paints two planes: `background`, once here
+ * — outside the returned closure, the same "rasterise once" optimisation
+ * `createAsciiRenderer` uses — and `sprites`, every frame. `background`
+ * is `null` when there is no backdrop to paint at all, so `main.ts` need
+ * not create a second canvas with nothing to put on it.
+ *
+ * The sprite plane's buffer carries real transparency (`pixel.blank` is
+ * its transparent index), so the background plane shows through wherever
+ * a frame draws nothing — `putImageData` replaces destination pixels
+ * including alpha, so this is what lets two canvases composite at all.
+ * The background plane itself is fully opaque (`transparentIndex: null`)
+ * — it is never composited over anything.
+ */
+export function createPixelRenderer(options: {
+  readonly background: PixelTarget | null;
+  readonly sprites: PixelTarget;
+  readonly config: AudioVisualConfig;
+  readonly backdrop: Backdrop | null;
+}): Renderer {
+  const { background, sprites, config, backdrop } = options;
+  const { pixel } = config;
+
+  if (background !== null && backdrop !== null) {
+    background.paint(
+      toRgba(paintBackdrop(backdrop, pixel), pixel.palette, null),
+      pixel.columns,
+      pixel.rows,
+    );
+  }
+
+  return (frame) => {
+    sprites.paint(
+      toRgba(paintFrame(frame, pixel), pixel.palette, pixel.blank),
+      pixel.columns,
+      pixel.rows,
+    );
+  };
 }
