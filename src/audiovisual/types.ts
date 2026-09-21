@@ -53,9 +53,19 @@ export interface Envelope {
   readonly releaseMs: number;
 } // cycle 17
 
+/** How a `BiquadFilterNode` shapes a voice's tone colour — see "Two kinds
+ * of sound" in docs/05_audio_visual_layer.md. */
+export interface Filter {
+  readonly kind: "lowpass" | "highpass" | "bandpass";
+  readonly frequencyHz: number;
+  readonly q: number; // resonance / narrowness
+} // cycle 22
+
 /** One scheduled sound, built once and played once — see `planVoices` in
  * voices.ts. `frequencyEndHz` of `null` means a constant pitch; a value
- * is a glide target (cycle 20). */
+ * is a glide target (cycle 20). `startOffsetMs` schedules this voice
+ * later than the cue's own start — 0 for every voice except crackle's
+ * staggered micro-bursts (cycle 22). */
 export interface Voice {
   readonly kind: "tone" | "noise";
   readonly frequencyHz: number;
@@ -63,6 +73,8 @@ export interface Voice {
   readonly durationMs: number;
   readonly envelope: Envelope;
   readonly seed: number; // drives a "noise" voice's noise buffer
+  readonly filter: Filter | null; // cycle 22
+  readonly startOffsetMs: number; // cycle 22
 } // cycle 17, grows
 
 /** An audio port's whole contract: given the voices planned for this

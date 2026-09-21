@@ -35,6 +35,7 @@ function fakeContext(currentTime: number, sampleRate = 44100) {
   const gains: ReturnType<typeof fakeGain>[] = [];
   const buffers: ReturnType<typeof fakeBuffer>[] = [];
   const bufferSources: ReturnType<typeof fakeBufferSource>[] = [];
+  const filters: ReturnType<typeof fakeFilter>[] = [];
   const destination = { connect: vi.fn() };
 
   function fakeOscillator() {
@@ -48,6 +49,14 @@ function fakeContext(currentTime: number, sampleRate = 44100) {
   function fakeGain() {
     return {
       gain: fakeAudioParam(),
+      connect: vi.fn(),
+    };
+  }
+  function fakeFilter() {
+    return {
+      type: "",
+      frequency: fakeAudioParam(),
+      Q: fakeAudioParam(),
       connect: vi.fn(),
     };
   }
@@ -94,9 +103,22 @@ function fakeContext(currentTime: number, sampleRate = 44100) {
       bufferSources.push(source);
       return source;
     }),
+    createBiquadFilter: vi.fn(() => {
+      const filter = fakeFilter();
+      filters.push(filter);
+      return filter;
+    }),
   };
 
-  return { context, oscillators, gains, buffers, bufferSources, destination };
+  return {
+    context,
+    oscillators,
+    gains,
+    buffers,
+    bufferSources,
+    filters,
+    destination,
+  };
 }
 
 const toneVoice: Voice = {
@@ -106,6 +128,8 @@ const toneVoice: Voice = {
   durationMs: 1000,
   envelope: { attackMs: 10, decayMs: 20, sustainLevel: 0.5, releaseMs: 100 },
   seed: 1,
+  filter: null,
+  startOffsetMs: 0,
 };
 
 const noiseVoice: Voice = {
@@ -115,6 +139,8 @@ const noiseVoice: Voice = {
   durationMs: 300,
   envelope: { attackMs: 5, decayMs: 5, sustainLevel: 0.8, releaseMs: 50 },
   seed: 7,
+  filter: null,
+  startOffsetMs: 0,
 };
 
 // An unusual lookahead/gain/cap, not the defaults, so hardcoded values
@@ -279,5 +305,51 @@ describe("createNoiseBuffer", () => {
     expect(Array.from(bufferA.getChannelData(0))).not.toEqual(
       Array.from(bufferB.getChannelData(0)),
     );
+  });
+});
+
+describe("createWebAudioSink — cycle 22 (filter and startOffsetMs)", () => {
+  it("inserts a filter node between the source and its gain when the voice has one", () => {
+    const { context, oscillators, filters, gains } = fakeContext(10);
+    const sink = createWebAudioSink({ context, config });
+    const filtered: Voice = {
+      ...toneVoice,
+      filter: { kind: "lowpass", frequencyHz: 500, q: 3 },
+    };
+
+    sink([filtered]);
+
+    expect(filters).toHaveLength(1);
+    const [master, voiceGain] = gains;
+    expect(oscillators[0]?.connect).toHaveBeenCalledWith(filters[0]);
+    expect(filters[0]?.connect).toHaveBeenCalledWith(voiceGain);
+    expect(voiceGain?.connect).toHaveBeenCalledWith(master);
+    expect(filters[0]?.type).toBe("lowpass");
+    expect(filters[0]?.frequency.calls).toEqual([
+      { method: "setValueAtTime", value: 500, time: 10.02 },
+    ]);
+    expect(filters[0]?.Q.calls).toEqual([
+      { method: "setValueAtTime", value: 3, time: 10.02 },
+    ]);
+  });
+
+  it("connects the source directly to its gain when the voice has no filter", () => {
+    const { context, filters } = fakeContext(10);
+    const sink = createWebAudioSink({ context, config });
+
+    sink([toneVoice]);
+
+    expect(filters).toHaveLength(0);
+  });
+
+  it("schedules a voice with startOffsetMs later than lookaheadMs alone", () => {
+    const { context, oscillators } = fakeContext(10);
+    const sink = createWebAudioSink({ context, config });
+    const delayed: Voice = { ...toneVoice, startOffsetMs: 50 };
+
+    sink([delayed]);
+
+    // lookaheadMs=20 -> 0.02s, startOffsetMs=50 -> 0.05s.
+    expect(oscillators[0]?.start).toHaveBeenCalledWith(10.07);
   });
 });

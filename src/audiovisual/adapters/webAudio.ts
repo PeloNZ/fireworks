@@ -1,6 +1,6 @@
 import { createRandom } from "../../action/random.ts";
 import type { AudioVisualConfig } from "../config.ts";
-import type { AudioSink, Voice } from "../types.ts";
+import type { AudioSink, Filter, Voice } from "../types.ts";
 
 /**
  * The minimal slice of a real `AudioParam` this sink needs — a "port",
@@ -44,6 +44,12 @@ interface BufferSourceNodeLike extends SourceNodeLike {
   buffer: AudioBufferLike | null;
 }
 
+interface BiquadFilterNodeLike extends AudioNodeLike {
+  type: string;
+  readonly frequency: AudioParamLike;
+  readonly Q: AudioParamLike;
+}
+
 /** The minimal slice of a real `AudioContext` this sink needs. A real
  * `AudioContext` satisfies this; tests use a plain object instead. */
 export interface AudioContextLike {
@@ -58,6 +64,7 @@ export interface AudioContextLike {
     length: number,
     sampleRate: number,
   ): AudioBufferLike;
+  createBiquadFilter(): BiquadFilterNodeLike;
 }
 
 /**
@@ -119,6 +126,18 @@ function createNoiseSource(
   return source;
 }
 
+function createFilterNode(
+  context: AudioContextLike,
+  filter: Filter,
+  startTime: number,
+): BiquadFilterNodeLike {
+  const node = context.createBiquadFilter();
+  node.type = filter.kind;
+  node.frequency.setValueAtTime(filter.frequencyHz, startTime);
+  node.Q.setValueAtTime(filter.q, startTime);
+  return node;
+}
+
 function playVoice(
   context: AudioContextLike,
   master: GainNodeLike,
@@ -132,7 +151,13 @@ function playVoice(
       : createNoiseSource(context, voice);
 
   const gain = context.createGain();
-  source.connect(gain);
+  if (voice.filter) {
+    const filterNode = createFilterNode(context, voice.filter, startTime);
+    source.connect(filterNode);
+    filterNode.connect(gain);
+  } else {
+    source.connect(gain);
+  }
   gain.connect(master);
   scheduleEnvelope(gain.gain, voice.envelope, startTime, durationSeconds);
 
@@ -160,8 +185,9 @@ export function createWebAudioSink(options: {
   master.connect(context.destination);
 
   return (voices) => {
-    const startTime = context.currentTime + config.audio.lookaheadMs / 1000;
+    const baseStartTime = context.currentTime + config.audio.lookaheadMs / 1000;
     for (const voice of voices.slice(0, config.audio.maxVoices)) {
+      const startTime = baseStartTime + voice.startOffsetMs / 1000;
       playVoice(context, master, voice, startTime);
     }
   };

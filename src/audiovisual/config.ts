@@ -35,6 +35,7 @@ export interface AudioVisualConfig {
     readonly lookaheadMs: number;
     readonly masterGain: number; // 0..1, overall volume
     readonly maxVoices: number; // hard cap on simultaneous scheduled voices
+    readonly crackleCount: number; // extra micro-bursts for the "crackle" timbre
     readonly burst: {
       readonly envelope: Envelope;
     };
@@ -62,6 +63,7 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     lookaheadMs: 30,
     masterGain: 0.8,
     maxVoices: 16,
+    crackleCount: 5,
     burst: Object.freeze({
       envelope: Object.freeze({
         attackMs: 5,
