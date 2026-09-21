@@ -69,9 +69,11 @@ So the split is the one this layer already uses, one level down:
   a ramp character per brightness, rows and columns. A future Canvas adapter reads the same `Backdrop`
   and draws discs and a filled polygon, reusing every placement decision without touching it.
 
-A house rule that keeps the split honest, worth stating because it is checkable: **the character `"O"`
-must never appear anywhere under `src/audiovisual/` outside `adapters/`.** A glyph is a rendering
-decision. If one leaks into the core, the core has started rendering.
+A house rule that keeps the split honest, worth stating because it is checkable: **`backdrop.ts` must
+never name a character.** A glyph is a rendering decision; if one appears in the core, the core has
+started rendering. `config.ts` does hold the default glyphs, which is not a violation — declaring a
+tunable is not deciding how to draw, and decision 6 below explains why they live in config rather than
+inside the adapter.
 
 ## Decisions
 
@@ -93,7 +95,12 @@ decision. If one leaks into the core, the core has started rendering.
 5. **A brighter sunset washes out the stars.** Star count falls as the sky's horizon brightness rises, so
    a near-black night is full of stars and a lit horizon shows only a few. Each sky is then coherent
    rather than randomly assembled. Note what this cannot mean here: with fixed glyphs (decision 3) a star
-   has no brightness to dim, so "washed out" is expressible only as **fewer**, not fainter.
+   has no brightness to dim, so "washed out" is expressible only as **fewer**, not fainter. How much is
+   washed away is the `STAR_WASHOUT` constant in `backdrop.ts` — at `0.8`, the brightest sky the cap
+   allows still keeps a fifth of its stars, so a sunset thins the field rather than emptying it. A module
+   constant rather than a config field, the same standing `sparks.ts` gives its pattern-shaping
+   constants: the tests assert the invariant (fewer under a lit sky) rather than a pinned count, so a
+   config field would buy nothing.
 6. **Glyphs live in config, not in module constants.** Only so a test can drive unusual glyphs and a
    hardcoded `"O"` fails — the project's standing rule that an assertion must defeat a shortcut.
 7. **Its own document.** `05_audio_visual_layer.md` stays closed as the v1 record; this file's cycles
@@ -276,10 +283,15 @@ The adapter's, also pure:
 // adapters/asciiBackdrop.ts
 function rasteriseBackdrop(
   backdrop: Backdrop,
-  ascii: AudioVisualConfig["ascii"],
+  config: AudioVisualConfig,
 ): string;
 function overlayGrid(base: string, over: string): string;
 ```
+
+`rasteriseBackdrop` takes the whole config, unlike `rasteriseFrame` which takes only the `ascii` slice,
+because it needs two slices: `ascii` for the grid and its characters, and `backdrop` for the ground's
+fill brightness. That brightness is a fixed tunable rather than anything a seed decides, so it stays in
+config instead of riding on the `Backdrop` value — a `Backdrop` holds only what one seed produced.
 
 And the one changed signature in the whole plan:
 
@@ -296,12 +308,11 @@ function createAsciiRenderer(options: {
 this layer already states absence that way in `Voice.filter` and `Voice.frequencyEndHz`. Requiring it
 makes "is there a sky here?" an explicit decision at every call site, so `main.ts` cannot quietly lose it.
 
-**`rasteriseFrame` is not touched at all** — not its signature, not its behaviour. Compositing happens
-above it:
+**`rasteriseFrame`'s signature and behaviour are unchanged**, so all four of its full-grid tests stay
+green with their assertions untouched. Compositing happens above it:
 
 ```ts
-const base =
-  backdrop === null ? null : rasteriseBackdrop(backdrop, config.ascii);
+const base = backdrop === null ? null : rasteriseBackdrop(backdrop, config);
 return (frame) => {
   const grid = rasteriseFrame(frame, config.ascii);
   target.textContent = base === null ? grid : overlayGrid(base, grid);
@@ -312,9 +323,15 @@ return (frame) => {
 is a code shape a reviewer checks rather than a behaviour a test asserts — inventing an injection seam
 purely to count calls would add a concept for a test's sake.
 
-The only edit to existing production logic in this plan is a single `export` keyword on `rampChar` in
-`asciiGrid.ts`, so the sky and the ground mass reuse the one brightness-to-character mapping instead of a
-second copy that can drift from it.
+Two things in `asciiGrid.ts` are shared rather than copied, both for the same reason — a second copy of a
+rule that must agree between the two rasterisers can drift, and a backdrop misaligned from the fireworks
+by one cell would be a hard bug to see:
+
+- **`rampChar` is exported**, so the sky and the ground mass use the one brightness-to-character mapping.
+- **The world-to-cell mapping is extracted as `toCell`**, and `rasteriseFrame` now calls it rather than
+  computing the `y` flip and the bounds check inline. Its four existing tests passing unchanged is the
+  proof the extraction is faithful. `toCell` returns an inline object type rather than a named `Cell`
+  interface, because a type nothing else imports is dead code `knip` flags.
 
 ## Seeding
 
@@ -416,9 +433,10 @@ src/audiovisual/
                          Backdrop  — one cycle at a time
   config.ts            + backdrop key, ascii.backdropGlyphs
   adapters/
-    asciiBackdrop.ts   rasteriseBackdrop(backdrop, asciiConfig),
+    asciiBackdrop.ts   rasteriseBackdrop(backdrop, config),
                        overlayGrid(base, over)                       [pure]
-    asciiGrid.ts       rampChar now exported; rasteriseFrame untouched
+    asciiGrid.ts       rampChar and toCell now exported; rasteriseFrame
+                       calls toCell, its behaviour unchanged
     ascii.ts           createAsciiRenderer({ target, config, backdrop })
 src/main.ts            + page-load seed, buildBackdrop, backdrop passed in
 index.html             + one <style> block — see "The white page"
@@ -476,6 +494,10 @@ Nothing visible changes in this pass. It ends with a whole sky existing as data 
    strictly more stars than a lit one (`horizon: 0.24`) from the same seed; the moon and the planet are
    present in both, because they are the scenery, not the weather. Asserted as the invariant — more, not
    a pinned count — the way `sparks.test.ts` asserts a wider jitter without pinning random numbers.
+   Plus the edge this arithmetic creates, named after the trap: the washout is a fraction **of**
+   `skyMaxBrightness`, so a cap of `0` would make it `0 / 0` and silently produce `NaN` stars. A cap of
+   `0` must mean no sunset at all and the full star count. Same class of edge as `sparkPosition`'s drag
+   of zero, and reachable the same way — the verification list below tells a reader to zero that cap.
 5. **`buildGround(seed, config)`.** Unusual `groundPoints: 5` with a degenerate
    `groundHeight: { min: 7, max: 7 }`, which pins every height and makes the whole return value
    assertable exactly: `x` values `-50, -25, 0, 25, 50`, every `height` exactly `7`. A second case with
@@ -503,9 +525,12 @@ scatter of bodies in paint order, and a skyline — with nothing drawn yet.
    fixture avoids any `.5` rounding tie, so the test does not quietly depend on how `Math.round` breaks
    them, and the height-`0` ground draws nothing, so this test stays green unedited through cycles 9 and 10.
 9. **`rasteriseBackdrop` — body glyphs.** Unusual glyphs `{ star: "S", moon: "M", planet: "P", ridge: "R" }`
-   so the real defaults cannot pass. Bodies map to cells through exactly the formulas `rasteriseFrame`
-   uses, so a body and a spark at one world point land in one cell. Includes a star placed at the moon's
-   own position, asserting `"M"` wins — paint order doing the work of an overlap test.
+   so the real defaults cannot pass. Bodies map to cells through exactly the mapping `rasteriseFrame`
+   uses — this is the cycle that extracts it as `toCell` and has both callers share it, rather than
+   keeping a second copy of the `y` flip that could drift. A body and a spark at one world point
+   therefore land in one cell. Includes a star placed at the moon's own position, asserting `"M"` wins —
+   paint order doing the work of an overlap test — and a body far outside the box, asserting it is
+   clipped rather than wrapped.
 10. **`rasteriseBackdrop` — the ridge and the fill, painted last.** A cell is ground when its row-centre
     `y` is at or below `groundHeightAt` at its column-centre `x`; the topmost ground cell in a column is
     the ridge glyph, and every cell below it is `rampChar(groundFillBrightness)`. Fixture: `columns: 4`,
@@ -518,11 +543,17 @@ scatter of bodies in paint order, and a skyline — with nothing drawn yet.
 12. **`createAsciiRenderer({ target, config, backdrop })`.** The existing test gains `backdrop: null` and
     keeps its assertion unchanged, which is what proves the no-backdrop path still behaves exactly as it
     did. A new case, driven with unusual `columns` and `rows`, asserts the single write equals
-    `overlayGrid(rasteriseBackdrop(backdrop, ascii), rasteriseFrame(frame, ascii))` — the composition,
-    not a coincidence.
+    `overlayGrid(rasteriseBackdrop(backdrop, config), rasteriseFrame(frame, config.ascii))` — the
+    composition, not a coincidence.
 13. **Wire `src/main.ts`.** The page-load seed, one `buildBackdrop` call, and the new option passed to
     `createAsciiRenderer`. Not unit tested, like the rest of that file — proven by loading the page and
     refreshing.
+
+    **Cycles 12 and 13 landed as one commit.** `backdrop` is a required option rather than an optional
+    one, which is the point of it — but it also means `tsc` cannot pass while `main.ts` is still calling
+    `createAsciiRenderer` without it. Splitting them would have meant either a broken commit or making
+    the option optional purely to keep two commits apart, and neither is worth it.
+
 14. **The dark page.** One `<style>` block in `index.html`, per "The white page" above. Its own commit,
     no test impact.
 15. **doc-sync.** This file reconciled against what was actually built, `README.md`'s status paragraph,
@@ -535,16 +566,16 @@ stars, a moon, a planet, and a dark landform along the bottom. Refresh and get a
 
 ## Critical files
 
-| Path                                        | Purpose                                                           |
-| ------------------------------------------- | ----------------------------------------------------------------- |
-| `src/audiovisual/backdrop.ts`               | Cycles 1–7 — the whole core                                       |
-| `src/audiovisual/types.ts`                  | `SkyGradient` 1, `CelestialBody` 3, `GroundPoint` 5, `Backdrop` 7 |
-| `src/audiovisual/config.ts`                 | `backdrop` key and `ascii.backdropGlyphs`                         |
-| `src/audiovisual/adapters/asciiBackdrop.ts` | Cycles 8–11                                                       |
-| `src/audiovisual/adapters/asciiGrid.ts`     | One `export` on `rampChar`; `rasteriseFrame` untouched            |
-| `src/audiovisual/adapters/ascii.ts`         | Cycle 12 — the one composition seam                               |
-| `src/main.ts`                               | Cycle 13 — page-load seed and wiring                              |
-| `index.html`                                | Cycle 14 — the dark page                                          |
+| Path                                        | Purpose                                                                |
+| ------------------------------------------- | ---------------------------------------------------------------------- |
+| `src/audiovisual/backdrop.ts`               | Cycles 1–7 — the whole core                                            |
+| `src/audiovisual/types.ts`                  | `SkyGradient` 1, `CelestialBody` 3, `GroundPoint` 5, `Backdrop` 7      |
+| `src/audiovisual/config.ts`                 | `backdrop` key and `ascii.backdropGlyphs`                              |
+| `src/audiovisual/adapters/asciiBackdrop.ts` | Cycles 8–11                                                            |
+| `src/audiovisual/adapters/asciiGrid.ts`     | `rampChar` and `toCell` exported; `rasteriseFrame` behaviour unchanged |
+| `src/audiovisual/adapters/ascii.ts`         | Cycle 12 — the one composition seam                                    |
+| `src/main.ts`                               | Cycle 13 — page-load seed and wiring                                   |
+| `index.html`                                | Cycle 14 — the dark page                                               |
 
 ## Out of scope
 
@@ -575,9 +606,13 @@ stars, a moon, a planet, and a dark landform along the bottom. Refresh and get a
 - `npx eslint .`, `npx prettier --check .`, `npx knip` — clean before each commit; the pre-commit hook
   enforces it.
 - `npm run build` — still produces a working `dist/`.
-- `grep -rE "Math.random|Date.now|performance.now" src/audiovisual/` — still no hits. The new `Date.now()`
-  and `Math.random()` live in `src/main.ts` only.
-- `grep -rn '"O"' src/audiovisual/ --include=*.ts | grep -v adapters` — no hits. The glyph house rule.
+- `grep -rE "Math.random|Date.now|performance.now" src/audiovisual/` — no _calls_. The new `Date.now()`
+  and `Math.random()` live in `src/main.ts` only. There is one hit, in `webAudio.ts`, and it is a comment
+  saying not to use `Math.random()` — pre-existing, and the same caveat applies to `docs/05`'s identical
+  check.
+- `grep -nE '"\^"|"O"|"o"|"\*"' src/audiovisual/backdrop.ts` — no hits. The glyph house rule: the core
+  names no character. `config.ts` does hold the default glyphs, which is deliberate (decision 6) and not
+  a violation — declaring a tunable is not deciding how to draw.
 - Manual, in `npm run dev`:
   - Load the page. A dim sky, brighter low down than overhead; a scatter of stars; one moon; one planet;
     a dark landform along the bottom.
