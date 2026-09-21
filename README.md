@@ -12,7 +12,7 @@ The Action layer is built. `src/action/` has tested `hashString`, `createRandom`
 
 `src/main.ts` wires the keyboard adapter through the control layer to the Action layer as its sink, steps the resulting world on a `requestAnimationFrame` loop, and logs each firework's phase changes to the console. It also draws that world every frame through the AudioVisual layer's ASCII renderer, into a `<pre>` element. It exposes `window.controlLayer` and `window.actionWorld` for poking in devtools.
 
-The AudioVisual layer is partly built. `src/audiovisual/` has tested `parseHexColor`, `lerpVec3`, `buildFrame`, `rasteriseFrame`, `createAsciiRenderer`, and `createAudioVisualLayer` functions, which turn Action's snapshot into an ASCII grid of a firework shell — see `docs/05_audio_visual_layer.md` for the build plan and cycle order. Pass A (shells rendering to the grid) is complete. Pass B (sparks and trails) is underway: `sparkDirections` picks each spark's direction, tested, but nothing wires it into a frame yet. Synthesised sound effects via the Web Audio API are still ahead.
+The AudioVisual layer is partly built. `src/audiovisual/` has tested `parseHexColor`, `lerpVec3`, `buildFrame`, `rasteriseFrame`, `createAsciiRenderer`, `createAudioVisualLayer`, `sparkDirections`, `sparkSpeeds`, `sparkPosition`, and `expandBurst` functions, which turn Action's snapshot into an ASCII grid of a firework shell and its burst's sparks — see `docs/05_audio_visual_layer.md` for the build plan and cycle order. Pass A (shells rendering to the grid) is complete. Pass B (sparks and trails) is underway: a burst now expands into sparks that draw and fade, but spark and shell trails are still ahead. Synthesised sound effects via the Web Audio API are still ahead.
 
 ## Commands
 

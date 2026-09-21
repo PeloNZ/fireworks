@@ -211,10 +211,11 @@ updated, and cleaned up every frame, and its exact look depends on exactly which
 stepped on.
 
 This layer does the opposite: no pool, no per-frame stepping, no stored particle state at all. Instead,
-one function computes a spark's exact position given only the burst's spec, the spark's index, and how
-much time has passed since the burst started (`firework.phaseElapsedMs`, already tracked by Action).
-That's possible because the physics of an individual spark is simple enough to solve directly rather than
-approximate step by step:
+one function computes a spark's exact position given the burst's spec, the spark's index, how much time
+has passed since the burst started (`firework.phaseElapsedMs`, already tracked by Action), and the
+shell's current position (`firework.position`, which Action keeps stepping under real gravity, wind and
+drag through "exploding", the same as "launching" and "flying"). That's possible because the physics of
+an individual spark is simple enough to solve directly rather than approximate step by step:
 
 - **No drag**: a spark thrown outward at a constant speed, falling under gravity, has an exact formula —
   the same one used for a thrown ball — `position = start + direction * speed * t + 0.5 * gravity * t²`.
@@ -230,6 +231,12 @@ approximate step by step:
   in JavaScript gives `NaN` or `Infinity` rather than an error, silently poisoning every spark position
   from then on. `normalise` on a zero vector was Action's version of this same trap. This layer's version
   needs an explicit branch: when drag is `0`, use the no-drag formula directly, never the general one.
+
+Radiating sparks from the shell's own live position means gravity's pull on the shell's drift is counted
+twice — once by Action, stepping the shell through "exploding", and once more by each spark's own
+closed-form spread from wherever that shell currently is. This is a stated visual simplification, the
+same spirit as Action's constant-thrust approximation for a shell's fuel burn, not a bug this layer's
+design fixes by keeping shared state it isn't allowed to hold.
 
 With position expressed this way, a trail costs nothing extra: a trail is a handful of points drawn at
 `t - δ`, `t - 2δ`, and so on, using the exact same function that computed the spark's current position.
@@ -419,8 +426,6 @@ interface AudioVisualConfig {
   readonly shellSize: number; // world units, radius
   readonly sparkSize: number;
   readonly sparkSpeed: NumberRange; // world units per second, outward
-  readonly sparkGravityScale: number; // fraction of world.gravity a spark feels
-  readonly sparkDrag: number; // per second; 0 = none, see "Sparks" above
   readonly trailMaxAgeMs: number; // how long a shell's trail persists
   readonly trailMaxPoints: number; // hard cap, oldest evicted first
   readonly trailSpacingMs: number; // time between two spark-trail samples
@@ -462,7 +467,8 @@ src/audiovisual/
   sparks.ts            sparkDirections, sparkSpeeds, sparkPosition,
                        expandBurst                                     [pure]
   trails.ts            createTrails({ maxAgeMs, maxPoints })           [state]
-  frame.ts             buildFrame({ entities, alpha, trails, config }) [pure]
+  frame.ts             buildFrame({ entities, alpha, trails, config,
+                                     worldConfig })                    [pure]
   phases.ts            createPhaseWatcher() -> cues(entities)          [state]
   voices.ts            planVoices(cue, config)                         [pure]
   audioVisualLayer.ts  createAudioVisualLayer({ renderer, audio, config, worldConfig })
@@ -637,7 +643,7 @@ key always sounds the same way, the same hypothesis `01_intent.md` states for si
 | `src/audiovisual/frame.ts`              | Cycles 3, 12, 15                                                                                  |
 | `src/audiovisual/adapters/asciiGrid.ts` | Cycle 4                                                                                           |
 | `src/audiovisual/adapters/ascii.ts`     | Cycle 5                                                                                           |
-| `src/audiovisual/audioVisualLayer.ts`   | Cycles 6, 19                                                                                      |
+| `src/audiovisual/audioVisualLayer.ts`   | Cycles 6, 12, 19                                                                                  |
 | `src/audiovisual/sparks.ts`             | Cycles 8–12                                                                                       |
 | `src/audiovisual/trails.ts`             | Cycle 14                                                                                          |
 | `src/audiovisual/phases.ts`             | Cycle 16                                                                                          |
