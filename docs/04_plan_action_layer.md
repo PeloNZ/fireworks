@@ -112,6 +112,7 @@ type FireworkPhase =
   | "flying" // in the air, powered or ballistic
   | "exploding" // burst effects playing
   | "finished"; // ready to remove
+// cycle 10; exported in cycle 12 (stepPhase)
 
 // The live object. Built from a spec, changed every step, never sent
 // anywhere — it stays inside the simulation.
@@ -306,7 +307,7 @@ src/action/
   spec.ts          buildFireworkSpec(signal, config)                  [pure]
   physics.ts       stepPhysics(firework, worldConfig, dtMs)           [pure]
   phase.ts         stepPhase(firework, config, dtMs)                  [pure]
-  world.ts         createWorld({ worldConfig, config })
+  world.ts         createFirework(spec), createWorld({ worldConfig, config })
   actionLayer.ts   resolveAction(event, config)                       [pure]
                    createActionLayer({ world, config }) -> ControlEventSink
   debug/
