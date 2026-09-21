@@ -1,6 +1,6 @@
 import { createRandom } from "../../action/random.ts";
 import type { AudioVisualConfig } from "../config.ts";
-import type { AudioSink, Lfo, Voice } from "../types.ts";
+import type { AudioSink, Lfo, Voice, VoiceEffect } from "../types.ts";
 
 /**
  * The minimal slice of a real `AudioParam` this sink needs — a "port",
@@ -145,16 +145,18 @@ function scheduleEnvelope(
 }
 
 /**
- * Wobbles `param` by adding a slow oscillator's output, scaled by
- * `lfo.depth`, into it — vibrato on a pitch, wah on a filter cutoff. Runs
- * on the same clock as the voice it modulates: started at `startTime`,
- * stopped `durationSeconds` later, so it never outlives the sound it
- * shapes and never needs its own cleanup.
+ * Wobbles every param in `params` by adding one slow oscillator's
+ * output, scaled by `lfo.depth`, into each of them — vibrato on a
+ * pitch, wah on a filter cutoff, or (a phaser's several allpass stages)
+ * one shared sweep driving them all in lockstep rather than a separate
+ * LFO per stage. Runs on the same clock as the voice it modulates:
+ * started at `startTime`, stopped `durationSeconds` later, so it never
+ * outlives the sound it shapes and never needs its own cleanup.
  */
 function attachLfo(
   context: AudioContextLike,
   lfo: Lfo,
-  param: AudioParamLike,
+  params: readonly AudioParamLike[],
   startTime: number,
   durationSeconds: number,
 ): void {
@@ -163,7 +165,9 @@ function attachLfo(
   const depth = context.createGain();
   depth.gain.setValueAtTime(lfo.depth, startTime);
   oscillator.connect(depth);
-  depth.connect(param);
+  for (const param of params) {
+    depth.connect(param);
+  }
   oscillator.start(startTime);
   oscillator.stop(startTime + durationSeconds);
 }
@@ -187,7 +191,7 @@ function createToneSource(
     attachLfo(
       context,
       voice.pitchLfo,
-      oscillator.frequency,
+      [oscillator.frequency],
       startTime,
       durationSeconds,
     );
@@ -240,12 +244,46 @@ function createFilterNode(
     attachLfo(
       context,
       voice.filterLfo,
-      node.frequency,
+      [node.frequency],
       startTime,
       durationSeconds,
     );
   }
   return node;
+}
+
+/**
+ * A phaser: `effect.stages` allpass filters in series (each one shifting
+ * phase without changing volume) mixed with the dry signal, both
+ * feeding a shared `output` — the mix is what turns "every frequency
+ * shifted" into moving notches. One shared LFO sweeps every stage's own
+ * frequency in lockstep, rather than a separate LFO per stage.
+ */
+function buildPhaser(
+  context: AudioContextLike,
+  effect: VoiceEffect,
+  startTime: number,
+  durationSeconds: number,
+): { readonly input: AudioNodeLike; readonly output: AudioNodeLike } {
+  const input = context.createGain();
+  const output = context.createGain();
+  input.connect(output); // dry path
+
+  let node: AudioNodeLike = input;
+  const stageFrequencies: AudioParamLike[] = [];
+  for (let i = 0; i < effect.stages; i++) {
+    const stage = context.createBiquadFilter();
+    stage.type = "allpass";
+    stage.frequency.setValueAtTime(effect.baseHz, startTime);
+    node.connect(stage);
+    node = stage;
+    stageFrequencies.push(stage.frequency);
+  }
+  node.connect(output); // wet path, after the last stage
+
+  attachLfo(context, effect.lfo, stageFrequencies, startTime, durationSeconds);
+
+  return { input, output };
 }
 
 function playVoice(
@@ -261,6 +299,8 @@ function playVoice(
       : createNoiseSource(context, voice);
 
   const gain = context.createGain();
+
+  let node: AudioNodeLike = source;
   if (voice.filter) {
     const filterNode = createFilterNode(
       context,
@@ -268,11 +308,21 @@ function playVoice(
       startTime,
       durationSeconds,
     );
-    source.connect(filterNode);
-    filterNode.connect(gain);
-  } else {
-    source.connect(gain);
+    node.connect(filterNode);
+    node = filterNode;
   }
+  if (voice.effect) {
+    const { input, output } = buildPhaser(
+      context,
+      voice.effect,
+      startTime,
+      durationSeconds,
+    );
+    node.connect(input);
+    node = output;
+  }
+  node.connect(gain);
+
   gain.connect(master);
   scheduleEnvelope(
     gain.gain,

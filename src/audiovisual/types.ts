@@ -59,10 +59,10 @@ export interface Envelope {
 /** How a `BiquadFilterNode` shapes a voice's tone colour — see "Two kinds
  * of sound" in docs/05_audio_visual_layer.md. */
 export interface Filter {
-  readonly kind: "lowpass" | "highpass" | "bandpass";
+  readonly kind: "lowpass" | "highpass" | "bandpass" | "allpass";
   readonly frequencyHz: number;
   readonly q: number; // resonance / narrowness
-} // cycle 22
+} // cycle 22, "allpass" added cycle 6 (docs/08_sound_effects.md)
 
 /** A slow oscillator added to an `AudioParam`, making a value waver
  * instead of holding still — vibrato on a pitch, wah on a filter cutoff.
@@ -72,6 +72,21 @@ export interface Lfo {
   readonly rateHz: number;
   readonly depth: number;
 } // cycle 4, docs/08_sound_effects.md
+
+/** A node graph inserted between a voice's filter (if any) and its own
+ * gain — a swirl or a metallic edge no single filter or LFO can give on
+ * its own. Declarative so that planning stays pure data; only the
+ * sink's `buildEffect` ever touches Web Audio. A phaser chains `stages`
+ * allpass filters, each one shifting phase without changing volume,
+ * swept together by one shared `lfo` — mixed with the dry signal, the
+ * sweep produces moving notches. See "Comb filtering" in
+ * docs/08_sound_effects.md. */
+export interface VoiceEffect {
+  readonly kind: "phaser";
+  readonly stages: number;
+  readonly baseHz: number;
+  readonly lfo: Lfo;
+} // cycle 6, docs/08_sound_effects.md — grows into a union in cycles 7-8
 
 /** One scheduled sound, built once and played once — see `planToneVoices`
  * in voices/tones.ts. `frequencyEndHz` of `null` means a constant pitch; a value
@@ -103,6 +118,9 @@ export interface Voice {
   // A wobble on this voice's own filter cutoff — only meaningful when
   // `filter` is set; there is no cutoff to wobble otherwise.
   readonly filterLfo: Lfo | null; // cycle 5, docs/08_sound_effects.md
+  // A node graph beyond a single filter stage — inserted between the
+  // filter (if any) and this voice's own gain.
+  readonly effect: VoiceEffect | null; // cycle 6, docs/08_sound_effects.md
 } // cycle 17, grows
 
 /** An audio port's whole contract: given the voices planned for this

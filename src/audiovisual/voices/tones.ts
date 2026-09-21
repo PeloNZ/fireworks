@@ -78,6 +78,7 @@ function planBurstVoices(
     startOffsetMs: 0,
     pitchLfo: null,
     filterLfo: null,
+    effect: null,
   };
 
   switch (cue.spec.sound.timbre) {
@@ -121,6 +122,7 @@ function planBurstVoices(
           startOffsetMs: random() * cue.spec.burstDurationMs,
           pitchLfo: null,
           filterLfo: null,
+          effect: null,
         }),
       );
       return [main, ...crackles];
@@ -154,6 +156,7 @@ function planLaunchVoice(
       startOffsetMs: 0,
       pitchLfo: null,
       filterLfo: null,
+      effect: null,
     },
   ];
 }
@@ -176,6 +179,7 @@ function planFlightVoice(
       startOffsetMs: 0,
       pitchLfo: null,
       filterLfo: null,
+      effect: null,
     },
   ];
 }

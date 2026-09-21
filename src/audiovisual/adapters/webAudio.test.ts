@@ -135,6 +135,7 @@ const toneVoice: Voice = {
   startOffsetMs: 0,
   pitchLfo: null,
   filterLfo: null,
+  effect: null,
 };
 
 const noiseVoice: Voice = {
@@ -150,6 +151,7 @@ const noiseVoice: Voice = {
   startOffsetMs: 0,
   pitchLfo: null,
   filterLfo: null,
+  effect: null,
 };
 
 // An unusual lookahead/gain/cap, not the defaults, so hardcoded values
@@ -515,6 +517,83 @@ describe("createWebAudioSink — playtesting fixes", () => {
     sink([noFilter]);
 
     expect(oscillators).toHaveLength(1);
+    expect(gains).toHaveLength(2);
+  });
+
+  it("chains a phaser's allpass stages between the filter and the voice gain, mixed with dry, swept by one shared LFO", () => {
+    const { context, oscillators, filters, gains } = fakeContext(10);
+    const sink = createWebAudioSink({ context, config });
+    const phased: Voice = {
+      ...toneVoice,
+      filter: { kind: "lowpass", frequencyHz: 500, q: 1 },
+      effect: {
+        kind: "phaser",
+        stages: 3,
+        baseHz: 800,
+        lfo: { rateHz: 0.5, depth: 300 },
+      },
+    };
+
+    sink([phased]);
+
+    // filters[0] is the voice's own declared filter; [1..3] are the
+    // three allpass stages, in series.
+    expect(filters).toHaveLength(4);
+    const [mainFilter, stage1, stage2, stage3] = filters;
+    for (const stage of [stage1, stage2, stage3]) {
+      expect(stage?.type).toBe("allpass");
+      expect(stage?.frequency.calls[0]).toEqual({
+        method: "setValueAtTime",
+        value: 800,
+        time: 10.02,
+      });
+    }
+
+    // oscillators[0] is the tone; [1] is the phaser's own shared LFO.
+    expect(oscillators).toHaveLength(2);
+    const lfo = oscillators[1];
+    expect(lfo?.frequency.calls).toEqual([
+      { method: "setValueAtTime", value: 0.5, time: 10.02 },
+    ]);
+    expect(lfo?.start).toHaveBeenCalledWith(10.02);
+    expect(lfo?.stop).toHaveBeenCalledWith(11.02);
+
+    // gains: [0] master, [1] voice gain, [2] the phaser's fan-out
+    // (input), [3] its convergence point (output), [4] the shared LFO's
+    // own depth gain.
+    expect(gains).toHaveLength(5);
+    const [, voiceGain, input, output, depth] = gains;
+    expect(depth?.gain.calls).toEqual([
+      { method: "setValueAtTime", value: 300, time: 10.02 },
+    ]);
+    // One LFO, connected into every stage's own frequency — not a
+    // separate LFO per stage.
+    expect(lfo?.connect).toHaveBeenCalledWith(depth);
+    expect(depth?.connect).toHaveBeenCalledWith(stage1?.frequency);
+    expect(depth?.connect).toHaveBeenCalledWith(stage2?.frequency);
+    expect(depth?.connect).toHaveBeenCalledWith(stage3?.frequency);
+
+    // The voice's own filter feeds the phaser's input.
+    expect(mainFilter?.connect).toHaveBeenCalledWith(input);
+    // Dry path: input straight to output.
+    expect(input?.connect).toHaveBeenCalledWith(output);
+    // Wet path: input through every stage in series, to output.
+    expect(input?.connect).toHaveBeenCalledWith(stage1);
+    expect(stage1?.connect).toHaveBeenCalledWith(stage2);
+    expect(stage2?.connect).toHaveBeenCalledWith(stage3);
+    expect(stage3?.connect).toHaveBeenCalledWith(output);
+    // The effect sits between the filter and the voice's own gain.
+    expect(output?.connect).toHaveBeenCalledWith(voiceGain);
+  });
+
+  it("builds no effect machinery when effect is null", () => {
+    const { context, oscillators, filters, gains } = fakeContext(10);
+    const sink = createWebAudioSink({ context, config });
+
+    sink([toneVoice]);
+
+    expect(oscillators).toHaveLength(1);
+    expect(filters).toHaveLength(0);
     expect(gains).toHaveLength(2);
   });
 
