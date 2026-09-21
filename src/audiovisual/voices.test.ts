@@ -27,7 +27,8 @@ function fireworkSpec(overrides: Partial<FireworkSpec> = {}): FireworkSpec {
   };
 }
 
-// An unusual envelope, not the default, so a hardcoded envelope can't pass.
+// Unusual envelopes and duration, not the defaults, so a hardcoded value
+// can't pass.
 const config = {
   ...defaultAudioVisualConfig,
   audio: {
@@ -38,6 +39,15 @@ const config = {
         decayMs: 77,
         sustainLevel: 0.42,
         releaseMs: 211,
+      },
+    },
+    launch: {
+      durationMs: 333,
+      envelope: {
+        attackMs: 7,
+        decayMs: 1,
+        sustainLevel: 0.9,
+        releaseMs: 44,
       },
     },
   },
@@ -61,9 +71,17 @@ describe("planVoices", () => {
     ]);
   });
 
-  it("returns no voices for a launch cue", () => {
+  it("returns exactly one noise voice for a launch cue, rising over its duration", () => {
     const cue: Cue = { kind: "launch", spec: fireworkSpec() };
 
-    expect(planVoices(cue, config)).toEqual([]);
+    const voices = planVoices(cue, config);
+
+    expect(voices).toHaveLength(1);
+    const [voice] = voices;
+    expect(voice?.kind).toBe("noise");
+    expect(voice?.durationMs).toBe(config.audio.launch.durationMs);
+    expect(voice?.envelope).toEqual(config.audio.launch.envelope);
+    expect(voice?.frequencyEndHz).not.toBeNull();
+    expect(voice?.frequencyEndHz ?? 0).toBeGreaterThan(voice?.frequencyHz ?? 0);
   });
 });

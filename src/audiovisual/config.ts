@@ -38,6 +38,10 @@ export interface AudioVisualConfig {
     readonly burst: {
       readonly envelope: Envelope;
     };
+    readonly launch: {
+      readonly durationMs: number;
+      readonly envelope: Envelope;
+    };
   };
 }
 
@@ -64,6 +68,15 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
         decayMs: 50,
         sustainLevel: 0.3,
         releaseMs: 200,
+      }),
+    }),
+    launch: Object.freeze({
+      durationMs: 200,
+      envelope: Object.freeze({
+        attackMs: 10,
+        decayMs: 0,
+        sustainLevel: 1,
+        releaseMs: 60,
       }),
     }),
   }),
