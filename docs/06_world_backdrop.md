@@ -328,10 +328,10 @@ rule that must agree between the two rasterisers can drift, and a backdrop misal
 by one cell would be a hard bug to see:
 
 - **`rampChar` is exported**, so the sky and the ground mass use the one brightness-to-character mapping.
-- **The world-to-cell mapping is extracted as `toCell`**, and `rasteriseFrame` now calls it rather than
-  computing the `y` flip and the bounds check inline. Its four existing tests passing unchanged is the
-  proof the extraction is faithful. `toCell` returns an inline object type rather than a named `Cell`
-  interface, because a type nothing else imports is dead code `knip` flags.
+- **The world-to-cell mapping is extracted as `toCell`**, in `adapters/cells.ts`, alongside `rowCentreY`
+  and `columnCentreX` — shared by both rasterisers, and by the emoji renderer's own adapters; see "The
+  shared seam: `contestCells`" in `docs/07_emoji_renderer.md`. `toCell` returns an inline object type
+  rather than a named `Cell` interface, because a type nothing else imports is dead code `knip` flags.
 
 ## Seeding
 
@@ -433,10 +433,11 @@ src/audiovisual/
                          Backdrop  — one cycle at a time
   config.ts            + backdrop key, ascii.backdropGlyphs
   adapters/
+    cells.ts           toCell, rowCentreY, columnCentreX             [pure]
     asciiBackdrop.ts   rasteriseBackdrop(backdrop, config),
                        overlayGrid(base, over)                       [pure]
-    asciiGrid.ts       rampChar and toCell now exported; rasteriseFrame
-                       calls toCell, its behaviour unchanged
+    asciiGrid.ts       rampChar exported; rasteriseFrame's behaviour
+                       unchanged
     ascii.ts           createAsciiRenderer({ target, config, backdrop })
 src/main.ts            + page-load seed, buildBackdrop, backdrop passed in
 index.html             + one <style> block — see "The white page"
@@ -566,16 +567,16 @@ stars, a moon, a planet, and a dark landform along the bottom. Refresh and get a
 
 ## Critical files
 
-| Path                                        | Purpose                                                                |
-| ------------------------------------------- | ---------------------------------------------------------------------- |
-| `src/audiovisual/backdrop.ts`               | Cycles 1–7 — the whole core                                            |
-| `src/audiovisual/types.ts`                  | `SkyGradient` 1, `CelestialBody` 3, `GroundPoint` 5, `Backdrop` 7      |
-| `src/audiovisual/config.ts`                 | `backdrop` key and `ascii.backdropGlyphs`                              |
-| `src/audiovisual/adapters/asciiBackdrop.ts` | Cycles 8–11                                                            |
-| `src/audiovisual/adapters/asciiGrid.ts`     | `rampChar` and `toCell` exported; `rasteriseFrame` behaviour unchanged |
-| `src/audiovisual/adapters/ascii.ts`         | Cycle 12 — the one composition seam                                    |
-| `src/main.ts`                               | Cycle 13 — page-load seed and wiring                                   |
-| `index.html`                                | Cycle 14 — the dark page                                               |
+| Path                                        | Purpose                                                           |
+| ------------------------------------------- | ----------------------------------------------------------------- |
+| `src/audiovisual/backdrop.ts`               | Cycles 1–7 — the whole core                                       |
+| `src/audiovisual/types.ts`                  | `SkyGradient` 1, `CelestialBody` 3, `GroundPoint` 5, `Backdrop` 7 |
+| `src/audiovisual/config.ts`                 | `backdrop` key and `ascii.backdropGlyphs`                         |
+| `src/audiovisual/adapters/asciiBackdrop.ts` | Cycles 8–11                                                       |
+| `src/audiovisual/adapters/asciiGrid.ts`     | `rampChar` exported; `rasteriseFrame` behaviour unchanged         |
+| `src/audiovisual/adapters/ascii.ts`         | Cycle 12 — the one composition seam                               |
+| `src/main.ts`                               | Cycle 13 — page-load seed and wiring                              |
+| `index.html`                                | Cycle 14 — the dark page                                          |
 
 ## Out of scope
 

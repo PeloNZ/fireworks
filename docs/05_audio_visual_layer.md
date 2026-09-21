@@ -533,7 +533,7 @@ already configured project-wide.
    `0`); `x = 0` lands at the centre column; a sprite outside `-50..50` or `0..100` is clipped, never
    wrapped to the opposite edge; two sprites landing in one cell keep the brighter one's character; rows
    are joined with `"\n"`.
-5. **`createAsciiRenderer({ target, config })`.** A fake target — a plain object shaped like
+5. **`createAsciiRenderer({ target, config, backdrop })`.** A fake target — a plain object shaped like
    `{ textContent: "" }`, not a real DOM node — records exactly one write per call to the returned
    `Renderer`, and that write equals what `rasteriseFrame` would produce for the same frame.
 6. **`createAudioVisualLayer({ renderer, config })`.** Returns `present({ entities, alpha,
@@ -541,7 +541,7 @@ elapsedMs })`. Calling `present` once calls the fake renderer exactly once, with
    `buildFrame` would build from the same `entities` and `alpha`.
 7. **Extend `src/main.ts`.** Control→Action wiring and the `requestAnimationFrame` loop already exist
    (`window.actionWorld`, `window.controlLayer`). Add a `<pre>` element for the grid, build
-   `createAudioVisualLayer({ renderer: createAsciiRenderer({ target, config }), config })`,
+   `createAudioVisualLayer({ renderer: createAsciiRenderer({ target, config, backdrop }), config })`,
    and call its `present({ entities: world.entities(), alpha: world.alpha(), elapsedMs: clamped })`
    inside the existing loop, right after `world.step(clamped)` — `clamped` is the same
    `config.maxFrameMs`-clamped value already being passed to `step`. The console trace from
