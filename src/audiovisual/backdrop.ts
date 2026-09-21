@@ -80,14 +80,42 @@ export function buildSky(
   return { horizon, zenith: random() * horizon };
 }
 
+// How much of the star field a fully lit horizon washes away. At 0.8, the
+// brightest sky the cap allows still keeps a fifth of its stars — a sunset
+// thins the field rather than emptying it.
+const STAR_WASHOUT = 0.8;
+
 /**
- * Draws the sky's scenery from `seed`: `starCount` stars, one planet and
- * one moon, all scattered above `celestialMinHeight`.
+ * How far this sky is toward the brightest one its config allows, in
+ * `0..1`. A cap of `0` means no sunset is possible at all, so the answer
+ * is `0` rather than `0 / 0` — the same class of edge as `sparkPosition`'s
+ * drag of zero, and reachable the same way, since docs/06_world_backdrop.md
+ * tells a reader to zero this cap to check the sky is really black.
+ */
+function sunsetAmount(
+  sky: SkyGradient,
+  config: AudioVisualConfig["backdrop"],
+): number {
+  if (config.skyMaxBrightness <= 0) {
+    return 0;
+  }
+  return sky.horizon / config.skyMaxBrightness;
+}
+
+/**
+ * Draws the sky's scenery from `seed`: stars, one planet and one moon, all
+ * scattered above `celestialMinHeight`.
  *
  * The returned order is the **paint order** — stars, then planet, then
  * moon, later drawing over earlier. That single fact is what makes a star
  * sharing the moon's cell lose to the moon, with no overlap detection and
  * no rejection sampling anywhere in this layer.
+ *
+ * `sky` thins the star field as its horizon brightens, so a lit sunset
+ * shows a few stars and a black night shows the lot (decision 5). Stars
+ * only: the moon and the planet are scenery, not weather. With fixed
+ * glyphs a star has no brightness to fade, so fewer is the only way this
+ * can be expressed.
  *
  * All three kinds draw from the one generator, so changing `starCount`
  * changes how many draws precede the planet and moon and therefore moves
@@ -98,9 +126,13 @@ export function buildSky(
 export function buildBodies(
   seed: number,
   config: AudioVisualConfig["backdrop"],
+  sky: SkyGradient,
 ): readonly CelestialBody[] {
   const random = createRandom(seed);
-  const starCount = Math.round(pickInRange(random, config.starCount));
+  const wanted = pickInRange(random, config.starCount);
+  const starCount = Math.round(
+    wanted * (1 - sunsetAmount(sky, config) * STAR_WASHOUT),
+  );
 
   const bodies: CelestialBody[] = [];
   for (let i = 0; i < starCount; i++) {

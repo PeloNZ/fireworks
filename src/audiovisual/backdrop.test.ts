@@ -82,6 +82,10 @@ describe("buildSky", () => {
 // — that array order *is* the paint order, which is how a star sharing the
 // moon's cell loses to it without any overlap test existing anywhere.
 
+// A black sky washes nothing out (cycle 4), so these cycle-3 assertions
+// are about the star count the config asks for, undisturbed.
+const blackSky: SkyGradient = { horizon: 0, zenith: 0 };
+
 describe("buildBodies", () => {
   // A pinned star count and an unusually high floor, neither a default, so
   // a hardcoded count or a hardcoded height fails.
@@ -92,7 +96,7 @@ describe("buildBodies", () => {
   };
 
   it("returns the configured number of stars plus one planet and one moon, in paint order", () => {
-    const bodies = buildBodies(7, config);
+    const bodies = buildBodies(7, config, blackSky);
 
     expect(bodies).toHaveLength(5);
     expect(bodies.map((body) => body.kind)).toEqual([
@@ -105,7 +109,7 @@ describe("buildBodies", () => {
   });
 
   it("places every body inside the renderable world box, above the configured floor", () => {
-    const bodies = buildBodies(7, config);
+    const bodies = buildBodies(7, config, blackSky);
 
     for (const body of bodies) {
       // Half-open at the top and the right: rasteriseFrame clips x = 50 and
@@ -121,17 +125,68 @@ describe("buildBodies", () => {
   it("takes its floor from config, not a fixed height", () => {
     const highFloor = { ...config, celestialMinHeight: 99 };
 
-    for (const body of buildBodies(7, highFloor)) {
+    for (const body of buildBodies(7, highFloor, blackSky)) {
       expect(body.position.y).toBeGreaterThanOrEqual(99);
       expect(body.position.y).toBeLessThan(100);
     }
   });
 
   it("returns the same bodies for the same seed", () => {
-    expect(buildBodies(42, config)).toEqual(buildBodies(42, config));
+    expect(buildBodies(42, config, blackSky)).toEqual(
+      buildBodies(42, config, blackSky),
+    );
   });
 
   it("returns different positions for a different seed", () => {
-    expect(buildBodies(1, config)).not.toEqual(buildBodies(2, config));
+    expect(buildBodies(1, config, blackSky)).not.toEqual(
+      buildBodies(2, config, blackSky),
+    );
+  });
+});
+
+// Cycle 4: decision 5 — a lit horizon washes out the stars, so a sky reads
+// as one coherent scene rather than a random pile of parts. With fixed
+// glyphs a star has no brightness to dim, so "washed out" can only mean
+// fewer of them.
+
+describe("buildBodies — a lit sky washes out the stars", () => {
+  const config = {
+    ...defaultAudioVisualConfig.backdrop,
+    starCount: { min: 20, max: 20 }, // pinned, so only the sky can change it
+    skyMaxBrightness: 0.25,
+  };
+  const nearBlack: SkyGradient = { horizon: 0.02, zenith: 0 };
+  const lit: SkyGradient = { horizon: 0.24, zenith: 0 };
+
+  const starsUnder = (sky: SkyGradient): number =>
+    buildBodies(7, config, sky).filter((body) => body.kind === "star").length;
+
+  it("returns strictly fewer stars under a lit sky than under a near-black one, from the same seed", () => {
+    // Asserted as the invariant rather than as two pinned counts — the same
+    // way sparks.test.ts asserts a wider jitter without pinning randomness.
+    expect(starsUnder(lit)).toBeLessThan(starsUnder(nearBlack));
+  });
+
+  it("keeps the moon and the planet whatever the sky is doing, since they are scenery and not weather", () => {
+    for (const sky of [nearBlack, lit]) {
+      const kinds = buildBodies(7, config, sky).map((body) => body.kind);
+
+      expect(kinds.filter((kind) => kind === "moon")).toHaveLength(1);
+      expect(kinds.filter((kind) => kind === "planet")).toHaveLength(1);
+    }
+  });
+
+  it("treats a zero brightness cap as no sunset at all, rather than dividing by zero", () => {
+    // The washout is a fraction of skyMaxBrightness, so a cap of 0 would
+    // make it 0/0. Same class of edge as sparkPosition's drag of zero, and
+    // reachable the same way: docs/06 tells a reader to set this to 0 to
+    // check the sky is really black.
+    const noSky = { ...config, skyMaxBrightness: 0 };
+
+    const stars = buildBodies(7, noSky, blackSky).filter(
+      (body) => body.kind === "star",
+    );
+
+    expect(stars).toHaveLength(20);
   });
 });
