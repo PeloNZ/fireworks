@@ -400,7 +400,8 @@ config, not the default, so a hardcoded implementation fails — same discipline
     - Drag reduces speed every step and never reverses the direction of motion.
     - Thrust applies to acceleration while `fuelRemainingMs > 0` and stops being applied once it reaches
       zero, with the entity remaining in `flying` in both cases (phase changes are cycle 12's job, not
-      this one's).
+      this one's). `stepPhysics` only reads `fuelRemainingMs` as this gate — counting it and
+      `fuseRemainingMs` down is also cycle 12's job.
     - `previousPosition` after a step equals `position` before the step ran.
     - Stepping the same firework twice from the same starting values gives identical results — no hidden
       state anywhere in this function.
