@@ -11,7 +11,7 @@ import { createRandom } from "../action/random.ts";
 import type { NumberRange } from "../action/config.ts";
 import type { Vec3 } from "../action/types.ts";
 import type { AudioVisualConfig } from "./config.ts";
-import type { CelestialBody, SkyGradient } from "./types.ts";
+import type { CelestialBody, GroundPoint, SkyGradient } from "./types.ts";
 
 // World space is 100 units tall, `y` growing up — the same extent
 // asciiGrid.ts maps onto rows. Duplicated deliberately rather than
@@ -141,4 +141,32 @@ export function buildBodies(
   bodies.push({ kind: "planet", position: bodyPosition(random, config) });
   bodies.push({ kind: "moon", position: bodyPosition(random, config) });
   return bodies;
+}
+
+/**
+ * Draws the skyline from `seed`: `groundPoints` control points spread
+ * evenly across the world, each at its own height. `groundPoints` must be
+ * at least 2, or the spacing below divides by zero.
+ *
+ * The points run from `x = -50` to `x = 50` **inclusive**, which looks
+ * like it breaks the half-open render box and does not: these are control
+ * points to be sampled, not positions to be drawn. A polyline that stopped
+ * short of `50` would leave the rightmost columns extrapolating off the end
+ * of the data.
+ */
+export function buildGround(
+  seed: number,
+  config: AudioVisualConfig["backdrop"],
+): readonly GroundPoint[] {
+  const random = createRandom(seed);
+  const spacing = WORLD_WIDTH / (config.groundPoints - 1);
+
+  const points: GroundPoint[] = [];
+  for (let i = 0; i < config.groundPoints; i++) {
+    points.push({
+      x: WORLD_LEFT + i * spacing,
+      height: pickInRange(random, config.groundHeight),
+    });
+  }
+  return points;
 }

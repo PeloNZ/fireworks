@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildBodies, buildSky, skyBrightnessAt } from "./backdrop.ts";
+import {
+  buildBodies,
+  buildGround,
+  buildSky,
+  skyBrightnessAt,
+} from "./backdrop.ts";
 import { defaultAudioVisualConfig } from "./config.ts";
 import type { SkyGradient } from "./types.ts";
 
@@ -188,5 +193,63 @@ describe("buildBodies — a lit sky washes out the stars", () => {
     );
 
     expect(stars).toHaveLength(20);
+  });
+});
+
+// Cycle 5: the skyline as a height field — a short list of control points
+// in world space, not a set of cells. The points are the data; what
+// resolution anyone samples them at is the renderer's business, which is
+// what lets an 80-column grid and a future canvas trace the same hills.
+
+describe("buildGround", () => {
+  it("spans the full world width with the configured number of control points", () => {
+    // A degenerate height range pins every height, which makes the whole
+    // return value assertable exactly rather than by range. An unusual
+    // point count, so a hardcoded number of points fails.
+    const config = {
+      ...defaultAudioVisualConfig.backdrop,
+      groundPoints: 5,
+      groundHeight: { min: 7, max: 7 },
+    };
+
+    // x = 50 is included on purpose. These are control points to sample,
+    // not positions to draw, so the half-open render box does not apply —
+    // and a polyline stopping short of 50 would leave the rightmost
+    // columns extrapolating off the end of the data.
+    expect(buildGround(7, config)).toEqual([
+      { x: -50, height: 7 },
+      { x: -25, height: 7 },
+      { x: 0, height: 7 },
+      { x: 25, height: 7 },
+      { x: 50, height: 7 },
+    ]);
+  });
+
+  it("draws each point's height separately, rather than one height shared by all of them", () => {
+    const config = {
+      ...defaultAudioVisualConfig.backdrop,
+      groundPoints: 9,
+      groundHeight: { min: 30, max: 31 },
+    };
+
+    const heights = buildGround(7, config).map((point) => point.height);
+
+    for (const height of heights) {
+      expect(height).toBeGreaterThanOrEqual(30);
+      expect(height).toBeLessThan(31);
+    }
+    expect(new Set(heights).size).toBeGreaterThan(1);
+  });
+
+  it("returns the same ground for the same seed", () => {
+    const config = defaultAudioVisualConfig.backdrop;
+
+    expect(buildGround(42, config)).toEqual(buildGround(42, config));
+  });
+
+  it("returns different ground for a different seed", () => {
+    const config = defaultAudioVisualConfig.backdrop;
+
+    expect(buildGround(1, config)).not.toEqual(buildGround(2, config));
   });
 });

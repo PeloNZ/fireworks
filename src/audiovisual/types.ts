@@ -112,3 +112,12 @@ export interface CelestialBody {
   readonly kind: "star" | "moon" | "planet";
   readonly position: Vec3; // z always 0, same as every sprite
 } // backdrop cycle 3
+
+/** One sample of the skyline: at world `x`, the ground reaches up to
+ * `height`. Consecutive points are joined by a straight line — sample it
+ * with `groundHeightAt`, never by indexing, so the interpolation rule
+ * stays in the core where every renderer shares it. */
+export interface GroundPoint {
+  readonly x: number; // world units, -50..50 inclusive
+  readonly height: number; // world y of the ridge at this x
+} // backdrop cycle 5

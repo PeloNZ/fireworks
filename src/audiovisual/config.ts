@@ -35,6 +35,8 @@ export interface AudioVisualConfig {
     // paints over it — wasted scenery rather than a bug, since ground
     // paints last.
     readonly celestialMinHeight: number;
+    readonly groundPoints: number; // skyline control points; must be >= 2
+    readonly groundHeight: NumberRange; // world y per control point
   };
   // Only the ASCII adapter reads this — nested under its own key for the
   // same reason ControlConfig nests `keyboard`: the shape says who owns it.
@@ -81,6 +83,8 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     skyMaxBrightness: 0.25,
     starCount: Object.freeze({ min: 18, max: 40 }),
     celestialMinHeight: 35,
+    groundPoints: 9,
+    groundHeight: Object.freeze({ min: 5, max: 14 }),
   }),
   ascii: Object.freeze({
     columns: 80,
