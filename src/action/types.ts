@@ -4,6 +4,18 @@
 // See docs/04_plan_action_layer.md.
 
 /**
+ * A point or direction in world space. `z` is carried on every vector and
+ * always `0` in v1, leaving room for depth later without reshaping
+ * anything that already uses `Vec3`. See "World space" in
+ * docs/04_plan_action_layer.md.
+ */
+export interface Vec3 {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+}
+
+/**
  * The two seeds every trait picker in this layer branches on, derived once
  * per press by `deriveSeeds`. `key` is stable for one physical key, however
  * many times it's pressed — it picks the "family" (launch angle, pattern,
