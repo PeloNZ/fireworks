@@ -398,8 +398,8 @@ minimum code to pass, one commit per cycle. Every cycle drives its assertion fro
 value or a hand-made fixture, never a default, so a hardcoded implementation fails it.
 
 **Before cycle 1 — done**: this file. `docs/05_audio_visual_layer.md`'s stale `createAsciiRenderer`
-signature corrected. `src/audiovisual/adapters/cells.ts`, `emojiGrid.ts`, `emojiBackdrop.ts`, `emoji.ts`
-and `src/audiovisual/selectRenderer.ts` do not exist. The AudioVisual layer and the world backdrop are
+signature corrected. `src/audiovisual/adapters/emojiGrid.ts`, `emojiBackdrop.ts`, `emoji.ts` and
+`src/audiovisual/selectRenderer.ts` did not exist. The AudioVisual layer and the world backdrop were
 both complete and green.
 
 ### Pass A — the shared seam
