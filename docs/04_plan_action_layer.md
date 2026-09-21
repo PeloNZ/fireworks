@@ -175,14 +175,20 @@ make that name ambiguous wherever it shows up in an error message.
 
 ## Seeded randomness
 
-The hypothesis in `01_intent.md`: pressing the same key feels familiar without ever repeating. Two seeds,
-both derived from the signal, no stored state:
+The hypothesis in `01_intent.md`: pressing the same key feels familiar without ever repeating. Seeds are
+derived from the signal, no stored state:
 
 1. **`key`** — `hashString(signal.id)`. The same physical key always gives the same number. This picks
    the **family**: the launch angle, which pattern, which colour palette, which pitch and timbre.
 2. **`press`** — `hashString(signal.id + ":" + Math.floor(signal.timestamp))`. Different every press.
-   This picks the **variation**: launch speed, thrust, fuel, fuse, which colours from the family, particle
-   count, duration.
+   This picks the **variation**: launch speed, thrust, fuel, fuse, which colours from the family.
+3. **`details`** — `hashString(signal.id + ":" + Math.floor(signal.timestamp) + ":details")`. Also different
+   every press, but hashed separately from `press` so it starts its own `createRandom` sequence rather than
+   replaying `press`'s first draws. Picks particle count and burst duration — fields that would otherwise
+   silently correlate with launch speed, since both would read the same generator's first fraction.
+
+`key` and `press` are held on every signal's `Seeds` (`deriveSeeds`); `details` is not — it's computed
+locally inside `buildFireworkSpec` and used only there.
 
 Requirements:
 
