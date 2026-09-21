@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createRandom, hashString } from "./random.ts";
+import { createRandom, deriveSeeds, hashString } from "./random.ts";
+import type { ControlSignal } from "../control/types.ts";
 
 // Cycle 1 (docs/04_plan_action_layer.md): hashString is the base every
 // seeded random value in this layer is built from. It has to be pure and
@@ -67,5 +68,53 @@ describe("createRandom", () => {
       expect(value).toBeGreaterThanOrEqual(0);
       expect(value).toBeLessThan(1);
     }
+  });
+});
+
+// Cycle 3 (docs/04_plan_action_layer.md): deriveSeeds is the first place
+// hashString and a ControlSignal meet. `key` must ignore the timestamp
+// entirely — that's what makes one physical key feel consistent across
+// presses. `press` must fold in a floored timestamp, so float noise in
+// event.timeStamp can never make two machines derive different seeds from
+// what is really the same press.
+
+function signal(overrides: Partial<ControlSignal> = {}): ControlSignal {
+  return {
+    id: "KeyA",
+    shift: false,
+    timestamp: 1000,
+    intensity: 1,
+    source: "keyboard",
+    ...overrides,
+  };
+}
+
+describe("deriveSeeds", () => {
+  it("gives the same key seed for the same id, whatever the timestamp", () => {
+    const a = deriveSeeds(signal({ id: "KeyA", timestamp: 1000 }));
+    const b = deriveSeeds(signal({ id: "KeyA", timestamp: 5000 }));
+
+    expect(a.key).toBe(b.key);
+  });
+
+  it("gives a different press seed for the same id at a different timestamp", () => {
+    const a = deriveSeeds(signal({ id: "KeyA", timestamp: 1000 }));
+    const b = deriveSeeds(signal({ id: "KeyA", timestamp: 5000 }));
+
+    expect(a.press).not.toBe(b.press);
+  });
+
+  it("gives the same press seed for timestamps that only differ after the decimal point", () => {
+    const a = deriveSeeds(signal({ id: "KeyA", timestamp: 1000.4 }));
+    const b = deriveSeeds(signal({ id: "KeyA", timestamp: 1000.9 }));
+
+    expect(a.press).toBe(b.press);
+  });
+
+  it("gives different press seeds for different ids at the same timestamp", () => {
+    const a = deriveSeeds(signal({ id: "KeyA", timestamp: 1000 }));
+    const b = deriveSeeds(signal({ id: "KeyB", timestamp: 1000 }));
+
+    expect(a.press).not.toBe(b.press);
   });
 });
