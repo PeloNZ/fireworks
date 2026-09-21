@@ -4,4 +4,4 @@ This file follows the [Keep a Changelog](https://keepachangelog.com/) format. It
 
 ## [Unreleased]
 
-No user-facing changes yet. The project is pre-release, with no tags and no shipped surface. Work so far is the internal Control layer and its supporting project tooling.
+No user-facing changes yet. The project is pre-release, with no tags and no shipped surface. Work so far is the internal Control and Action layers and their supporting project tooling.

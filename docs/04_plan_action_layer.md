@@ -329,8 +329,8 @@ Test-driven means: for each numbered item, write the failing test(s) first, then
 pass, then move on. Every cycle gets its own commit. Drive each cycle's assertions with an overridden
 config, not the default, so a hardcoded implementation fails — same discipline as the Control layer.
 
-**Before cycle 1**: `src/action/` does not exist yet. No setup beyond creating the directory — `vitest`,
-`tsc`, `eslint` and `knip` are already configured project-wide from the Control layer's build.
+**Before cycle 1 — done**: `src/action/` did not exist yet. No setup beyond creating the directory —
+`vitest`, `tsc`, `eslint` and `knip` were already configured project-wide from the Control layer's build.
 
 **Cycles:**
 

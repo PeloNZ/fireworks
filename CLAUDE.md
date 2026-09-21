@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `src/main.ts` is the Control layer's dev harness: it wires a real `createKeyboardAdapter` (against `window`), a real `createConsoleSink`, and `createControlLayer`, then assigns the running layer to `window.controlLayer` for poking from devtools. It renders two lines of instructional text into `#app` and is otherwise not unit tested — see `docs/03_plan_control_layer.md` cycle 7 and "Why a fake target beats jsdom" for why that's the accepted tradeoff.
 
-Application code lives under `src/control/` — see `docs/03_plan_control_layer.md` for the build plan and cycle order.
+Application code lives under `src/control/` (see `docs/03_plan_control_layer.md`) and `src/action/` (see `docs/04_plan_action_layer.md`) for the build plan and cycle order of each.
 
 Tests run on Vitest: `npm test` (watch) or `npm run test:run` (single run).
 
