@@ -63,8 +63,8 @@ export interface Filter {
   readonly q: number; // resonance / narrowness
 } // cycle 22
 
-/** One scheduled sound, built once and played once — see `planVoices` in
- * voices.ts. `frequencyEndHz` of `null` means a constant pitch; a value
+/** One scheduled sound, built once and played once — see `planToneVoices`
+ * in voices/tones.ts. `frequencyEndHz` of `null` means a constant pitch; a value
  * is a glide target (cycle 20) — the oscillator's own pitch for a
  * `"tone"`, or the filter's cutoff for a `"noise"` (noise has no pitch of
  * its own to glide). `startOffsetMs` schedules this voice later than the

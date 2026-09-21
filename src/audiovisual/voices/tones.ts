@@ -1,6 +1,6 @@
-import { createRandom } from "../action/random.ts";
-import type { AudioVisualConfig } from "./config.ts";
-import type { Cue, Envelope, Filter, Voice } from "./types.ts";
+import { createRandom } from "../../action/random.ts";
+import type { AudioVisualConfig } from "../config.ts";
+import type { Cue, Envelope, Filter, Voice } from "../types.ts";
 
 // The launch whoosh's frequency sweep. Every launch has the same shape —
 // this isn't something a per-firework config value needs to vary.
@@ -185,7 +185,7 @@ function planFlightVoice(
  * plans one quiet, sustained tone for as long as the fuse burns — the
  * whistle of a shell in the air.
  */
-export function planVoices(
+export function planToneVoices(
   cue: Cue,
   config: AudioVisualConfig,
 ): readonly Voice[] {

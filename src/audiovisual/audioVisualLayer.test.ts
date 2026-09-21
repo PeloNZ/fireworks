@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createAudioVisualLayer } from "./audioVisualLayer.ts";
 import { buildFrame } from "./frame.ts";
 import { createTrails } from "./trails.ts";
-import { planVoices } from "./voices.ts";
+import { planToneVoices } from "./voices/tones.ts";
 import { defaultAudioVisualConfig } from "./config.ts";
 import { defaultWorldConfig } from "../action/worldConfig.ts";
 import type { Firework, FireworkSpec } from "../action/types.ts";
@@ -10,7 +10,7 @@ import type { Firework, FireworkSpec } from "../action/types.ts";
 // Cycle 6 (docs/05_audio_visual_layer.md): createAudioVisualLayer wires
 // Action's snapshot to a renderer port, one call per frame. Cycle 19
 // wires an audio port in too: present() watches for phase transitions
-// and turns any cue into voices via planVoices, calling audio with the
+// and turns any cue into voices via planToneVoices, calling audio with the
 // result every time, even when it's empty.
 
 function fireworkSpec(overrides: Partial<FireworkSpec> = {}): FireworkSpec {
@@ -124,7 +124,7 @@ describe("createAudioVisualLayer", () => {
     expect(audio).toHaveBeenCalledTimes(2);
     expect(audio).toHaveBeenNthCalledWith(
       2,
-      planVoices({ kind: "burst", spec }, defaultAudioVisualConfig),
+      planToneVoices({ kind: "burst", spec }, defaultAudioVisualConfig),
     );
   });
 });

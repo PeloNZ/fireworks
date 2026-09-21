@@ -361,7 +361,7 @@ describe("createWebAudioSink — cycle 22 (filter and startOffsetMs)", () => {
 
 // Playtesting a finished build found real bugs unit tests couldn't catch
 // on their own: "sharp"/"crackle" bursts were inaudible (fixed in
-// voices.ts, not here — a filter genuinely centred on a sine's only
+// voices/tones.ts, not here — a filter genuinely centred on a sine's only
 // frequency does nothing, so this layer's node-graph tests never showed
 // it), and frequencyEndHz — the field meant to make a sound rise — had
 // never actually been scheduled anywhere.

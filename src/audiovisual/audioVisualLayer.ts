@@ -1,7 +1,7 @@
 import { buildFrame } from "./frame.ts";
 import { createTrails } from "./trails.ts";
 import { createPhaseWatcher } from "./phases.ts";
-import { planVoices } from "./voices.ts";
+import { planToneVoices } from "./voices/tones.ts";
 import type { AudioVisualConfig } from "./config.ts";
 import type { WorldConfig } from "../action/worldConfig.ts";
 import type { AudioSink, Renderer, Voice } from "./types.ts";
@@ -47,7 +47,7 @@ export function createAudioVisualLayer(options: {
 
       const voices: Voice[] = [];
       for (const cue of phaseWatcher.cues(input.entities)) {
-        voices.push(...planVoices(cue, config));
+        voices.push(...planToneVoices(cue, config));
       }
       audio(voices);
     },

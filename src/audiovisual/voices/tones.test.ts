@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { planVoices } from "./voices.ts";
-import { defaultAudioVisualConfig } from "./config.ts";
-import type { Cue } from "./types.ts";
-import type { FireworkSpec } from "../action/types.ts";
+import { planToneVoices } from "./tones.ts";
+import { defaultAudioVisualConfig } from "../config.ts";
+import type { Cue } from "../types.ts";
+import type { FireworkSpec } from "../../action/types.ts";
 
 // Cycle 17 (docs/05_audio_visual_layer.md): the first sound — a plain
 // beep on every burst. Cycle 22 gives each timbre its own character.
@@ -77,12 +77,12 @@ const config = {
   },
 };
 
-describe("planVoices", () => {
+describe("planToneVoices", () => {
   it("returns exactly one noise voice for a launch cue, filtered and rising over its duration", () => {
     const spec = fireworkSpec();
     const cue: Cue = { kind: "launch", spec };
 
-    const voices = planVoices(cue, config);
+    const voices = planToneVoices(cue, config);
 
     expect(voices).toHaveLength(1);
     const [voice] = voices;
@@ -105,7 +105,7 @@ describe("planVoices", () => {
     const spec = fireworkSpec();
     const cue: Cue = { kind: "flight", spec };
 
-    const voices = planVoices(cue, config);
+    const voices = planToneVoices(cue, config);
 
     expect(voices).toHaveLength(1);
     const [voice] = voices;
@@ -129,7 +129,7 @@ describe("planVoices", () => {
       const spec = fireworkSpec({ sound: { pitch: 613, timbre: "soft" } });
       const cue: Cue = { kind: "burst", spec };
 
-      const voices = planVoices(cue, config);
+      const voices = planToneVoices(cue, config);
 
       expect(voices).toHaveLength(1);
       const [voice] = voices;
@@ -152,7 +152,7 @@ describe("planVoices", () => {
       const spec = fireworkSpec({ sound: { pitch: 613, timbre: "sharp" } });
       const cue: Cue = { kind: "burst", spec };
 
-      const voices = planVoices(cue, config);
+      const voices = planToneVoices(cue, config);
 
       expect(voices).toHaveLength(1);
       const [voice] = voices;
@@ -169,7 +169,7 @@ describe("planVoices", () => {
       const sharpSpec = fireworkSpec({
         sound: { pitch: 613, timbre: "sharp" },
       });
-      const [sharpVoice] = planVoices(
+      const [sharpVoice] = planToneVoices(
         { kind: "burst", spec: sharpSpec },
         config,
       );
@@ -177,7 +177,10 @@ describe("planVoices", () => {
       const crackleSpec = fireworkSpec({
         sound: { pitch: 613, timbre: "crackle" },
       });
-      const voices = planVoices({ kind: "burst", spec: crackleSpec }, config);
+      const voices = planToneVoices(
+        { kind: "burst", spec: crackleSpec },
+        config,
+      );
 
       expect(voices).toHaveLength(1 + config.audio.crackleCount);
       const [main, ...crackles] = voices;
@@ -210,8 +213,8 @@ describe("planVoices", () => {
       const spec = fireworkSpec({ sound: { pitch: 613, timbre: "crackle" } });
       const cue: Cue = { kind: "burst", spec };
 
-      const first = planVoices(cue, config);
-      const second = planVoices(cue, config);
+      const first = planToneVoices(cue, config);
+      const second = planToneVoices(cue, config);
 
       expect(second).toEqual(first);
     });
