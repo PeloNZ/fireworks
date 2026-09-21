@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hashString } from "./random.ts";
+import { createRandom, hashString } from "./random.ts";
 
 // Cycle 1 (docs/04_plan_action_layer.md): hashString is the base every
 // seeded random value in this layer is built from. It has to be pure and
@@ -28,5 +28,44 @@ describe("hashString", () => {
     // this code — asserting the exact constant proves the real algorithm
     // ran on empty input rather than being short-circuited.
     expect(hashString("")).toBe(2166136261);
+  });
+});
+
+// Cycle 2 (docs/04_plan_action_layer.md): createRandom is mulberry32 — a
+// small, fast generator whose only job is "same seed in, same sequence
+// out," which is what makes a firework replayable from its seed alone.
+
+describe("createRandom", () => {
+  it("produces the same sequence of values for the same seed", () => {
+    const a = createRandom(42);
+    const b = createRandom(42);
+
+    expect([a(), a(), a()]).toEqual([b(), b(), b()]);
+  });
+
+  it("produces a different first value for a different seed", () => {
+    const a = createRandom(1);
+    const b = createRandom(2);
+
+    expect(a()).not.toBe(b());
+  });
+
+  it("produces different values on successive calls", () => {
+    const random = createRandom(42);
+
+    const first = random();
+    const second = random();
+
+    expect(first).not.toBe(second);
+  });
+
+  it("always returns a value in [0, 1)", () => {
+    const random = createRandom(42);
+
+    for (let i = 0; i < 100; i++) {
+      const value = random();
+      expect(value).toBeGreaterThanOrEqual(0);
+      expect(value).toBeLessThan(1);
+    }
   });
 });

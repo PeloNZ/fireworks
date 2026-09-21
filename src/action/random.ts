@@ -15,3 +15,21 @@ export function hashString(text: string): number {
   }
   return hash >>> 0;
 }
+
+/**
+ * Builds a mulberry32 generator: a small, fast pseudo-random number
+ * generator seeded with one integer. Not cryptographic — the point is
+ * "same seed, same sequence, forever," which is what makes a firework's
+ * look replayable from its seed alone. Each call returns the next value in
+ * `[0, 1)` and advances the generator's internal state.
+ */
+export function createRandom(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
