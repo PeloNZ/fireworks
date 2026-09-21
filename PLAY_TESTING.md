@@ -22,7 +22,7 @@ work out the pattern, trying to learn it well enough to play a tune.
 
 ### 5m
 
-"It was good, cos they make sounds and explode." key mashing.
+"It was good, cos they make sounds and explode." key mashing. would like it to make "silly sounds"
 
 ### 8f
 
