@@ -1,6 +1,21 @@
 import { createRandom } from "../../action/random.ts";
 import type { AudioVisualConfig } from "../config.ts";
-import type { AudioSink, Lfo, Voice, VoiceEffect } from "../types.ts";
+import type {
+  AudioSink,
+  Lfo,
+  PhaserEffect,
+  RingmodEffect,
+  Voice,
+  VoiceEffect,
+} from "../types.ts";
+
+/** A node's `input`/`output` pair for an effect inserted into the
+ * chain — a phaser's separate fan-out and convergence points, or (ring
+ * mod has no dry path) the same node serving as both. */
+interface EffectNodes {
+  readonly input: AudioNodeLike;
+  readonly output: AudioNodeLike;
+}
 
 /**
  * The minimal slice of a real `AudioParam` this sink needs — a "port",
@@ -261,10 +276,10 @@ function createFilterNode(
  */
 function buildPhaser(
   context: AudioContextLike,
-  effect: VoiceEffect,
+  effect: PhaserEffect,
   startTime: number,
   durationSeconds: number,
-): { readonly input: AudioNodeLike; readonly output: AudioNodeLike } {
+): EffectNodes {
   const input = context.createGain();
   const output = context.createGain();
   input.connect(output); // dry path
@@ -284,6 +299,53 @@ function buildPhaser(
   attachLfo(context, effect.lfo, stageFrequencies, startTime, durationSeconds);
 
   return { input, output };
+}
+
+/**
+ * Ring modulation: the source multiplied by a modulator oscillator,
+ * rather than mixed with it. A `GainNode` already multiplies its audio
+ * input by its `gain` value — connecting the modulator into `gain`
+ * itself (instead of scheduling a fixed number there) makes that
+ * multiplication run at audio rate. Scheduling the gain to zero, not
+ * one, is what makes this ring mod rather than a fixed-volume
+ * pass-through: the ring's whole output comes from the modulator, none
+ * from a steady base level. No dry path — `input` and `output` are the
+ * same node.
+ */
+function buildRingmod(
+  context: AudioContextLike,
+  effect: RingmodEffect,
+  startTime: number,
+  durationSeconds: number,
+): EffectNodes {
+  const ring = context.createGain();
+  ring.gain.setValueAtTime(0, startTime);
+  const modulator = context.createOscillator();
+  modulator.frequency.setValueAtTime(effect.frequencyHz, startTime);
+  modulator.connect(ring.gain);
+  modulator.start(startTime);
+  modulator.stop(startTime + durationSeconds);
+  return { input: ring, output: ring };
+}
+
+/**
+ * A voice's effect, if it has one — a node graph beyond a single
+ * filter stage, inserted between the filter (if any) and the voice's
+ * own gain. Every adapter this project builds a new effect kind for
+ * adds a case here; nothing else about `playVoice` changes.
+ */
+function buildEffect(
+  context: AudioContextLike,
+  effect: VoiceEffect,
+  startTime: number,
+  durationSeconds: number,
+): EffectNodes {
+  switch (effect.kind) {
+    case "phaser":
+      return buildPhaser(context, effect, startTime, durationSeconds);
+    case "ringmod":
+      return buildRingmod(context, effect, startTime, durationSeconds);
+  }
 }
 
 function playVoice(
@@ -312,7 +374,7 @@ function playVoice(
     node = filterNode;
   }
   if (voice.effect) {
-    const { input, output } = buildPhaser(
+    const { input, output } = buildEffect(
       context,
       voice.effect,
       startTime,

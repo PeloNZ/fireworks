@@ -597,6 +597,42 @@ describe("createWebAudioSink — playtesting fixes", () => {
     expect(gains).toHaveLength(2);
   });
 
+  it("ring modulates through a gain node scheduled to zero, driven by a modulator oscillator", () => {
+    const { context, oscillators, gains } = fakeContext(10);
+    const sink = createWebAudioSink({ context, config });
+    const ringModded: Voice = {
+      ...toneVoice,
+      effect: { kind: "ringmod", frequencyHz: 730 },
+    };
+
+    sink([ringModded]);
+
+    // oscillators[0] is the tone; [1] is the modulator.
+    expect(oscillators).toHaveLength(2);
+    const [tone, modulator] = oscillators;
+    expect(modulator?.frequency.calls).toEqual([
+      { method: "setValueAtTime", value: 730, time: 10.02 },
+    ]);
+    expect(modulator?.start).toHaveBeenCalledWith(10.02);
+    expect(modulator?.stop).toHaveBeenCalledWith(11.02);
+
+    // gains: [0] master, [1] voice gain, [2] the ring — its own gain
+    // scheduled to zero at the voice's own start. Scheduling zero, not
+    // one, is what makes this multiplication rather than a fixed-volume
+    // pass-through: the ring's whole output comes from the modulator.
+    expect(gains).toHaveLength(3);
+    const ring = gains[2];
+    expect(ring?.gain.calls).toEqual([
+      { method: "setValueAtTime", value: 0, time: 10.02 },
+    ]);
+    expect(modulator?.connect).toHaveBeenCalledWith(ring?.gain);
+
+    // No dry path: the ring node is both the effect's input and its
+    // output, unlike a phaser's separate fan-out and convergence points.
+    expect(tone?.connect).toHaveBeenCalledWith(ring);
+    expect(ring?.connect).toHaveBeenCalledWith(gains[1]);
+  });
+
   it("never schedules a frequency above 16kHz, the ceiling of what's audible", () => {
     const { context, oscillators, filters } = fakeContext(10);
     const sink = createWebAudioSink({ context, config });

@@ -73,20 +73,31 @@ export interface Lfo {
   readonly depth: number;
 } // cycle 4, docs/08_sound_effects.md
 
-/** A node graph inserted between a voice's filter (if any) and its own
- * gain — a swirl or a metallic edge no single filter or LFO can give on
- * its own. Declarative so that planning stays pure data; only the
- * sink's `buildEffect` ever touches Web Audio. A phaser chains `stages`
- * allpass filters, each one shifting phase without changing volume,
- * swept together by one shared `lfo` — mixed with the dry signal, the
- * sweep produces moving notches. See "Comb filtering" in
- * docs/08_sound_effects.md. */
-export interface VoiceEffect {
+/** A phaser: `stages` allpass filters in series, each one shifting
+ * phase without changing volume, swept together by one shared `lfo` —
+ * mixed with the dry signal, the sweep produces moving notches. See
+ * "Comb filtering" in docs/08_sound_effects.md. */
+export interface PhaserEffect {
   readonly kind: "phaser";
   readonly stages: number;
   readonly baseHz: number;
   readonly lfo: Lfo;
-} // cycle 6, docs/08_sound_effects.md — grows into a union in cycles 7-8
+} // cycle 6, docs/08_sound_effects.md
+
+/** Ring modulation: the source multiplied by a second, inaudible-rate
+ * oscillator, producing the sum and difference of the two frequencies
+ * rather than either one — clangy and inharmonic on purpose. See "Ring
+ * modulation" in docs/08_sound_effects.md. */
+export interface RingmodEffect {
+  readonly kind: "ringmod";
+  readonly frequencyHz: number;
+} // cycle 7, docs/08_sound_effects.md
+
+/** A node graph inserted between a voice's filter (if any) and its own
+ * gain — a swirl or a metallic edge no single filter or LFO can give on
+ * its own. Declarative so that planning stays pure data; only the
+ * sink's `buildEffect` ever touches Web Audio. */
+export type VoiceEffect = PhaserEffect | RingmodEffect; // grows through cycle 8
 
 /** One scheduled sound, built once and played once — see `planToneVoices`
  * in voices/tones.ts. `frequencyEndHz` of `null` means a constant pitch; a value
