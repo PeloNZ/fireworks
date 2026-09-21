@@ -15,6 +15,10 @@ export interface Vec3 {
   readonly z: number;
 }
 
+/** The burst shape a firework's particles form. See `pickPattern` in
+ * traits.ts. */
+export type FireworkPattern = "peony" | "willow" | "ring" | "chrysanthemum";
+
 /**
  * The two seeds every trait picker in this layer branches on, derived once
  * per press by `deriveSeeds`. `key` is stable for one physical key, however
