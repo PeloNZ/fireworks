@@ -59,6 +59,38 @@ export interface AudioVisualConfig {
       readonly ridge: string; // the skyline's topmost cell in each column
     };
   };
+  // Only the emoji adapter reads this — nested under its own key for the
+  // same reason ascii is. See docs/07_emoji_renderer.md.
+  readonly emoji: {
+    readonly columns: number;
+    readonly rows: number;
+    // One emoji wide, invisible against the page's dark background — the
+    // emoji counterpart of ascii.ramp's leading space.
+    readonly blank: string;
+    readonly shell: string;
+    // Faded to bright. trail[0] must equal blank: a trail's dimmest glyph
+    // has to be the same blank a too-dim sprite would otherwise draw as,
+    // or a decaying trail keeps winning its cell with a visible glyph long
+    // after the ASCII renderer would show nothing there. See "Why a
+    // trail's glyph ramp has to end on the blank" in
+    // docs/07_emoji_renderer.md.
+    readonly trail: readonly string[];
+    // Nearest hue on the wheel wins, measured the short way round.
+    readonly sparkHues: readonly {
+      readonly hue: number;
+      readonly glyph: string;
+    }[];
+    readonly desaturated: string; // below saturationFloor, hue means nothing
+    readonly saturationFloor: number;
+    readonly sky: readonly string[]; // dim to bright
+    readonly backdropGlyphs: {
+      readonly star: string;
+      readonly moon: string;
+      readonly planet: string;
+      readonly ridge: string;
+      readonly ground: string;
+    };
+  };
   // Only the Web Audio adapter and its planning functions read this,
   // nested under its own key for the same reason ascii is.
   readonly audio: {
@@ -110,6 +142,34 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
       moon: "O",
       planet: "o",
       ridge: "^",
+    }),
+  }),
+  emoji: Object.freeze({
+    columns: 40,
+    rows: 40,
+    blank: "⬛",
+    shell: "🚀",
+    trail: Object.freeze(["⬛", "💫", "✨"]),
+    sparkHues: Object.freeze(
+      [
+        { hue: 0, glyph: "🔴" },
+        { hue: 30, glyph: "🟠" },
+        { hue: 55, glyph: "🟡" },
+        { hue: 130, glyph: "🟢" },
+        { hue: 200, glyph: "🔵" },
+        { hue: 280, glyph: "🟣" },
+        { hue: 330, glyph: "🌸" },
+      ].map((entry) => Object.freeze(entry)),
+    ),
+    desaturated: "⚪",
+    saturationFloor: 0.15,
+    sky: Object.freeze(["⬛", "🌌", "🟦", "🟪", "🟧"]),
+    backdropGlyphs: Object.freeze({
+      star: "⭐",
+      moon: "🌙",
+      planet: "🪐",
+      ridge: "🌲",
+      ground: "🟫",
     }),
   }),
   audio: Object.freeze({
