@@ -468,25 +468,25 @@ both complete and green.
 
 ### Pass D — the renderer, the choice, and the page
 
-10. **`createEmojiRenderer` in `adapters/emoji.ts`.** Two cases, mirroring `ascii.test.ts`'s own two.
+10. **`createEmojiRenderer` in `adapters/emoji.ts` — done.** Two cases, mirroring `ascii.test.ts`'s own two.
     With `backdrop: null`, the target receives one write per call, equal to `rasteriseEmojiFrame`'s
     result joined — each row's cells joined with `""`, the rows joined with `"\n"`. With a backdrop
     given, the write equals the same join applied to
     `overlayEmojiGrid(rasteriseEmojiBackdrop(backdrop, config.emoji), rasteriseEmojiFrame(frame, config.emoji), config.emoji.blank)`
     — the actual composition, driven with unusual `columns` and `rows` so a hardcoded grid size cannot
     pass.
-11. **`selectRenderer`.** Unusual table `{ a: 1, b: 2 }`, fallback `"a"`. Requesting `"b"` returns
+11. **`selectRenderer` — done.** Unusual table `{ a: 1, b: 2 }`, fallback `"a"`. Requesting `"b"` returns
     `{ name: "b", create: 2 }`. Requesting `"zzz"` and requesting `null` both return
     `{ name: "a", create: 1 }` — the name falling back together with the factory is the assertion that
     matters, since a version that returned the requested name alongside the fallback factory would style
     the page for a renderer that is not the one running. A fallback of `"missing"`, absent from the
     table, throws.
-12. **Wire `src/main.ts`.** The `renderers` registry, the `URLSearchParams` read, the `selectRenderer`
+12. **Wire `src/main.ts` — done.** The `renderers` registry, the `URLSearchParams` read, the `selectRenderer`
     call, `grid.className`. Not unit tested, like the rest of this file — proven by loading the page
     with and without `?renderer=emoji` in a real browser. This file now holds only the registry itself
     and the four lines that read it; the rule for what happens on an unknown or missing name is tested
     in cycle 11, not sitting untested here.
-13. **The emoji `line-height` rule** in `index.html`. `pre.emoji { line-height: 1.2; }`, beside the
+13. **The emoji `line-height` rule — done** in `index.html`. `pre.emoji { line-height: 1.2; }`, beside the
     existing `pre` rule from `06_world_backdrop.md`'s cycle 14. Its own commit, no test impact,
     revertable on its own if the ratio needs retuning.
 14. **doc-sync.** This file reconciled against what was actually built, `README.md`'s status paragraph,
