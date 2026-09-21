@@ -5,6 +5,15 @@
 import type { NumberRange } from "../action/config.ts";
 import type { Envelope } from "./types.ts";
 
+/** A body's fixed look — no brightness field, the same reason
+ * `CelestialBody` itself has none: a disc drawn at one size has nothing
+ * to vary. Unexported: knip only sees exports, and this shape is only
+ * ever used inline inside `AudioVisualConfig`. */
+interface CelestialStyle {
+  readonly index: number;
+  readonly radius: number; // world units
+}
+
 export interface AudioVisualConfig {
   // The render loop's elapsed-time clamp. Below the shortest phase Action
   // can produce (100ms at default config), so a phase watcher (cycle 16)
@@ -121,6 +130,14 @@ export interface AudioVisualConfig {
     // night sky rather than a visible "nothing here" colour.
     readonly blank: number;
     readonly sky: readonly number[]; // dim to bright
+    // A disc, not a single pixel -- discCells already exists by the time
+    // the backdrop needs it, and a one-pixel moon would undercut the
+    // point of building this renderer at all.
+    readonly bodies: {
+      readonly star: CelestialStyle;
+      readonly moon: CelestialStyle;
+      readonly planet: CelestialStyle;
+    };
   };
   // Only the Web Audio adapter and its planning functions read this,
   // nested under its own key for the same reason ascii is.
@@ -253,6 +270,11 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     // one warm colour: black, night blue, sky blue, lavender, sunset
     // orange.
     sky: Object.freeze([0, 1, 13, 12, 9]),
+    bodies: Object.freeze({
+      star: Object.freeze({ index: 7, radius: 0.8 }),
+      moon: Object.freeze({ index: 15, radius: 6 }),
+      planet: Object.freeze({ index: 9, radius: 2.5 }),
+    }),
   }),
   audio: Object.freeze({
     lookaheadMs: 30,

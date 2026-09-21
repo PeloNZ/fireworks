@@ -1,8 +1,22 @@
-import { pixelCentreY } from "./pixelGrid.ts";
+import { discCells, pixelCentreY } from "./pixelGrid.ts";
 import { rampLevel } from "./ramp.ts";
 import { skyBrightnessAt } from "../backdrop.ts";
 import type { AudioVisualConfig } from "../config.ts";
-import type { Backdrop } from "../types.ts";
+import type { Backdrop, CelestialBody } from "../types.ts";
+
+function styleFor(
+  body: CelestialBody,
+  bodies: AudioVisualConfig["pixel"]["bodies"],
+): { readonly index: number; readonly radius: number } {
+  switch (body.kind) {
+    case "star":
+      return bodies.star;
+    case "moon":
+      return bodies.moon;
+    case "planet":
+      return bodies.planet;
+  }
+}
 
 // The pixel half of the backdrop renderer: the sky, celestial bodies and
 // ground as a buffer of palette indices, painted once per page load
@@ -28,6 +42,17 @@ export function paintBackdrop(
     const index = rampLevel(brightness, pixel.sky);
     for (let column = 0; column < columns; column++) {
       buffer[row * columns + column] = index;
+    }
+  }
+
+  // Paint order does the work of an overlap test, the same rule the
+  // ASCII and emoji backdrops use: later entries in backdrop.bodies win.
+  // No brightness contest here -- CelestialBody carries no brightness
+  // field to contest with.
+  for (const body of backdrop.bodies) {
+    const style = styleFor(body, pixel.bodies);
+    for (const offset of discCells(body.position, style.radius, pixel)) {
+      buffer[offset] = style.index;
     }
   }
 
