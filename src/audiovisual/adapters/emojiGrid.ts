@@ -1,4 +1,5 @@
 import { contestCells } from "./cells.ts";
+import { rampLevel } from "./ramp.ts";
 import { hueOf, nearestHue, saturationOf } from "../color.ts";
 import type { AudioVisualConfig } from "../config.ts";
 import type { Frame, Rgb, Sprite } from "../types.ts";
@@ -27,22 +28,14 @@ export function sparkGlyph(
  * Maps a brightness in 0..1 onto one glyph in `glyphs`, dimmest first —
  * the emoji counterpart of `rampChar`, over an array of glyphs instead of
  * a string of characters, since a glyph can be more than one UTF-16 code
- * unit and a string index would read half of it.
+ * unit and a string index would read half of it. The lookup itself is
+ * `rampLevel`, shared with the pixel renderer's brightness ramps.
  */
 export function rampGlyph(
   brightness: number,
   glyphs: readonly string[],
 ): string {
-  const clamped = Math.min(1, Math.max(0, brightness));
-  const index = Math.round(clamped * (glyphs.length - 1));
-  const glyph = glyphs[index];
-  if (glyph === undefined) {
-    // index is always within [0, glyphs.length - 1] for a clamped
-    // brightness and a non-empty list. noUncheckedIndexedAccess can't see
-    // that, so it types this access as possibly undefined regardless.
-    throw new Error("unreachable: glyph index out of range");
-  }
-  return glyph;
+  return rampLevel(brightness, glyphs);
 }
 
 /**
