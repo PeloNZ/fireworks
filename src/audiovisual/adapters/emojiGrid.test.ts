@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   glyphFor,
+  overlayEmojiGrid,
   rampGlyph,
   rasteriseEmojiFrame,
   sparkGlyph,
@@ -162,5 +163,43 @@ describe("rasteriseEmojiFrame", () => {
       ["Q", ".", "."],
       [".", ".", "R"],
     ]);
+  });
+});
+
+// Cycle 6: compositing the finished foreground grid over the finished
+// backdrop grid, the emoji counterpart of overlayGrid. Same rule: the
+// foreground shows through unless it is blank.
+describe("overlayEmojiGrid", () => {
+  it("takes the foreground's glyph where it has one, and the base's where it does not", () => {
+    const base = [
+      ["a", "b"],
+      ["c", "d"],
+    ];
+    const over = [
+      ["X", "-"],
+      ["-", "Y"],
+    ];
+
+    expect(overlayEmojiGrid(base, over, "-")).toEqual([
+      ["X", "b"],
+      ["c", "Y"],
+    ]);
+  });
+
+  it("leaves a cell blank when neither layer draws anything there, and never changes the grid's shape", () => {
+    const base = [
+      ["-", "-"],
+      ["-", "-"],
+    ];
+    const over = [
+      ["-", "-"],
+      ["-", "-"],
+    ];
+
+    const composited = overlayEmojiGrid(base, over, "-");
+
+    expect(composited).toEqual(base);
+    expect(composited).toHaveLength(2);
+    expect(composited[0]).toHaveLength(2);
   });
 });

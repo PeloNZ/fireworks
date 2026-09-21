@@ -117,3 +117,31 @@ export function rasteriseEmojiFrame(
     row.map((sprite) => (sprite ? glyphFor(sprite, emoji) : emoji.blank)),
   );
 }
+
+/**
+ * Composites a finished foreground grid over a finished base grid — the
+ * emoji counterpart of `overlayGrid`, operating on `readonly string[][]`
+ * instead of indexing a joined string, for the same UTF-16 reason every
+ * other emoji function in this file does.
+ *
+ * One rule, unchanged from `overlayGrid`: **the foreground shows through
+ * unless it is blank.** `base` must already fill every cell — a correctly
+ * built backdrop always does (see `rasteriseEmojiBackdrop`), so there is
+ * no fallback here for a missing base cell.
+ */
+export function overlayEmojiGrid(
+  base: readonly string[][],
+  over: readonly string[][],
+  blank: string,
+): readonly string[][] {
+  return over.map((row, rowIndex) =>
+    row.map((glyph, columnIndex) => {
+      if (glyph !== blank) {
+        return glyph;
+      }
+      const baseRow = base[rowIndex];
+      const baseGlyph = baseRow?.[columnIndex];
+      return baseGlyph ?? blank;
+    }),
+  );
+}
