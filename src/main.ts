@@ -1,5 +1,6 @@
 import { defaultConfig } from "./control/config.ts";
 import { createKeyboardAdapter } from "./control/adapters/keyboard.ts";
+import { createWindowFocusLoss } from "./control/adapters/focusLoss.ts";
 import { createConsoleSink } from "./control/debug/consoleSink.ts";
 import { createControlLayer } from "./control/controlLayer.ts";
 
@@ -21,13 +22,17 @@ const sink = createConsoleSink();
 // invocation" in a real browser. Same lesson as cycle 5's `no-unbound-method`
 // fix, just not one a linter can catch here since `performance.now` is a
 // browser built-in, not a type this codebase declares.
+const focusLoss = createWindowFocusLoss({
+  windowTarget: window,
+  documentTarget: document,
+});
+
 const layer = createControlLayer({
   adapter,
   config: defaultConfig,
   now: () => performance.now(),
   sink,
-  // Temporary no-op — replaced by createWindowFocusLoss in the next cycle.
-  focusLoss: { start: () => undefined, stop: () => undefined },
+  focusLoss,
 });
 
 declare global {

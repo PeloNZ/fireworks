@@ -311,20 +311,37 @@ below, not just once at the end.
    this cycle, test-first like everything else — it's a one-line function, but "small" isn't an
    exception to the TDD rule in `CLAUDE.md`.
 
+8. **`createWindowFocusLoss` — done.** The "Buffer reset rule: focus/blur
+   loss" in `02_spec.md` was specified but never built in cycle 7 — nothing
+   called `history.clear()` from anywhere, and the Verification claim below
+   about a confirmed blur check was wrong; it had passed only because
+   `historyMaxAgeMs` (2000ms) had already dropped the entries before anyone
+   looked. Added as a fourth port, `FocusLossSource`, the same two-method
+   shape as `ControllerAdapter`: `createControlLayer` takes it as a required
+   dependency, calls `history.clear()` when it fires, and stops it alongside
+   the adapter. `createWindowFocusLoss({ windowTarget, documentTarget })`
+   is the real implementation — window `blur`, and `visibilitychange` while
+   `document.hidden` — covering both halves of the spec's rule in one file.
+   Tests use fake targets, same idea as cycle 5's fake `EventTarget`. One
+   thing carried over deliberately: the repeated-`start()` leak fixed by
+   review in `9b4945e` is tested from the first cycle here, not found after
+   the fact.
+
 ## Critical files
 
-| Path                               | Purpose                                                                       |
-| ---------------------------------- | ----------------------------------------------------------------------------- |
-| `src/control/types.ts`             | The cross-layer contract — the shapes everything else in this plan implements |
-| `src/control/config.ts`            | Single source of tunable values                                               |
-| `src/control/signal.ts`            | Cycle 1                                                                       |
-| `src/control/history.ts`           | Cycle 3                                                                       |
-| `src/control/adapters/keyboard.ts` | Cycles 2 and 5                                                                |
-| `src/control/controlLayer.ts`      | Cycle 6                                                                       |
-| `src/control/debug/format.ts`      | Cycle 4                                                                       |
-| `src/control/debug/consoleSink.ts` | Cycle 7 — one-liner, still test-first                                         |
-| `src/control/index.ts`             | Re-exports the public surface only                                            |
-| `src/main.ts`                      | Cycle 7 — replaces the Vite demo content                                      |
+| Path                                | Purpose                                                                       |
+| ----------------------------------- | ----------------------------------------------------------------------------- |
+| `src/control/types.ts`              | The cross-layer contract — the shapes everything else in this plan implements |
+| `src/control/config.ts`             | Single source of tunable values                                               |
+| `src/control/signal.ts`             | Cycle 1                                                                       |
+| `src/control/history.ts`            | Cycle 3                                                                       |
+| `src/control/adapters/keyboard.ts`  | Cycles 2 and 5                                                                |
+| `src/control/adapters/focusLoss.ts` | Cycle 8                                                                       |
+| `src/control/controlLayer.ts`       | Cycle 6                                                                       |
+| `src/control/debug/format.ts`       | Cycle 4                                                                       |
+| `src/control/debug/consoleSink.ts`  | Cycle 7 — one-liner, still test-first                                         |
+| `src/control/index.ts`              | Re-exports the public surface only                                            |
+| `src/main.ts`                       | Cycle 7 — replaces the Vite demo content                                      |
 
 ## Verification — done, confirmed in a real browser
 
@@ -337,10 +354,12 @@ below, not just once at the end.
   - Press `Cmd+R` (or `Ctrl+R`): the page reloads — confirms the adapter isn't swallowing browser
     shortcuts.
   - Press `Tab`: focus does not jump to the next element on the page.
-  - Click away from the page and back, pressing a key mid-away if possible: history should read as
-    cleared afterward, checked via the `window` handle in devtools.
   - From the devtools console, read `window.controlLayer`'s history after a few presses and confirm it
     matches what was logged.
+  - Press a key, click away from the page and back, then read `window.controlLayer.recent()` within
+    two seconds: it reads empty, confirming cycle 8's focus-loss clearing rather than the 2000ms age
+    bound simply having expired the entries on its own — the original version of this check did not
+    distinguish the two, and its result was not meaningful.
 
 One console error was seen on load in Firefox: `Permission denied to access property "then"`. Not from
 this codebase — nothing in `src/` uses `.then`, `Promise`, or `async`. Confirmed as a browser-extension
