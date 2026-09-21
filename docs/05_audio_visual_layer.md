@@ -643,8 +643,8 @@ key always sounds the same way, the same hypothesis `01_intent.md` states for si
 | `src/audiovisual/frame.ts`              | Cycles 3, 12, 15                                                                                  |
 | `src/audiovisual/adapters/asciiGrid.ts` | Cycle 4                                                                                           |
 | `src/audiovisual/adapters/ascii.ts`     | Cycle 5                                                                                           |
-| `src/audiovisual/audioVisualLayer.ts`   | Cycles 6, 12, 19                                                                                  |
-| `src/audiovisual/sparks.ts`             | Cycles 8–12                                                                                       |
+| `src/audiovisual/audioVisualLayer.ts`   | Cycles 6, 12, 15, 19                                                                              |
+| `src/audiovisual/sparks.ts`             | Cycles 8–13                                                                                       |
 | `src/audiovisual/trails.ts`             | Cycle 14                                                                                          |
 | `src/audiovisual/phases.ts`             | Cycle 16                                                                                          |
 | `src/audiovisual/voices.ts`             | Cycles 17, 20, 22                                                                                 |
