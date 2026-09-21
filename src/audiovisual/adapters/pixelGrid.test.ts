@@ -317,3 +317,51 @@ describe("paintFrame -- the brightness contest", () => {
     expect(paintFrame(frame, contestPixel)[offset]).toBe(4);
   });
 });
+
+// Cycle 12: a sprite's own radius is scaled by its brightness before it's
+// painted. frame.ts gives a shell's trail points size: config.shellSize,
+// identical to the shell itself -- without this, a trail is a chain of
+// full-size discs the width of the shell it follows.
+describe("paintFrame -- radius scales with brightness", () => {
+  function frameAt(brightness: number): Frame {
+    return {
+      sprites: [
+        {
+          kind: "spark",
+          position: { x: 0, y: 50, z: 0 },
+          size: 20,
+          color: atHue(10),
+          brightness,
+        },
+      ],
+    };
+  }
+
+  function litOffsets(buffer: Uint8Array, blank: number): readonly number[] {
+    const lit: number[] = [];
+    buffer.forEach((value, offset) => {
+      if (value !== blank) {
+        lit.push(offset);
+      }
+    });
+    return lit;
+  }
+
+  it("paints a smaller disc at a dimmer, never-default brightness", () => {
+    const pixel: AudioVisualConfig["pixel"] = {
+      ...defaultAudioVisualConfig.pixel,
+      sparkHues: [{ hue: 10, index: 3 }],
+      columns: wideGrid.columns,
+      rows: wideGrid.rows,
+      blank: 7,
+    };
+
+    const bright = litOffsets(paintFrame(frameAt(1), pixel), pixel.blank);
+    const dim = litOffsets(paintFrame(frameAt(0.25), pixel), pixel.blank);
+
+    expect(dim.length).toBeLessThan(bright.length);
+    expect(dim).toEqual(
+      Array.from(discCells({ x: 0, y: 50 }, 20 * 0.25, wideGrid)),
+    );
+  });
+});

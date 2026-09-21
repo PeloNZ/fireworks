@@ -212,6 +212,14 @@ export function discCells(
  * starts below every real brightness (`-1`, never `0`): a fully decayed
  * trail has `brightness: 0` (`frame.ts`), and a buffer that started at
  * `0` would treat that as "nothing painted here" and silently drop it.
+ *
+ * A sprite's radius is scaled by its own brightness before it is painted.
+ * `frame.ts` gives a shell's trail points `size: config.shellSize` —
+ * identical to the shell itself — and this is the first renderer that
+ * reads `size` at all, so without scaling, a trail is a chain of
+ * full-size discs the same width as the shell it follows, and a fading
+ * spark never shrinks. One multiplication does both, with no branch on
+ * `kind`.
  */
 export function paintFrame(
   frame: Frame,
@@ -223,7 +231,8 @@ export function paintFrame(
 
   for (const sprite of frame.sprites) {
     const index = indexFor(sprite, pixel);
-    for (const offset of discCells(sprite.position, sprite.size, pixel)) {
+    const radius = sprite.size * sprite.brightness;
+    for (const offset of discCells(sprite.position, radius, pixel)) {
       if (sprite.brightness > (painted[offset] ?? -1)) {
         painted[offset] = sprite.brightness;
         buffer[offset] = index;
