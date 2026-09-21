@@ -31,3 +31,7 @@ export interface Sprite {
 export interface Frame {
   readonly sprites: readonly Sprite[];
 } // cycle 3
+
+/** A renderer's whole contract: given a frame, draw it. Every adapter
+ * (ASCII today, others later) implements this and nothing more. */
+export type Renderer = (frame: Frame) => void; // cycle 5
