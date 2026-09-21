@@ -28,4 +28,7 @@ Tried `?sound=silly`: "good."
 
 ### 8f
 
-tbc
+- people cheering for the fireworks
+- moving sky
+- animations
+- very cool
