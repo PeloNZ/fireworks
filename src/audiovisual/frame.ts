@@ -1,6 +1,7 @@
 import { parseHexColor } from "./color.ts";
 import { lerpVec3 } from "./interpolate.ts";
 import { expandBurst } from "./sparks.ts";
+import type { createTrails } from "./trails.ts";
 import type { AudioVisualConfig } from "./config.ts";
 import type { WorldConfig } from "../action/worldConfig.ts";
 import type { Sprite, Frame } from "./types.ts";
@@ -33,8 +34,9 @@ export function buildFrame(options: {
   readonly alpha: number;
   readonly config: AudioVisualConfig;
   readonly worldConfig: WorldConfig;
+  readonly trails: ReturnType<typeof createTrails>;
 }): Frame {
-  const { entities, alpha, config, worldConfig } = options;
+  const { entities, alpha, config, worldConfig, trails } = options;
   const sprites: Sprite[] = [];
 
   for (const firework of entities) {
@@ -48,6 +50,16 @@ export function buildFrame(options: {
       });
     }
     sprites.push(...expandBurst(firework, config, worldConfig));
+
+    for (const point of trails.points(firework.spec.id)) {
+      sprites.push({
+        kind: "trail",
+        position: point.position,
+        size: config.shellSize,
+        color: parseHexColor(firstColor(firework.spec)),
+        brightness: Math.max(0, 1 - point.ageMs / config.trailMaxAgeMs),
+      });
+    }
   }
 
   return { sprites };

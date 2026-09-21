@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createAudioVisualLayer } from "./audioVisualLayer.ts";
 import { buildFrame } from "./frame.ts";
+import { createTrails } from "./trails.ts";
 import { defaultAudioVisualConfig } from "./config.ts";
 import { defaultWorldConfig } from "../action/worldConfig.ts";
 import type { Firework, FireworkSpec } from "../action/types.ts";
@@ -56,6 +57,15 @@ describe("createAudioVisualLayer", () => {
 
     layer.present({ entities, alpha: 0.4, elapsedMs: 16 });
 
+    // present() records into its own trails store before building the
+    // frame — an independent instance, fed the same call, reproduces the
+    // same trail state to compare against.
+    const trails = createTrails({
+      maxAgeMs: defaultAudioVisualConfig.trailMaxAgeMs,
+      maxPoints: defaultAudioVisualConfig.trailMaxPoints,
+    });
+    trails.record(entities, 16);
+
     expect(renderer).toHaveBeenCalledTimes(1);
     expect(renderer).toHaveBeenCalledWith(
       buildFrame({
@@ -63,6 +73,7 @@ describe("createAudioVisualLayer", () => {
         alpha: 0.4,
         config: defaultAudioVisualConfig,
         worldConfig: defaultWorldConfig,
+        trails,
       }),
     );
   });

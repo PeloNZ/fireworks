@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildFrame } from "./frame.ts";
 import { parseHexColor } from "./color.ts";
 import { expandBurst } from "./sparks.ts";
+import { createTrails } from "./trails.ts";
 import { defaultAudioVisualConfig } from "./config.ts";
 import { defaultWorldConfig } from "../action/worldConfig.ts";
 import type { Firework, FireworkSpec } from "../action/types.ts";
@@ -9,12 +10,18 @@ import type { Firework, FireworkSpec } from "../action/types.ts";
 // Cycle 3 (docs/05_audio_visual_layer.md): the first thing to draw is the
 // shell itself — one sprite per firework in flight, positioned by
 // interpolating between Action's previousPosition and position so motion
-// stays smooth between physics steps. Cycle 12 adds bursts; trails
-// (cycles 13, 15) come later.
+// stays smooth between physics steps. Cycle 12 adds bursts; cycle 15
+// adds shell trails.
 
 // An unusual shellSize, not the default, so a hardcoded size can't pass.
 const config = { ...defaultAudioVisualConfig, shellSize: 2 };
 const worldConfig = defaultWorldConfig;
+
+// buildFrame only reads a trails store — recording into it is
+// createAudioVisualLayer's job (cycle 15). Most tests here don't care
+// about trails, so one never-recorded-into instance, shared and never
+// mutated, always reads back empty.
+const noTrails = createTrails({ maxAgeMs: 1000, maxPoints: 10 });
 
 function fireworkSpec(overrides: Partial<FireworkSpec> = {}): FireworkSpec {
   return {
@@ -52,11 +59,17 @@ function firework(overrides: Partial<Firework> = {}): Firework {
 
 describe("buildFrame", () => {
   it("returns an empty frame for no entities", () => {
-    expect(buildFrame({ entities: [], alpha: 0, config, worldConfig })).toEqual(
-      {
-        sprites: [],
-      },
-    );
+    expect(
+      buildFrame({
+        entities: [],
+        alpha: 0,
+        config,
+        worldConfig,
+        trails: noTrails,
+      }),
+    ).toEqual({
+      sprites: [],
+    });
   });
 
   it("draws one shell sprite for a flying firework, interpolated by alpha", () => {
@@ -67,6 +80,7 @@ describe("buildFrame", () => {
       alpha: 0.25,
       config,
       worldConfig,
+      trails: noTrails,
     });
 
     expect(frame.sprites).toEqual([
@@ -88,6 +102,7 @@ describe("buildFrame", () => {
       alpha: 0,
       config,
       worldConfig,
+      trails: noTrails,
     });
 
     expect(frame.sprites).toHaveLength(1);
@@ -103,6 +118,7 @@ describe("buildFrame", () => {
         alpha: 0,
         config,
         worldConfig,
+        trails: noTrails,
       });
 
       expect(frame.sprites).toEqual([]);
@@ -117,6 +133,7 @@ describe("buildFrame", () => {
       alpha: 0,
       config,
       worldConfig,
+      trails: noTrails,
     });
 
     expect(frame.sprites.some((s) => s.kind === "shell")).toBe(false);
@@ -131,8 +148,59 @@ describe("buildFrame", () => {
       alpha: 0,
       config,
       worldConfig,
+      trails: noTrails,
     });
 
     expect(frame.sprites).toEqual(expandBurst(entity, config, worldConfig));
+  });
+
+  // Cycle 15: a "trail" sprite per point stored for a firework's shell,
+  // brightness falling with age. buildFrame only reads the trails store;
+  // recording into it happens elsewhere (createAudioVisualLayer), so
+  // these tests seed a trails instance directly by calling record().
+  it("draws a trail sprite for each point stored for a firework's shell", () => {
+    const entity = firework();
+    const trails = createTrails({ maxAgeMs: 1000, maxPoints: 10 });
+    trails.record([entity], 0);
+
+    const frame = buildFrame({
+      entities: [entity],
+      alpha: 0,
+      config,
+      worldConfig,
+      trails,
+    });
+
+    const trailSprites = frame.sprites.filter((s) => s.kind === "trail");
+    expect(trailSprites).toEqual([
+      {
+        kind: "trail",
+        position: entity.position,
+        size: config.shellSize,
+        color: parseHexColor("#ff3b30"),
+        brightness: 1,
+      },
+    ]);
+  });
+
+  it("fades a trail sprite's brightness linearly toward 0 as it ages toward config.trailMaxAgeMs", () => {
+    const ageingConfig = { ...config, trailMaxAgeMs: 100 };
+    const entity = firework();
+    const trails = createTrails({ maxAgeMs: 1000, maxPoints: 10 });
+    trails.record([entity], 0); // one point, age 0
+    trails.record([entity], 40); // that point ages to 40; a new one at 0
+
+    const frame = buildFrame({
+      entities: [entity],
+      alpha: 0,
+      config: ageingConfig,
+      worldConfig,
+      trails,
+    });
+
+    const trailSprites = frame.sprites.filter((s) => s.kind === "trail");
+    expect(trailSprites).toHaveLength(2);
+    expect(trailSprites[0]?.brightness).toBeCloseTo(1); // age 0
+    expect(trailSprites[1]?.brightness).toBeCloseTo(0.6); // age 40 of 100
   });
 });
