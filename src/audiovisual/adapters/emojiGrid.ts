@@ -1,6 +1,6 @@
 import { hueOf, saturationOf } from "../color.ts";
 import type { AudioVisualConfig } from "../config.ts";
-import type { Rgb } from "../types.ts";
+import type { Rgb, Sprite } from "../types.ts";
 
 // The emoji half of the frame renderer: turning a sprite's colour and
 // brightness into one glyph. Grown one cycle at a time — see
@@ -50,4 +50,48 @@ export function sparkGlyph(
     throw new Error("AudioVisualConfig.emoji.sparkHues must not be empty");
   }
   return best.glyph;
+}
+
+/**
+ * Maps a brightness in 0..1 onto one glyph in `glyphs`, dimmest first —
+ * the emoji counterpart of `rampChar`, over an array of glyphs instead of
+ * a string of characters, since a glyph can be more than one UTF-16 code
+ * unit and a string index would read half of it.
+ */
+export function rampGlyph(
+  brightness: number,
+  glyphs: readonly string[],
+): string {
+  const clamped = Math.min(1, Math.max(0, brightness));
+  const index = Math.round(clamped * (glyphs.length - 1));
+  const glyph = glyphs[index];
+  if (glyph === undefined) {
+    // index is always within [0, glyphs.length - 1] for a clamped
+    // brightness and a non-empty list. noUncheckedIndexedAccess can't see
+    // that, so it types this access as possibly undefined regardless.
+    throw new Error("unreachable: glyph index out of range");
+  }
+  return glyph;
+}
+
+/**
+ * Picks one sprite's glyph. A shell is one thing throughout its flight,
+ * so its colour never enters the decision. A spark's colour is the fact
+ * ASCII discards — `sparkGlyph` reads it. A trail fades, and an emoji
+ * cannot dim, so a trail's glyph comes from brightness through its own
+ * short ramp, the same way `rampChar` already does for the ASCII trail —
+ * its colour is never read either.
+ */
+export function glyphFor(
+  sprite: Sprite,
+  emoji: AudioVisualConfig["emoji"],
+): string {
+  switch (sprite.kind) {
+    case "shell":
+      return emoji.shell;
+    case "spark":
+      return sparkGlyph(sprite.color, emoji);
+    case "trail":
+      return rampGlyph(sprite.brightness, emoji.trail);
+  }
 }
