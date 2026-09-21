@@ -43,6 +43,12 @@ export interface AudioVisualConfig {
       readonly durationMs: number;
       readonly envelope: Envelope;
     };
+    // The sustained whistle for the whole time a shell is airborne —
+    // quiet, since it plays underneath everything else.
+    readonly flight: {
+      readonly envelope: Envelope;
+      readonly gain: number;
+    };
   };
 }
 
@@ -80,6 +86,15 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
         sustainLevel: 1,
         releaseMs: 60,
       }),
+    }),
+    flight: Object.freeze({
+      envelope: Object.freeze({
+        attackMs: 100,
+        decayMs: 100,
+        sustainLevel: 1,
+        releaseMs: 150,
+      }),
+      gain: 0.18,
     }),
   }),
 });

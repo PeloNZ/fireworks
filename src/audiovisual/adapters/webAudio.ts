@@ -1,6 +1,6 @@
 import { createRandom } from "../../action/random.ts";
 import type { AudioVisualConfig } from "../config.ts";
-import type { AudioSink, Filter, Voice } from "../types.ts";
+import type { AudioSink, Voice } from "../types.ts";
 
 /**
  * The minimal slice of a real `AudioParam` this sink needs — a "port",
@@ -31,6 +31,7 @@ interface SourceNodeLike extends AudioNodeLike {
 }
 
 interface OscillatorNodeLike extends SourceNodeLike {
+  type: string;
   readonly frequency: AudioParamLike;
 }
 
@@ -67,6 +68,17 @@ export interface AudioContextLike {
   createBiquadFilter(): BiquadFilterNodeLike;
 }
 
+// Roughly the top of adult human hearing, and comfortably past where
+// most adults' hearing has already rolled off — a frequency requested
+// above this is inaudible to a lot of people, not just quiet. Nothing
+// this layer plans exceeds it today, but nothing here trusts that to
+// stay true either.
+const MAX_AUDIBLE_HZ = 16000;
+
+function clampAudible(hz: number): number {
+  return Math.min(hz, MAX_AUDIBLE_HZ);
+}
+
 /**
  * Builds a mono buffer of white noise, deterministic per `seed` — the
  * same seed always produces the same noise, so a firework's whoosh sounds
@@ -89,9 +101,33 @@ export function createNoiseBuffer(
   return buffer;
 }
 
+/**
+ * Schedules a frequency at `startTime`, and — if `endHz` is given — a
+ * linear ramp to it by `startTime + durationSeconds`. Every value is
+ * clamped to `MAX_AUDIBLE_HZ` first. Shared by an oscillator's own pitch
+ * and a filter's cutoff: whichever parameter is the one actually meant
+ * to glide for a given voice.
+ */
+function scheduleFrequency(
+  param: AudioParamLike,
+  startHz: number,
+  endHz: number | null,
+  startTime: number,
+  durationSeconds: number,
+): void {
+  param.setValueAtTime(clampAudible(startHz), startTime);
+  if (endHz !== null) {
+    param.linearRampToValueAtTime(
+      clampAudible(endHz),
+      startTime + durationSeconds,
+    );
+  }
+}
+
 function scheduleEnvelope(
   gain: AudioParamLike,
   envelope: Voice["envelope"],
+  peak: number,
   startTime: number,
   durationSeconds: number,
 ): void {
@@ -99,11 +135,12 @@ function scheduleEnvelope(
   const decayEnd = attackEnd + envelope.decayMs / 1000;
   const endTime = startTime + durationSeconds;
   const releaseStart = endTime - envelope.releaseMs / 1000;
+  const sustain = peak * envelope.sustainLevel;
 
   gain.setValueAtTime(0, startTime);
-  gain.linearRampToValueAtTime(1, attackEnd);
-  gain.linearRampToValueAtTime(envelope.sustainLevel, decayEnd);
-  gain.setValueAtTime(envelope.sustainLevel, releaseStart);
+  gain.linearRampToValueAtTime(peak, attackEnd);
+  gain.linearRampToValueAtTime(sustain, decayEnd);
+  gain.setValueAtTime(sustain, releaseStart);
   gain.linearRampToValueAtTime(0, endTime);
 }
 
@@ -111,9 +148,17 @@ function createToneSource(
   context: AudioContextLike,
   voice: Voice,
   startTime: number,
+  durationSeconds: number,
 ): SourceNodeLike {
   const oscillator = context.createOscillator();
-  oscillator.frequency.setValueAtTime(voice.frequencyHz, startTime);
+  oscillator.type = voice.waveform;
+  scheduleFrequency(
+    oscillator.frequency,
+    voice.frequencyHz,
+    voice.frequencyEndHz,
+    startTime,
+    durationSeconds,
+  );
   return oscillator;
 }
 
@@ -126,14 +171,37 @@ function createNoiseSource(
   return source;
 }
 
+/**
+ * A voice's filter, if it has one. A `"tone"`'s own pitch is what glides
+ * (scheduled in `createToneSource`), so this filter's cutoff, if set, stays
+ * static. A `"noise"` voice has no pitch of its own — if it wants to
+ * rise, this filter's cutoff is the only thing that can, so it glides
+ * from `filter.frequencyHz` to `voice.frequencyEndHz` when that's set.
+ */
 function createFilterNode(
   context: AudioContextLike,
-  filter: Filter,
+  voice: Voice,
   startTime: number,
+  durationSeconds: number,
 ): BiquadFilterNodeLike {
+  const { filter } = voice;
+  if (!filter) {
+    // Only called when voice.filter is truthy — see playVoice.
+    throw new Error("unreachable: createFilterNode called without a filter");
+  }
   const node = context.createBiquadFilter();
   node.type = filter.kind;
-  node.frequency.setValueAtTime(filter.frequencyHz, startTime);
+  if (voice.kind === "noise") {
+    scheduleFrequency(
+      node.frequency,
+      filter.frequencyHz,
+      voice.frequencyEndHz,
+      startTime,
+      durationSeconds,
+    );
+  } else {
+    node.frequency.setValueAtTime(clampAudible(filter.frequencyHz), startTime);
+  }
   node.Q.setValueAtTime(filter.q, startTime);
   return node;
 }
@@ -147,19 +215,30 @@ function playVoice(
   const durationSeconds = voice.durationMs / 1000;
   const source =
     voice.kind === "tone"
-      ? createToneSource(context, voice, startTime)
+      ? createToneSource(context, voice, startTime, durationSeconds)
       : createNoiseSource(context, voice);
 
   const gain = context.createGain();
   if (voice.filter) {
-    const filterNode = createFilterNode(context, voice.filter, startTime);
+    const filterNode = createFilterNode(
+      context,
+      voice,
+      startTime,
+      durationSeconds,
+    );
     source.connect(filterNode);
     filterNode.connect(gain);
   } else {
     source.connect(gain);
   }
   gain.connect(master);
-  scheduleEnvelope(gain.gain, voice.envelope, startTime, durationSeconds);
+  scheduleEnvelope(
+    gain.gain,
+    voice.envelope,
+    voice.gain,
+    startTime,
+    durationSeconds,
+  );
 
   source.start(startTime);
   source.stop(startTime + durationSeconds);

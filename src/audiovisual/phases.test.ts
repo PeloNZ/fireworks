@@ -70,6 +70,16 @@ describe("createPhaseWatcher", () => {
     expect(cues).toEqual([{ kind: "burst", spec }]);
   });
 
+  it("gives a flight cue when a firework enters flying", () => {
+    const watcher = createPhaseWatcher();
+    const spec = fireworkSpec("a");
+    watcher.cues([firework("a", "launching", spec)]);
+
+    const cues = watcher.cues([firework("a", "flying", spec)]);
+
+    expect(cues).toEqual([{ kind: "flight", spec }]);
+  });
+
   it("gives no cue when phase is unchanged between calls", () => {
     const watcher = createPhaseWatcher();
     watcher.cues([firework("a", "flying")]);
@@ -79,11 +89,11 @@ describe("createPhaseWatcher", () => {
     expect(cues).toEqual([]);
   });
 
-  it("gives no cue for a transition that isn't launch or burst", () => {
+  it("gives no cue for a transition that isn't launch, flight, or burst", () => {
     const watcher = createPhaseWatcher();
-    watcher.cues([firework("a", "launching")]);
+    watcher.cues([firework("a", "exploding")]);
 
-    const cues = watcher.cues([firework("a", "flying")]);
+    const cues = watcher.cues([firework("a", "finished")]);
 
     expect(cues).toEqual([]);
   });

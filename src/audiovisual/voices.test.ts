@@ -5,9 +5,22 @@ import type { Cue } from "./types.ts";
 import type { FireworkSpec } from "../action/types.ts";
 
 // Cycle 17 (docs/05_audio_visual_layer.md): the first sound — a plain
-// beep on every burst. Cycle 22 gives each timbre its own character: a
-// filter shaping the tone colour, and, for "crackle," a scatter of extra
-// noise voices on top of the main tone.
+// beep on every burst. Cycle 22 gives each timbre its own character.
+//
+// Playtesting cycle 22 found two real bugs, fixed here:
+// - "sharp" and "crackle" bursts were inaudible. Their tone's fundamental
+//   sits at spec.sound.pitch (220-880Hz), but the bandpass filter was
+//   fixed at 3000Hz with a high Q — far outside the passband, so the
+//   tone was attenuated by roughly 35dB. Every filter that shapes a
+//   *tone* voice now tracks that voice's own pitch, so it can never
+//   silence the fundamental it's supposed to be shaping.
+// - the launch whoosh's frequencyEndHz (meant to make it rise) was never
+//   wired into playback at all — it played raw, unfiltered white noise.
+//   It now carries a real lowpass filter, swept by the Web Audio adapter
+//   from frequencyHz to frequencyEndHz.
+// A pure sine has no harmonics for a filter to shape, so soft and sharp
+// now use different waveforms too — otherwise, once both pass their own
+// fundamental cleanly, they'd sound identical except for release length.
 
 function fireworkSpec(overrides: Partial<FireworkSpec> = {}): FireworkSpec {
   return {
@@ -52,11 +65,20 @@ const config = {
         releaseMs: 44,
       },
     },
+    flight: {
+      envelope: {
+        attackMs: 55,
+        decayMs: 20,
+        sustainLevel: 0.8,
+        releaseMs: 90,
+      },
+      gain: 0.23,
+    },
   },
 };
 
 describe("planVoices", () => {
-  it("returns exactly one noise voice for a launch cue, rising over its duration", () => {
+  it("returns exactly one noise voice for a launch cue, filtered and rising over its duration", () => {
     const spec = fireworkSpec();
     const cue: Cue = { kind: "launch", spec };
 
@@ -68,14 +90,42 @@ describe("planVoices", () => {
     expect(voice?.durationMs).toBe(config.audio.launch.durationMs);
     expect(voice?.envelope).toEqual(config.audio.launch.envelope);
     expect(voice?.seed).toBe(spec.seed);
-    expect(voice?.filter).toBeNull();
     expect(voice?.startOffsetMs).toBe(0);
+    expect(voice?.gain).toBeGreaterThan(0);
+    expect(voice?.gain).toBeLessThanOrEqual(1);
+    // Filtered, not raw noise — a real lowpass, starting where the
+    // glide starts, so the sink has something to actually sweep.
+    expect(voice?.filter?.kind).toBe("lowpass");
+    expect(voice?.filter?.frequencyHz).toBe(voice?.frequencyHz);
     expect(voice?.frequencyEndHz).not.toBeNull();
     expect(voice?.frequencyEndHz ?? 0).toBeGreaterThan(voice?.frequencyHz ?? 0);
   });
 
+  it("returns one sustained tone voice for a flight cue, lasting the fuse", () => {
+    const spec = fireworkSpec();
+    const cue: Cue = { kind: "flight", spec };
+
+    const voices = planVoices(cue, config);
+
+    expect(voices).toHaveLength(1);
+    const [voice] = voices;
+    expect(voice?.kind).toBe("tone");
+    expect(voice?.waveform).toBe("sine");
+    expect(voice?.frequencyEndHz).toBeNull();
+    expect(voice?.durationMs).toBe(spec.fuseMs);
+    expect(voice?.envelope).toEqual(config.audio.flight.envelope);
+    expect(voice?.gain).toBe(config.audio.flight.gain);
+    expect(voice?.seed).toBe(spec.seed);
+    expect(voice?.filter).toBeNull();
+    expect(voice?.startOffsetMs).toBe(0);
+    // A distinct, lower pitch from the burst's own — not just a copy of
+    // it — so flight doesn't sound like a held burst.
+    expect(voice?.frequencyHz).toBeLessThan(spec.sound.pitch);
+    expect(voice?.frequencyHz).toBeGreaterThan(0);
+  });
+
   describe("burst — timbre", () => {
-    it("soft keeps the base pitch and duration, with a lowpass filter and a longer release", () => {
+    it("soft's filter always passes its own pitch: a lowpass cutoff above it", () => {
       const spec = fireworkSpec({ sound: { pitch: 613, timbre: "soft" } });
       const cue: Cue = { kind: "burst", spec };
 
@@ -84,18 +134,21 @@ describe("planVoices", () => {
       expect(voices).toHaveLength(1);
       const [voice] = voices;
       expect(voice?.kind).toBe("tone");
+      expect(voice?.waveform).toBe("sine");
       expect(voice?.frequencyHz).toBe(spec.sound.pitch);
       expect(voice?.frequencyEndHz).toBeNull();
       expect(voice?.durationMs).toBe(spec.burstDurationMs);
+      expect(voice?.gain).toBe(1);
       expect(voice?.seed).toBe(spec.seed);
       expect(voice?.startOffsetMs).toBe(0);
       expect(voice?.filter?.kind).toBe("lowpass");
+      expect(voice?.filter?.frequencyHz ?? 0).toBeGreaterThan(spec.sound.pitch);
       expect(voice?.envelope.releaseMs).toBeGreaterThan(
         config.audio.burst.envelope.releaseMs,
       );
     });
 
-    it("sharp uses a high-Q bandpass filter and a shorter, snappier release", () => {
+    it("sharp's filter is centred exactly on its own pitch, so the fundamental always passes", () => {
       const spec = fireworkSpec({ sound: { pitch: 613, timbre: "sharp" } });
       const cue: Cue = { kind: "burst", spec };
 
@@ -104,14 +157,15 @@ describe("planVoices", () => {
       expect(voices).toHaveLength(1);
       const [voice] = voices;
       expect(voice?.kind).toBe("tone");
+      expect(voice?.waveform).toBe("sawtooth");
       expect(voice?.filter?.kind).toBe("bandpass");
-      expect(voice?.filter?.q).toBeGreaterThan(5);
+      expect(voice?.filter?.frequencyHz).toBe(spec.sound.pitch);
       expect(voice?.envelope.releaseMs).toBeLessThan(
         config.audio.burst.envelope.releaseMs,
       );
     });
 
-    it("crackle reuses sharp's filter and release on its main voice, plus config.audio.crackleCount short noise voices staggered across the burst", () => {
+    it("crackle's main voice matches sharp's shape, but its micro-bursts use their own independent filter", () => {
       const sharpSpec = fireworkSpec({
         sound: { pitch: 613, timbre: "sharp" },
       });
@@ -135,7 +189,13 @@ describe("planVoices", () => {
       for (const crackle of crackles) {
         expect(crackle.kind).toBe("noise");
         expect(crackle.durationMs).toBeLessThan(main?.durationMs ?? 0);
-        expect(crackle.filter).toEqual(main?.filter);
+        // A broadband noise micro-burst isn't silenced by sitting far
+        // from any one pitch, unlike a pure tone — it keeps its own
+        // fixed, bright filter rather than tracking the firework's pitch.
+        expect(crackle.filter).not.toEqual(main?.filter);
+        expect(crackle.filter?.kind).toBe("bandpass");
+        expect(crackle.gain).toBeGreaterThan(0);
+        expect(crackle.gain).toBeLessThan(1);
         expect(crackle.startOffsetMs).toBeGreaterThanOrEqual(0);
         expect(crackle.startOffsetMs).toBeLessThan(crackleSpec.burstDurationMs);
       }

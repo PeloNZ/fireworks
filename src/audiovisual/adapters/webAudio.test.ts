@@ -40,6 +40,7 @@ function fakeContext(currentTime: number, sampleRate = 44100) {
 
   function fakeOscillator() {
     return {
+      type: "",
       frequency: fakeAudioParam(),
       connect: vi.fn(),
       start: vi.fn(),
@@ -123,10 +124,12 @@ function fakeContext(currentTime: number, sampleRate = 44100) {
 
 const toneVoice: Voice = {
   kind: "tone",
+  waveform: "sine",
   frequencyHz: 440,
   frequencyEndHz: null,
   durationMs: 1000,
   envelope: { attackMs: 10, decayMs: 20, sustainLevel: 0.5, releaseMs: 100 },
+  gain: 1,
   seed: 1,
   filter: null,
   startOffsetMs: 0,
@@ -134,10 +137,12 @@ const toneVoice: Voice = {
 
 const noiseVoice: Voice = {
   kind: "noise",
+  waveform: "sine",
   frequencyHz: 200,
   frequencyEndHz: 900,
   durationMs: 300,
   envelope: { attackMs: 5, decayMs: 5, sustainLevel: 0.8, releaseMs: 50 },
+  gain: 1,
   seed: 7,
   filter: null,
   startOffsetMs: 0,
@@ -351,5 +356,93 @@ describe("createWebAudioSink — cycle 22 (filter and startOffsetMs)", () => {
 
     // lookaheadMs=20 -> 0.02s, startOffsetMs=50 -> 0.05s.
     expect(oscillators[0]?.start).toHaveBeenCalledWith(10.07);
+  });
+});
+
+// Playtesting a finished build found real bugs unit tests couldn't catch
+// on their own: "sharp"/"crackle" bursts were inaudible (fixed in
+// voices.ts, not here — a filter genuinely centred on a sine's only
+// frequency does nothing, so this layer's node-graph tests never showed
+// it), and frequencyEndHz — the field meant to make a sound rise — had
+// never actually been scheduled anywhere.
+describe("createWebAudioSink — playtesting fixes", () => {
+  it("sets the oscillator's waveform from voice.waveform", () => {
+    const { context, oscillators } = fakeContext(10);
+    const sink = createWebAudioSink({ context, config });
+
+    sink([{ ...toneVoice, waveform: "sawtooth" }]);
+
+    expect(oscillators[0]?.type).toBe("sawtooth");
+  });
+
+  it("scales the envelope's peak to voice.gain instead of always hitting full scale", () => {
+    const { context, gains } = fakeContext(10);
+    const sink = createWebAudioSink({ context, config });
+    const quiet: Voice = { ...toneVoice, gain: 0.25 };
+
+    sink([quiet]);
+
+    const voiceGain = gains[1];
+    const peakCall = voiceGain?.gain.calls[1];
+    expect(peakCall?.method).toBe("linearRampToValueAtTime");
+    expect(peakCall?.value).toBe(0.25);
+    // Sustain is a fraction of gain, not of full scale.
+    const sustainCall = voiceGain?.gain.calls[2];
+    expect(sustainCall?.value).toBeCloseTo(
+      0.25 * toneVoice.envelope.sustainLevel,
+    );
+  });
+
+  it("glides a tone voice's oscillator frequency toward frequencyEndHz over its duration", () => {
+    const { context, oscillators } = fakeContext(10);
+    const sink = createWebAudioSink({ context, config });
+    const gliding: Voice = { ...toneVoice, frequencyEndHz: 880 };
+
+    sink([gliding]);
+
+    // startTime=10.02, durationMs=1000 -> endTime=11.02.
+    expect(oscillators[0]?.frequency.calls).toEqual([
+      { method: "setValueAtTime", value: 440, time: 10.02 },
+      { method: "linearRampToValueAtTime", value: 880, time: 11.02 },
+    ]);
+  });
+
+  it("glides a noise voice's filter cutoff toward frequencyEndHz, since noise has no pitch of its own", () => {
+    const { context, filters } = fakeContext(10);
+    const sink = createWebAudioSink({ context, config });
+    const gliding: Voice = {
+      ...noiseVoice,
+      filter: { kind: "lowpass", frequencyHz: 200, q: 1 },
+      frequencyEndHz: 900,
+      durationMs: 1000,
+    };
+
+    sink([gliding]);
+
+    expect(filters[0]?.frequency.calls).toEqual([
+      { method: "setValueAtTime", value: 200, time: 10.02 },
+      { method: "linearRampToValueAtTime", value: 900, time: 11.02 },
+    ]);
+  });
+
+  it("never schedules a frequency above 16kHz, the ceiling of what's audible", () => {
+    const { context, oscillators, filters } = fakeContext(10);
+    const sink = createWebAudioSink({ context, config });
+    const tooHigh: Voice = {
+      ...toneVoice,
+      frequencyHz: 20000,
+      frequencyEndHz: 30000,
+      filter: { kind: "lowpass", frequencyHz: 25000, q: 1 },
+    };
+
+    sink([tooHigh]);
+
+    expect(oscillators[0]?.frequency.calls).toEqual([
+      { method: "setValueAtTime", value: 16000, time: 10.02 },
+      { method: "linearRampToValueAtTime", value: 16000, time: 11.02 },
+    ]);
+    expect(filters[0]?.frequency.calls).toEqual([
+      { method: "setValueAtTime", value: 16000, time: 10.02 },
+    ]);
   });
 });

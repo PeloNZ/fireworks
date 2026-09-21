@@ -3,12 +3,13 @@ import type { Cue } from "./types.ts";
 
 /**
  * Watches Action's phase machine and turns a transition into a cue —
- * entering `"launching"` gives `"launch"`, entering `"exploding"` gives
- * `"burst"`. Reads a fact Action already decided; derives nothing new.
- * The first sighting of a firework gives no cue (there's no prior phase
- * to compare against), and an id absent from a call is forgotten
- * entirely — its return, if it ever returns, is treated as a first
- * sighting again, not a transition from wherever it left off.
+ * entering `"launching"` gives `"launch"`, entering `"flying"` gives
+ * `"flight"`, entering `"exploding"` gives `"burst"`. Reads a fact Action
+ * already decided; derives nothing new. The first sighting of a firework
+ * gives no cue (there's no prior phase to compare against), and an id
+ * absent from a call is forgotten entirely — its return, if it ever
+ * returns, is treated as a first sighting again, not a transition from
+ * wherever it left off.
  */
 export function createPhaseWatcher(): {
   cues(entities: readonly Firework[]): readonly Cue[];
@@ -34,6 +35,8 @@ export function createPhaseWatcher(): {
         }
         if (firework.phase === "launching") {
           cues.push({ kind: "launch", spec: firework.spec });
+        } else if (firework.phase === "flying") {
+          cues.push({ kind: "flight", spec: firework.spec });
         } else if (firework.phase === "exploding") {
           cues.push({ kind: "burst", spec: firework.spec });
         }

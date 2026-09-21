@@ -38,9 +38,11 @@ export type Renderer = (frame: Frame) => void; // cycle 5
 
 /** A discrete "this just happened," read off Action's phase machine —
  * see `createPhaseWatcher` in phases.ts. Rendering redraws everything
- * from scratch every frame; sound needs an instant, not a snapshot. */
+ * from scratch every frame; sound needs an instant, not a snapshot.
+ * `"flight"` fires once, entering `"flying"` — a sustained sound for the
+ * whole time a shell is airborne, not a one-shot like the other two. */
 export interface Cue {
-  readonly kind: "launch" | "burst";
+  readonly kind: "launch" | "burst" | "flight";
   readonly spec: FireworkSpec;
 } // cycle 16
 
@@ -63,15 +65,25 @@ export interface Filter {
 
 /** One scheduled sound, built once and played once — see `planVoices` in
  * voices.ts. `frequencyEndHz` of `null` means a constant pitch; a value
- * is a glide target (cycle 20). `startOffsetMs` schedules this voice
- * later than the cue's own start — 0 for every voice except crackle's
- * staggered micro-bursts (cycle 22). */
+ * is a glide target (cycle 20) — the oscillator's own pitch for a
+ * `"tone"`, or the filter's cutoff for a `"noise"` (noise has no pitch of
+ * its own to glide). `startOffsetMs` schedules this voice later than the
+ * cue's own start — 0 for every voice except crackle's staggered
+ * micro-bursts (cycle 22). `gain` is this voice's own peak level, 0..1,
+ * before the shared master gain — what lets a quiet background voice
+ * (the flight whistle) coexist with a loud one-shot (a burst) without
+ * either one needing to guess at the other's volume. `waveform` only
+ * matters for `"tone"` — a pure `"sine"` has no harmonics, so a filter
+ * has nothing to shape; a richer wave gives soft and sharp timbres an
+ * audible difference beyond their release length alone. */
 export interface Voice {
   readonly kind: "tone" | "noise";
+  readonly waveform: "sine" | "sawtooth" | "square" | "triangle";
   readonly frequencyHz: number;
   readonly frequencyEndHz: number | null;
   readonly durationMs: number;
   readonly envelope: Envelope;
+  readonly gain: number; // 0..1, this voice's own peak, before master
   readonly seed: number; // drives a "noise" voice's noise buffer
   readonly filter: Filter | null; // cycle 22
   readonly startOffsetMs: number; // cycle 22
