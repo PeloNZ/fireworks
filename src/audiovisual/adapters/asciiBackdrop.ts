@@ -120,3 +120,28 @@ export function rasteriseBackdrop(
 
   return cells.map((line) => line.join("")).join("\n");
 }
+
+/**
+ * Composites a finished foreground grid over a finished backdrop grid.
+ * One rule: **the foreground shows through unless it is blank.**
+ *
+ * That is safe rather than a shortcut, because a foreground cell holding a
+ * space is already visually nothing — a sprite too dim to draw maps to
+ * `ramp[0]`, a space, and is indistinguishable from an empty cell. Letting
+ * the sky show through either one changes no visible output. Getting it
+ * backwards would be a real artifact: a decaying trail tail would drag a
+ * moving hole across the sky, so something meant to be invisible would
+ * become visible by erasing what is behind it.
+ *
+ * Both grids come from the same `ascii` config, so they are the same shape
+ * and their newlines line up — a newline is never a space, so it is always
+ * taken from the foreground and never moves.
+ */
+export function overlayGrid(base: string, over: string): string {
+  let out = "";
+  for (let i = 0; i < over.length; i++) {
+    const char = over[i] ?? " ";
+    out += char === " " ? (base[i] ?? " ") : char;
+  }
+  return out;
+}

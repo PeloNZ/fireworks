@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rasteriseBackdrop } from "./asciiBackdrop.ts";
+import { overlayGrid, rasteriseBackdrop } from "./asciiBackdrop.ts";
 import { defaultAudioVisualConfig } from "../config.ts";
 import type { AudioVisualConfig } from "../config.ts";
 import type { Backdrop } from "../types.ts";
@@ -141,5 +141,48 @@ describe("rasteriseBackdrop", () => {
         ["aaaR", "aaRc", "aRcc", "Rccc"].join("\n"),
       );
     });
+  });
+});
+
+// Cycle 11: compositing the finished foreground over the finished
+// backdrop. One rule, and it is the rule that makes the whole design safe:
+//
+//   the foreground shows through unless it is blank.
+//
+// A foreground cell holding a space is already visually nothing — a sprite
+// too dim to draw and an empty cell are indistinguishable on screen — so
+// letting the sky show through either changes no visible output. The
+// backdrop never enters rasteriseFrame's brightness map, so it can never
+// claim a cell or win a tie against a decaying trail.
+
+describe("overlayGrid", () => {
+  it("takes the foreground's character where it has one, and the backdrop's where it does not", () => {
+    expect(overlayGrid("abc\ndef", "X  \n Y ")).toBe("Xbc\ndYf");
+  });
+
+  it("lets the backdrop show through a sprite too dim to draw, instead of punching a hole in it", () => {
+    // The trap this rule exists to avoid. If a blank foreground cell erased
+    // the backdrop instead of revealing it, a decaying trail tail — which
+    // maps to ramp[0], a space — would drag a moving black hole across the
+    // sky. Something meant to be invisible must not become visible by
+    // subtraction.
+    const sky = "::::";
+    const foregroundWithADimSprite = "  @ ";
+
+    expect(overlayGrid(sky, foregroundWithADimSprite)).toBe("::@:");
+  });
+
+  it("leaves a cell blank when neither layer draws anything there", () => {
+    expect(overlayGrid("   \n   ", "   \n   ")).toBe("   \n   ");
+  });
+
+  it("keeps the newlines exactly where they were, so the two grids cannot drift out of alignment", () => {
+    const base = ["aaaa", "bbbb", "cccc"].join("\n");
+    const over = ["X   ", "    ", "   Y"].join("\n");
+
+    const composited = overlayGrid(base, over);
+
+    expect(composited).toBe(["Xaaa", "bbbb", "cccY"].join("\n"));
+    expect(composited.split("\n")).toHaveLength(3);
   });
 });
