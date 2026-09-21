@@ -20,6 +20,8 @@ session, not conclusions drawn later.
 Went straight for the mapping between keys and sounds. Kept pressing keys to
 work out the pattern, trying to learn it well enough to play a tune.
 
+Tried `?sound=silly`: "good."
+
 ### 5m
 
 "It was good, cos they make sounds and explode." key mashing. would like it to make "silly sounds"
