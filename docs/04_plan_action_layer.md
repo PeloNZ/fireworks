@@ -314,7 +314,8 @@ src/action/
   debug/
     format.ts        formatFirework(firework) -> string               [pure]
     consoleSink.ts   createSpecConsoleSink(log = console.debug)
-src/main.ts        rewired: Control -> Action, plus a fixed-step render loop
+src/main.ts        rewired: Control -> Action, plus a requestAnimationFrame loop that feeds elapsed
+                    time into the world's fixed timestep
 ```
 
 Everything marked `[pure]` takes a value and returns a value, no side effects — same payoff as the Control
@@ -432,11 +433,16 @@ config, not the default, so a hardcoded implementation fails — same discipline
     "small" isn't an exception to `CLAUDE.md`'s TDD rule. Then rewire `src/main.ts`: the Control layer's
     sink becomes `createActionLayer({ world, config: defaultActionConfig })`, and a
     `requestAnimationFrame` loop feeds real elapsed milliseconds into `world.step`. Expose the world on
-    `window` beside the existing `window.controlLayer`, for the same devtools-poking reason.
+    `window` beside the existing `window.controlLayer`, for the same devtools-poking reason. The loop logs
+    one console line per firework per phase change, not per frame: a `Map<string, FireworkPhase>` keyed by
+    `spec.id` tracks each firework's last-logged phase, and an entry is dropped once its id is no longer in
+    `world.entities()`, so the map stays bounded over a long session instead of growing by one key per
+    press forever.
 
-Wiring note for cycle 17: pass the sink as a wrapped call (`(event) => sink(event)`), not a bare method
-reference. ESLint's `no-unbound-method` blocks detaching a method from its object, the same trap cycles 5
-and 7 of the Control layer plan hit.
+Wiring note for cycle 17: `createActionLayer({ world, config })` returns a plain function, not a method
+bound to an object, so it's passed directly as `sink` with no wrapper needed. ESLint's `no-unbound-method`
+only fires on a bare method reference detached from its object — the trap cycles 5 and 7 of the Control
+layer plan hit — and doesn't apply here.
 
 ## Critical files
 

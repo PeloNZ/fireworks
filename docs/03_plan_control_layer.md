@@ -39,8 +39,9 @@ src/control/
     format.ts             formatControlEvent(event) -> string                     [pure]
     consoleSink.ts         createConsoleSink(log = console.debug)
   index.ts                 public surface — what other layers are allowed to import
-src/main.ts                dev harness: wires the keyboard adapter to a console sink,
-                            exposes the running layer on `window` for poking in devtools
+src/main.ts                dev harness: wires the keyboard adapter through the control layer to the
+                            Action layer's sink (docs/04_plan_action_layer.md cycle 17), exposing the
+                            running layer on `window` for poking in devtools
 ```
 
 Every file above has a single job, and files marked `[pure]` take no DOM types and produce no side
@@ -290,13 +291,15 @@ below, not just once at the end.
 **Wiring, after the cycles above are green:**
 
 7. **`src/main.ts` becomes the dev harness — done.** Creates a real `createKeyboardAdapter` against
-   `window`, a real `createConsoleSink`, wires them through `createControlLayer`, and assigns the
-   running layer to `window.controlLayer` via a `declare global { interface Window { ... } }`
-   augmentation, so it's fully typed for devtools poking rather than reached through a cast. This file
-   is intentionally not unit tested — it's wiring, proven by the manual check in Verification, not by an
-   automated test (see "Why a fake target beats jsdom" for why that tradeoff is acceptable here). This is
-   also where `src/counter.ts`, `src/style.css`, and `src/assets/*` — the Vite demo content this file
-   replaces — were deleted.
+   `window`, wires it through `createControlLayer`, and assigns the running layer to
+   `window.controlLayer` via a `declare global { interface Window { ... } }` augmentation, so it's fully
+   typed for devtools poking rather than reached through a cast. This file is intentionally not unit
+   tested — it's wiring, proven by the manual check in Verification, not by an automated test (see "Why a
+   fake target beats jsdom" for why that tradeoff is acceptable here). This is also where
+   `src/counter.ts`, `src/style.css`, and `src/assets/*` — the Vite demo content this file replaces —
+   were deleted. `createControlLayer`'s `sink` here is `createActionLayer({ world, config:
+defaultActionConfig })` (`docs/04_plan_action_layer.md` cycle 17), not the `createConsoleSink` built
+   in this cycle — that sink prints a raw `ControlEvent` and is not wired into `main.ts`.
 
    Two things worth naming from writing it:
    - `now: () => performance.now()`, not `now: performance.now`. The bare reference would detach
@@ -330,19 +333,19 @@ below, not just once at the end.
 
 ## Critical files
 
-| Path                                | Purpose                                                                       |
-| ----------------------------------- | ----------------------------------------------------------------------------- |
-| `src/control/types.ts`              | The cross-layer contract — the shapes everything else in this plan implements |
-| `src/control/config.ts`             | Single source of tunable values                                               |
-| `src/control/signal.ts`             | Cycle 1                                                                       |
-| `src/control/history.ts`            | Cycle 3                                                                       |
-| `src/control/adapters/keyboard.ts`  | Cycles 2 and 5                                                                |
-| `src/control/adapters/focusLoss.ts` | Cycle 8                                                                       |
-| `src/control/controlLayer.ts`       | Cycle 6                                                                       |
-| `src/control/debug/format.ts`       | Cycle 4                                                                       |
-| `src/control/debug/consoleSink.ts`  | Cycle 7 — one-liner, still test-first                                         |
-| `src/control/index.ts`              | Re-exports the public surface only                                            |
-| `src/main.ts`                       | Cycle 7 — replaces the Vite demo content                                      |
+| Path                                | Purpose                                                                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `src/control/types.ts`              | The cross-layer contract — the shapes everything else in this plan implements                                 |
+| `src/control/config.ts`             | Single source of tunable values                                                                               |
+| `src/control/signal.ts`             | Cycle 1                                                                                                       |
+| `src/control/history.ts`            | Cycle 3                                                                                                       |
+| `src/control/adapters/keyboard.ts`  | Cycles 2 and 5                                                                                                |
+| `src/control/adapters/focusLoss.ts` | Cycle 8                                                                                                       |
+| `src/control/controlLayer.ts`       | Cycle 6                                                                                                       |
+| `src/control/debug/format.ts`       | Cycle 4                                                                                                       |
+| `src/control/debug/consoleSink.ts`  | Cycle 7 — one-liner, still test-first                                                                         |
+| `src/control/index.ts`              | Re-exports the public surface only                                                                            |
+| `src/main.ts`                       | Cycle 7 — replaces the Vite demo content; rewired to Action's sink in `docs/04_plan_action_layer.md` cycle 17 |
 
 ## Verification — done, confirmed in a real browser
 

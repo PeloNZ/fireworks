@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-`src/main.ts` is the Control layer's dev harness: it wires a real `createKeyboardAdapter` (against `window`), a real `createConsoleSink`, and `createControlLayer`, then assigns the running layer to `window.controlLayer` for poking from devtools. It renders two lines of instructional text into `#app` and is otherwise not unit tested — see `docs/03_plan_control_layer.md` cycle 7 and "Why a fake target beats jsdom" for why that's the accepted tradeoff.
+`src/main.ts` is the dev harness for both layers: it wires a real `createKeyboardAdapter` (against `window`) through `createControlLayer`, whose sink is the Action layer (`createActionLayer({ world, config: defaultActionConfig })`). A `requestAnimationFrame` loop steps the resulting world and logs each firework's phase changes to the console through `createSpecConsoleSink`. It assigns the running control layer to `window.controlLayer` and the running world to `window.actionWorld`, for poking from devtools. It renders two lines of instructional text into `#app` and is otherwise not unit tested — see `docs/03_plan_control_layer.md` cycle 7, `docs/04_plan_action_layer.md` cycle 17, and "Why a fake target beats jsdom" for why that's the accepted tradeoff.
 
 Application code lives under `src/control/` (see `docs/03_plan_control_layer.md`) and `src/action/` (see `docs/04_plan_action_layer.md`) for the build plan and cycle order of each.
 
