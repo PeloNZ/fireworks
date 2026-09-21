@@ -195,7 +195,12 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
   audio: Object.freeze({
     lookaheadMs: 30,
     masterGain: 0.8,
-    maxVoices: 16,
+    // Raised from 16 for the silly set (docs/08_sound_effects.md):
+    // it plans more voices per cue than tones does — two for flight,
+    // up to three bounces for a boing, a flanged body plus several
+    // micro-tones for a fizz — and a few fireworks in the air at once
+    // would otherwise hit the old cap and drop voices silently.
+    maxVoices: 32,
     crackleCount: 5,
     burst: Object.freeze({
       envelope: Object.freeze({
