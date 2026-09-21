@@ -12,7 +12,7 @@ The Action layer is built. `src/action/` has tested `hashString`, `createRandom`
 
 `src/main.ts` wires the keyboard adapter through the control layer to the Action layer as its sink, steps the resulting world on a `requestAnimationFrame` loop, and logs each firework's phase changes to the console. It exposes `window.controlLayer` and `window.actionWorld` for poking in devtools.
 
-The AudioVisual layer does not exist yet.
+The AudioVisual layer is planned but not built. See `docs/05_audio_visual_layer.md` for the build plan and cycle order: an ASCII renderer, closed-form sparks and trails, and synthesised sound effects via the Web Audio API.
 
 ## Commands
 
@@ -45,4 +45,5 @@ All application code is written test-first. See `CLAUDE.md`'s "Development tacti
 - `docs/02_spec.md` — the Control layer spec.
 - `docs/03_plan_control_layer.md` — the Control layer's build plan and cycle order.
 - `docs/04_plan_action_layer.md` — the Action layer's build plan and cycle order.
+- `docs/05_audio_visual_layer.md` — the AudioVisual layer's build plan and cycle order.
 - `CLAUDE.md` — guidance for Claude Code working in this repo, including build gotchas.
