@@ -19,6 +19,17 @@ export interface Vec3 {
  * traits.ts. */
 export type FireworkPattern = "peony" | "willow" | "ring" | "chrysanthemum";
 
+/** The character of a firework's sound effect. See `pickSound` in
+ * traits.ts. */
+export type FireworkTimbre = "soft" | "sharp" | "crackle";
+
+/** A firework's sound: pitch in Hz plus a timbre. See `pickSound` in
+ * traits.ts. */
+export interface FireworkSound {
+  readonly pitch: number;
+  readonly timbre: FireworkTimbre;
+}
+
 /**
  * The two seeds every trait picker in this layer branches on, derived once
  * per press by `deriveSeeds`. `key` is stable for one physical key, however

@@ -1,6 +1,13 @@
-import type { ActionConfig } from "./config.ts";
+import type { ActionConfig, NumberRange } from "./config.ts";
 import { createRandom } from "./random.ts";
-import type { FireworkPattern, Seeds } from "./types.ts";
+import type { FireworkPattern, FireworkSound, Seeds } from "./types.ts";
+
+/** Maps the next value from `random` (in `[0, 1)`) onto `range`. Same idea
+ * as launch.ts's private `pick` — kept local here too rather than shared,
+ * since each file's version is a one-liner and neither needs the other. */
+function pickInRange(random: () => number, range: NumberRange): number {
+  return range.min + random() * (range.max - range.min);
+}
 
 /**
  * Picks a burst pattern from `config.patterns`, stable per key seed —
@@ -63,4 +70,22 @@ export function pickPalette(
     shuffled[j] = a;
   }
   return shuffled.slice(0, config.paletteSize);
+}
+
+/**
+ * Picks a firework's sound, stable per key seed — same idea as
+ * `pickPattern`: one physical key always sounds the same. Both pitch and
+ * timbre are drawn from `seeds.key` alone.
+ */
+export function pickSound(seeds: Seeds, config: ActionConfig): FireworkSound {
+  const random = createRandom(seeds.key);
+  const pitch = pickInRange(random, config.sound.pitch);
+  const timbreIndex = Math.floor(random() * config.sound.timbres.length);
+  const timbre = config.sound.timbres[timbreIndex];
+  if (!timbre) {
+    // Same contract as the guards above: config.sound.timbres is assumed
+    // non-empty by a real config.
+    throw new Error("ActionConfig.sound.timbres must not be empty");
+  }
+  return { pitch, timbre };
 }

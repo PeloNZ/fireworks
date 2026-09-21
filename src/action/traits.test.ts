@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultActionConfig } from "./config.ts";
-import { pickPalette, pickPattern } from "./traits.ts";
+import { pickPalette, pickPattern, pickSound } from "./traits.ts";
 import type { Seeds } from "./types.ts";
 
 // Cycle 6 (docs/04_plan_action_layer.md): pickPattern is the first of three
@@ -81,6 +81,45 @@ describe("pickPalette", () => {
     expect(chosenFamily).toBeDefined();
     for (const color of result) {
       expect(chosenFamily).toContain(color);
+    }
+  });
+});
+
+// Cycle 8 (docs/04_plan_action_layer.md): pickSound. Both fields are
+// stable per key seed — a firework's sound, like its pattern, is part of
+// what makes pressing the same key feel like that key.
+
+describe("pickSound", () => {
+  it("gives a stable pitch for one key seed across many calls", () => {
+    const first = pickSound(seeds({ key: 3 }), defaultActionConfig).pitch;
+
+    for (let i = 0; i < 10; i++) {
+      expect(pickSound(seeds({ key: 3 }), defaultActionConfig).pitch).toBe(
+        first,
+      );
+    }
+  });
+
+  it("keeps pitch inside an unusual configured range", () => {
+    const config = {
+      ...defaultActionConfig,
+      sound: { ...defaultActionConfig.sound, pitch: { min: 5000, max: 5001 } },
+    };
+
+    const { pitch } = pickSound(seeds(), config);
+
+    expect(pitch).toBeGreaterThanOrEqual(5000);
+    expect(pitch).toBeLessThanOrEqual(5001);
+  });
+
+  it("gives a stable timbre for one key seed, always a member of config.sound.timbres", () => {
+    const first = pickSound(seeds({ key: 4 }), defaultActionConfig).timbre;
+
+    expect(defaultActionConfig.sound.timbres).toContain(first);
+    for (let i = 0; i < 10; i++) {
+      expect(pickSound(seeds({ key: 4 }), defaultActionConfig).timbre).toBe(
+        first,
+      );
     }
   });
 });

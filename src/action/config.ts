@@ -2,7 +2,7 @@
 // same discipline as types.ts — see docs/04_plan_action_layer.md's Config
 // section for the full shape this grows toward.
 
-import type { FireworkPattern } from "./types.ts";
+import type { FireworkPattern, FireworkTimbre } from "./types.ts";
 
 /** A closed numeric range, `min` to `max` inclusive. Not `Range` — the DOM
  * library already defines a global `Range`, and shadowing it would make
@@ -21,6 +21,10 @@ export interface ActionConfig {
   readonly patterns: readonly FireworkPattern[];
   readonly palettes: readonly (readonly string[])[]; // colour families
   readonly paletteSize: number; // colours drawn per firework
+  readonly sound: {
+    readonly pitch: NumberRange;
+    readonly timbres: readonly FireworkTimbre[];
+  };
 }
 
 export const defaultActionConfig: ActionConfig = Object.freeze({
@@ -68,4 +72,12 @@ export const defaultActionConfig: ActionConfig = Object.freeze({
     ]),
   ]),
   paletteSize: 3,
+  sound: Object.freeze({
+    pitch: Object.freeze({ min: 220, max: 880 }),
+    timbres: Object.freeze<readonly FireworkTimbre[]>([
+      "soft",
+      "sharp",
+      "crackle",
+    ]),
+  }),
 });
