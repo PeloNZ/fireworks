@@ -13,6 +13,7 @@ export interface AudioVisualConfig {
   // docs/05_audio_visual_layer.md.
   readonly maxFrameMs: number;
   readonly shellSize: number; // world units, radius
+  readonly sparkSize: number; // world units, radius
   readonly sparkSpeed: NumberRange; // world units per second, outward
   // Only the ASCII adapter reads this — nested under its own key for the
   // same reason ControlConfig nests `keyboard`: the shape says who owns it.
@@ -26,6 +27,7 @@ export interface AudioVisualConfig {
 export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
   maxFrameMs: 50,
   shellSize: 1.5,
+  sparkSize: 0.6,
   sparkSpeed: Object.freeze({ min: 15, max: 40 }),
   ascii: Object.freeze({
     columns: 80,

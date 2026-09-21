@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { sparkDirections, sparkPosition, sparkSpeeds } from "./sparks.ts";
+import {
+  expandBurst,
+  sparkDirections,
+  sparkPosition,
+  sparkSpeeds,
+} from "./sparks.ts";
+import { parseHexColor } from "./color.ts";
 import { defaultAudioVisualConfig } from "./config.ts";
-import type { Vec3 } from "../action/types.ts";
+import { defaultWorldConfig } from "../action/worldConfig.ts";
+import type { Firework, FireworkSpec, Vec3 } from "../action/types.ts";
 
 // Cycle 8 (docs/05_audio_visual_layer.md): the first piece of expanding a
 // burst into sparks — which way each one flies. Every pattern places
@@ -234,4 +241,157 @@ describe("sparkPosition", () => {
     expect(Number.isFinite(position.x)).toBe(true);
     expect(Number.isFinite(position.y)).toBe(true);
   });
+});
+
+// Cycle 12: turning a burst into sprites, tying sparkDirections,
+// sparkSpeeds and sparkPosition together. Sparks radiate outward from
+// wherever the shell currently is (firework.position — Action keeps
+// stepping it under real physics through "exploding", same as
+// "launching" and "flying"), spreading further as phaseElapsedMs grows.
+
+function fireworkSpec(overrides: Partial<FireworkSpec> = {}): FireworkSpec {
+  return {
+    id: "KeyA:1000",
+    launchedAt: 1000,
+    origin: { x: 0, y: 0, z: 0 },
+    velocity: { x: 0, y: 10, z: 0 },
+    thrust: 0,
+    fuelMs: 500,
+    fuseMs: 900,
+    pattern: "peony",
+    colors: ["#ff3b30", "#00c2ff"],
+    particleCount: 60,
+    burstDurationMs: 300,
+    sound: { pitch: 440, timbre: "soft" },
+    seed: 1,
+    ...overrides,
+  };
+}
+
+function firework(overrides: Partial<Firework> = {}): Firework {
+  const spec = overrides.spec ?? fireworkSpec();
+  return {
+    spec,
+    phase: "exploding",
+    position: { x: 5, y: 40, z: 0 },
+    previousPosition: { x: 5, y: 40, z: 0 },
+    velocity: { x: 0, y: 0, z: 0 },
+    fuelRemainingMs: 0,
+    fuseRemainingMs: 0,
+    phaseElapsedMs: 0,
+    ...overrides,
+  };
+}
+
+describe("expandBurst", () => {
+  it("returns round(spec.particleCount) sprites while exploding", () => {
+    const entity = firework({ spec: fireworkSpec({ particleCount: 7.6 }) });
+
+    const sparks = expandBurst(
+      entity,
+      defaultAudioVisualConfig,
+      defaultWorldConfig,
+    );
+
+    expect(sparks).toHaveLength(8);
+  });
+
+  it("positions each spark via sparkPosition, from the shell's current position", () => {
+    const entity = firework({ phaseElapsedMs: 120 });
+    const count = Math.round(entity.spec.particleCount);
+    const directions = sparkDirections(
+      entity.spec.pattern,
+      count,
+      entity.spec.seed,
+    );
+    const speeds = sparkSpeeds(
+      entity.spec.pattern,
+      count,
+      entity.spec.seed,
+      defaultAudioVisualConfig,
+    );
+    const [direction] = directions;
+    const [speed] = speeds;
+    if (direction === undefined || speed === undefined) {
+      throw new Error("test fixture produced no sparks");
+    }
+    const expected = sparkPosition(
+      entity.position,
+      direction,
+      speed,
+      defaultWorldConfig.gravity,
+      defaultWorldConfig.drag,
+      entity.phaseElapsedMs,
+    );
+
+    const sparks = expandBurst(
+      entity,
+      defaultAudioVisualConfig,
+      defaultWorldConfig,
+    );
+
+    expect(sparks[0]?.position).toEqual(expected);
+  });
+
+  it("cycles spark colours through spec.colors", () => {
+    const entity = firework({
+      spec: fireworkSpec({
+        particleCount: 5,
+        colors: ["#ff3b30", "#00c2ff"],
+      }),
+    });
+
+    const sparks = expandBurst(
+      entity,
+      defaultAudioVisualConfig,
+      defaultWorldConfig,
+    );
+
+    expect(sparks.map((s) => s.color)).toEqual([
+      parseHexColor("#ff3b30"),
+      parseHexColor("#00c2ff"),
+      parseHexColor("#ff3b30"),
+      parseHexColor("#00c2ff"),
+      parseHexColor("#ff3b30"),
+    ]);
+  });
+
+  it("brightness falls linearly to 0 as phaseElapsedMs approaches burstDurationMs", () => {
+    const spec = fireworkSpec({ particleCount: 3, burstDurationMs: 300 });
+
+    const atStart = expandBurst(
+      firework({ spec, phaseElapsedMs: 0 }),
+      defaultAudioVisualConfig,
+      defaultWorldConfig,
+    );
+    const atHalf = expandBurst(
+      firework({ spec, phaseElapsedMs: 150 }),
+      defaultAudioVisualConfig,
+      defaultWorldConfig,
+    );
+    const atEnd = expandBurst(
+      firework({ spec, phaseElapsedMs: 300 }),
+      defaultAudioVisualConfig,
+      defaultWorldConfig,
+    );
+
+    expect(atStart[0]?.brightness).toBeCloseTo(1);
+    expect(atHalf[0]?.brightness).toBeCloseTo(0.5);
+    expect(atEnd[0]?.brightness).toBeCloseTo(0);
+  });
+
+  it.each(["armed", "launching", "flying", "finished"] as const)(
+    "gives no sparks while phase is %s",
+    (phase) => {
+      const entity = firework({ phase });
+
+      const sparks = expandBurst(
+        entity,
+        defaultAudioVisualConfig,
+        defaultWorldConfig,
+      );
+
+      expect(sparks).toEqual([]);
+    },
+  );
 });

@@ -78,6 +78,7 @@ const audioVisual = createAudioVisualLayer({
     config: defaultAudioVisualConfig,
   }),
   config: defaultAudioVisualConfig,
+  worldConfig: defaultWorldConfig,
 });
 
 // Traces each firework through its phases in the console — one line per

@@ -1,6 +1,8 @@
 import { parseHexColor } from "./color.ts";
 import { lerpVec3 } from "./interpolate.ts";
+import { expandBurst } from "./sparks.ts";
 import type { AudioVisualConfig } from "./config.ts";
+import type { WorldConfig } from "../action/worldConfig.ts";
 import type { Sprite, Frame } from "./types.ts";
 import type { Firework } from "../action/types.ts";
 
@@ -30,8 +32,9 @@ export function buildFrame(options: {
   readonly entities: readonly Firework[];
   readonly alpha: number;
   readonly config: AudioVisualConfig;
+  readonly worldConfig: WorldConfig;
 }): Frame {
-  const { entities, alpha, config } = options;
+  const { entities, alpha, config, worldConfig } = options;
   const sprites: Sprite[] = [];
 
   for (const firework of entities) {
@@ -44,6 +47,7 @@ export function buildFrame(options: {
         brightness: 1,
       });
     }
+    sprites.push(...expandBurst(firework, config, worldConfig));
   }
 
   return { sprites };

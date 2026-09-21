@@ -1,5 +1,6 @@
 import { buildFrame } from "./frame.ts";
 import type { AudioVisualConfig } from "./config.ts";
+import type { WorldConfig } from "../action/worldConfig.ts";
 import type { Renderer } from "./types.ts";
 import type { Firework } from "../action/types.ts";
 
@@ -13,6 +14,7 @@ import type { Firework } from "../action/types.ts";
 export function createAudioVisualLayer(options: {
   readonly renderer: Renderer;
   readonly config: AudioVisualConfig;
+  readonly worldConfig: WorldConfig;
 }): {
   present(input: {
     readonly entities: readonly Firework[];
@@ -20,11 +22,16 @@ export function createAudioVisualLayer(options: {
     readonly elapsedMs: number;
   }): void;
 } {
-  const { renderer, config } = options;
+  const { renderer, config, worldConfig } = options;
   return {
     present(input) {
       renderer(
-        buildFrame({ entities: input.entities, alpha: input.alpha, config }),
+        buildFrame({
+          entities: input.entities,
+          alpha: input.alpha,
+          config,
+          worldConfig,
+        }),
       );
     },
   };

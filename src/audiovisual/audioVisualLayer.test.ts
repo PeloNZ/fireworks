@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createAudioVisualLayer } from "./audioVisualLayer.ts";
 import { buildFrame } from "./frame.ts";
 import { defaultAudioVisualConfig } from "./config.ts";
+import { defaultWorldConfig } from "../action/worldConfig.ts";
 import type { Firework, FireworkSpec } from "../action/types.ts";
 
 // Cycle 6 (docs/05_audio_visual_layer.md): createAudioVisualLayer wires
@@ -49,6 +50,7 @@ describe("createAudioVisualLayer", () => {
     const layer = createAudioVisualLayer({
       renderer,
       config: defaultAudioVisualConfig,
+      worldConfig: defaultWorldConfig,
     });
     const entities = [firework()];
 
@@ -56,7 +58,12 @@ describe("createAudioVisualLayer", () => {
 
     expect(renderer).toHaveBeenCalledTimes(1);
     expect(renderer).toHaveBeenCalledWith(
-      buildFrame({ entities, alpha: 0.4, config: defaultAudioVisualConfig }),
+      buildFrame({
+        entities,
+        alpha: 0.4,
+        config: defaultAudioVisualConfig,
+        worldConfig: defaultWorldConfig,
+      }),
     );
   });
 });

@@ -1,6 +1,9 @@
 import { createRandom } from "../action/random.ts";
+import { parseHexColor } from "./color.ts";
 import type { AudioVisualConfig } from "./config.ts";
-import type { FireworkPattern, Vec3 } from "../action/types.ts";
+import type { WorldConfig } from "../action/worldConfig.ts";
+import type { Firework, FireworkPattern, Vec3 } from "../action/types.ts";
+import type { Sprite } from "./types.ts";
 
 // Angular jitter, in radians, nudging each spark off its evenly-spaced
 // base angle. 0 reproduces an exact even spread (the "ring" pattern);
@@ -171,4 +174,70 @@ export function sparkPosition(
     y: origin.y + terminal.y * seconds + (v0.y - terminal.y) * decay,
     z: origin.z + terminal.z * seconds + (v0.z - terminal.z) * decay,
   };
+}
+
+function colorAt(colors: Firework["spec"]["colors"], index: number): string {
+  const color = colors[index];
+  if (color === undefined) {
+    // colors is contractually non-empty and index is always in range
+    // (i % colors.length) — noUncheckedIndexedAccess can't see that, so
+    // it types this access as possibly undefined regardless. Same guard
+    // as frame.ts's own colour access.
+    throw new Error("FireworkSpec.colors must not be empty");
+  }
+  return color;
+}
+
+/**
+ * Expands one exploding firework into its spark sprites. Sparks radiate
+ * outward from wherever the shell currently is — `firework.position`,
+ * which Action keeps stepping under real gravity, wind and drag through
+ * "exploding", same as "launching" and "flying" — spreading further as
+ * `phaseElapsedMs` grows, via `sparkPosition`'s own closed-form gravity
+ * and drag. That means gravity's pull on the shell's own drift is counted
+ * once by Action and once more by each spark's spread from it — a visual
+ * simplification, not a physically exact composition, in the same spirit
+ * as Action's constant-thrust approximation for a shell's fuel burn.
+ * Gives no sprites unless `firework.phase` is `"exploding"`.
+ */
+export function expandBurst(
+  firework: Firework,
+  config: AudioVisualConfig,
+  worldConfig: WorldConfig,
+): readonly Sprite[] {
+  if (firework.phase !== "exploding") {
+    return [];
+  }
+
+  const { spec, phaseElapsedMs } = firework;
+  const count = Math.round(spec.particleCount);
+  const directions = sparkDirections(spec.pattern, count, spec.seed);
+  const speeds = sparkSpeeds(spec.pattern, count, spec.seed, config);
+  const brightness = Math.max(0, 1 - phaseElapsedMs / spec.burstDurationMs);
+
+  const sparks: Sprite[] = [];
+  for (let i = 0; i < count; i++) {
+    const direction = directions[i];
+    const speed = speeds[i];
+    if (direction === undefined || speed === undefined) {
+      // sparkDirections and sparkSpeeds both return exactly `count`
+      // entries — this loop never runs past either array's length.
+      throw new Error("unreachable: spark index out of range");
+    }
+    sparks.push({
+      kind: "spark",
+      position: sparkPosition(
+        firework.position,
+        direction,
+        speed,
+        worldConfig.gravity,
+        worldConfig.drag,
+        phaseElapsedMs,
+      ),
+      size: config.sparkSize,
+      color: parseHexColor(colorAt(spec.colors, i % spec.colors.length)),
+      brightness,
+    });
+  }
+  return sparks;
 }
