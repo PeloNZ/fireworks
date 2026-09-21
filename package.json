@@ -9,12 +9,12 @@
     "preview": "vite preview",
     "typecheck": "tsc",
     "test": "vitest",
-    "test:run": "vitest run",
+    "test:run": "vitest run --reporter=agent",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "knip": "knip",
+    "knip": "knip --reporter compact",
     "prepare": "husky"
   },
   "devDependencies": {
