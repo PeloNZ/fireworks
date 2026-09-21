@@ -29,6 +29,12 @@ export interface AudioVisualConfig {
     // clearly over the sky. With the default 10-character ramp, 0.25 keeps
     // every sky cell at or below the ramp's third character.
     readonly skyMaxBrightness: number;
+    readonly starCount: NumberRange; // before a lit sky washes some out
+    // World y floor for every body. Keep this above the ground's own
+    // height range, or a body generates inside the landform and the ground
+    // paints over it — wasted scenery rather than a bug, since ground
+    // paints last.
+    readonly celestialMinHeight: number;
   };
   // Only the ASCII adapter reads this — nested under its own key for the
   // same reason ControlConfig nests `keyboard`: the shape says who owns it.
@@ -73,6 +79,8 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
   trailMaxAgeMs: 300,
   backdrop: Object.freeze({
     skyMaxBrightness: 0.25,
+    starCount: Object.freeze({ min: 18, max: 40 }),
+    celestialMinHeight: 35,
   }),
   ascii: Object.freeze({
     columns: 80,

@@ -8,14 +8,47 @@
 // from the same seed.
 
 import { createRandom } from "../action/random.ts";
+import type { NumberRange } from "../action/config.ts";
+import type { Vec3 } from "../action/types.ts";
 import type { AudioVisualConfig } from "./config.ts";
-import type { SkyGradient } from "./types.ts";
+import type { CelestialBody, SkyGradient } from "./types.ts";
 
 // World space is 100 units tall, `y` growing up — the same extent
 // asciiGrid.ts maps onto rows. Duplicated deliberately rather than
 // promoted into WorldConfig: that would touch Action's tested physics
 // config for no behaviour change. See docs/06_world_backdrop.md.
 const WORLD_TOP = 100;
+const WORLD_LEFT = -50;
+const WORLD_WIDTH = 100;
+
+/** Maps the next value from `random` (in `[0, 1)`) onto `range`. Same idea
+ * as spec.ts's and launch.ts's private helper of the same name — kept
+ * local here too, one small helper per file rather than a shared module
+ * for something this small. */
+function pickInRange(random: () => number, range: NumberRange): number {
+  return range.min + random() * (range.max - range.min);
+}
+
+/**
+ * Somewhere in the upper sky, above `celestialMinHeight`. The half-open
+ * render box is satisfied by these ranges rather than by a clamp: because
+ * `random` returns `[0, 1)`, `x` lands in `[-50, 50)` and `y` in
+ * `[minHeight, 100)`, so neither can hit the one coordinate rasteriseFrame
+ * discards. Widen either expression to include its endpoint and a body
+ * silently vanishes about one load in four billion.
+ */
+function bodyPosition(
+  random: () => number,
+  config: AudioVisualConfig["backdrop"],
+): Vec3 {
+  return {
+    x: WORLD_LEFT + random() * WORLD_WIDTH,
+    y:
+      config.celestialMinHeight +
+      random() * (WORLD_TOP - config.celestialMinHeight),
+    z: 0,
+  };
+}
 
 /**
  * The sky's brightness at world height `y`: the straight line between
@@ -45,4 +78,35 @@ export function buildSky(
   const random = createRandom(seed);
   const horizon = random() * config.skyMaxBrightness;
   return { horizon, zenith: random() * horizon };
+}
+
+/**
+ * Draws the sky's scenery from `seed`: `starCount` stars, one planet and
+ * one moon, all scattered above `celestialMinHeight`.
+ *
+ * The returned order is the **paint order** — stars, then planet, then
+ * moon, later drawing over earlier. That single fact is what makes a star
+ * sharing the moon's cell lose to the moon, with no overlap detection and
+ * no rejection sampling anywhere in this layer.
+ *
+ * All three kinds draw from the one generator, so changing `starCount`
+ * changes how many draws precede the planet and moon and therefore moves
+ * them. Nothing correlates with anything it shouldn't — which is what the
+ * one-stream-per-concern convention actually guards against — but a moon
+ * that jumps when you edit a star count is confusing unless you expect it.
+ */
+export function buildBodies(
+  seed: number,
+  config: AudioVisualConfig["backdrop"],
+): readonly CelestialBody[] {
+  const random = createRandom(seed);
+  const starCount = Math.round(pickInRange(random, config.starCount));
+
+  const bodies: CelestialBody[] = [];
+  for (let i = 0; i < starCount; i++) {
+    bodies.push({ kind: "star", position: bodyPosition(random, config) });
+  }
+  bodies.push({ kind: "planet", position: bodyPosition(random, config) });
+  bodies.push({ kind: "moon", position: bodyPosition(random, config) });
+  return bodies;
 }

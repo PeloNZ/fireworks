@@ -102,3 +102,13 @@ export interface SkyGradient {
   readonly horizon: number; // 0..1, at world y = 0
   readonly zenith: number; // 0..1, at world y = 100
 } // backdrop cycle 1
+
+/** One static object in the sky. `kind` is all a renderer needs to choose
+ * a look — a fixed glyph in the ASCII adapter, a disc in a future Canvas
+ * one. There is deliberately no brightness field: a fixed glyph has no
+ * brightness to vary, and no field lands here before a test can drive it.
+ * See `buildBodies` in backdrop.ts. */
+export interface CelestialBody {
+  readonly kind: "star" | "moon" | "planet";
+  readonly position: Vec3; // z always 0, same as every sprite
+} // backdrop cycle 3
