@@ -138,6 +138,10 @@ export interface AudioVisualConfig {
       readonly moon: CelestialStyle;
       readonly planet: CelestialStyle;
     };
+    // One index, a silhouette -- see the default's own comment for why
+    // this has to be darker than the sky, not brighter, unlike
+    // asciiBackdrop's groundFillBrightness.
+    readonly ground: number;
   };
   // Only the Web Audio adapter and its planning functions read this,
   // nested under its own key for the same reason ascii is.
@@ -275,6 +279,13 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
       moon: Object.freeze({ index: 15, radius: 6 }),
       planet: Object.freeze({ index: 9, radius: 2.5 }),
     }),
+    // One index, a silhouette -- the medium this renderer draws in can
+    // show the real thing, unlike asciiBackdrop's lit shape (see
+    // "Why the emoji renderer is not just the ASCII renderer with
+    // different characters" for the precedent this follows). Black,
+    // darker than every reachable sky index, so the ground reads as
+    // solid ground rather than blending into the horizon it meets.
+    ground: 0,
   }),
   audio: Object.freeze({
     lookaheadMs: 30,

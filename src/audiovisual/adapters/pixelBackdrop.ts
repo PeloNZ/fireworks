@@ -1,6 +1,6 @@
-import { discCells, pixelCentreY } from "./pixelGrid.ts";
+import { discCells, pixelCentreX, pixelCentreY } from "./pixelGrid.ts";
 import { rampLevel } from "./ramp.ts";
-import { skyBrightnessAt } from "../backdrop.ts";
+import { groundHeightAt, skyBrightnessAt } from "../backdrop.ts";
 import type { AudioVisualConfig } from "../config.ts";
 import type { Backdrop, CelestialBody } from "../types.ts";
 
@@ -53,6 +53,22 @@ export function paintBackdrop(
     const style = styleFor(body, pixel.bodies);
     for (const offset of discCells(body.position, style.radius, pixel)) {
       buffer[offset] = style.index;
+    }
+  }
+
+  // Ground paints last: a true silhouette, one index, no ridge glyph and
+  // no separate fill brightness the way asciiBackdrop needs. This
+  // inverts asciiBackdrop's own constraint (its fill has to be *brighter*
+  // than the sky or the landform vanishes into the horizon) because
+  // skyBrightnessAt is brightest at the horizon -- a ground darker than
+  // every reachable sky index sits correctly against the sky's own
+  // brightest band, right where the two actually meet.
+  for (let column = 0; column < columns; column++) {
+    const height = groundHeightAt(backdrop.ground, pixelCentreX(column, pixel));
+    for (let row = 0; row < rows; row++) {
+      if (pixelCentreY(row, pixel) <= height) {
+        buffer[row * columns + column] = pixel.ground;
+      }
     }
   }
 

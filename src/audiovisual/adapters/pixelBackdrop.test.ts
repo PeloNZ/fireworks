@@ -93,3 +93,72 @@ describe("paintBackdrop -- bodies", () => {
     }
   });
 });
+
+// Cycle 15: the ground is one index, no ridge, no fill split -- a true
+// silhouette. A square 4x4 grid (worldHalfWidth 50, spanning the
+// polyline exactly) whose control points sit exactly on the column
+// centres, so every sampled height (25, 50, 75, 100) lands exactly
+// halfway between two row centres (87.5, 62.5, 37.5, 12.5) -- 12.5 world
+// units of margin either way, the widest a 4x4 grid allows, no rounding
+// tie anywhere.
+describe("paintBackdrop -- ground", () => {
+  const groundGrid = { columns: 4, rows: 4 };
+  const groundPixel: AudioVisualConfig["pixel"] = {
+    ...defaultAudioVisualConfig.pixel,
+    columns: groundGrid.columns,
+    rows: groundGrid.rows,
+    sky: [3, 3, 3, 3, 3], // flat and distinct from ground, easy to tell apart
+    ground: 55,
+  };
+  const groundSlope: Backdrop["ground"] = [
+    { x: -50, height: 25 },
+    { x: -37.5, height: 25 },
+    { x: -12.5, height: 50 },
+    { x: 12.5, height: 75 },
+    { x: 37.5, height: 100 },
+    { x: 50, height: 100 },
+  ];
+
+  function paintedRows(buffer: Uint8Array, column: number): number[] {
+    const rows: number[] = [];
+    for (let row = 0; row < groundGrid.rows; row++) {
+      if (buffer[row * groundGrid.columns + column] === 55) {
+        rows.push(row);
+      }
+    }
+    return rows;
+  }
+
+  it("paints a staircase, one row taller per column, from a rising slope", () => {
+    const backdrop: Backdrop = {
+      sky: { horizon: 0, zenith: 0 }, // ramps to index 3 regardless of y
+      bodies: [],
+      ground: groundSlope,
+    };
+
+    const buffer = paintBackdrop(backdrop, groundPixel);
+
+    expect(paintedRows(buffer, 0)).toEqual([3]);
+    expect(paintedRows(buffer, 1)).toEqual([2, 3]);
+    expect(paintedRows(buffer, 2)).toEqual([1, 2, 3]);
+    expect(paintedRows(buffer, 3)).toEqual([0, 1, 2, 3]);
+  });
+
+  it("paints ground last, covering a body inside the landform", () => {
+    const backdrop: Backdrop = {
+      sky: { horizon: 0, zenith: 0 },
+      // Column 0's only ground pixel is row 3 -- put the moon exactly
+      // there.
+      bodies: [{ kind: "moon", position: { x: -37.5, y: 12.5, z: 0 } }],
+      ground: groundSlope,
+    };
+    const pixel: AudioVisualConfig["pixel"] = {
+      ...groundPixel,
+      bodies: { ...groundPixel.bodies, moon: { index: 88, radius: 0.1 } },
+    };
+
+    const buffer = paintBackdrop(backdrop, pixel);
+
+    expect(buffer[3 * groundGrid.columns + 0]).toBe(55);
+  });
+});
