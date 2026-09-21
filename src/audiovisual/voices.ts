@@ -24,6 +24,7 @@ export function planVoices(
         frequencyEndHz: null,
         durationMs: cue.spec.burstDurationMs,
         envelope: config.audio.burst.envelope,
+        seed: cue.spec.seed,
       },
     ];
   }
@@ -34,6 +35,7 @@ export function planVoices(
       frequencyEndHz: LAUNCH_END_HZ,
       durationMs: config.audio.launch.durationMs,
       envelope: config.audio.launch.envelope,
+      seed: cue.spec.seed,
     },
   ];
 }

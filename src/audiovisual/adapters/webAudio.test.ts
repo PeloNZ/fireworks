@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createWebAudioSink } from "./webAudio.ts";
+import { createNoiseBuffer, createWebAudioSink } from "./webAudio.ts";
 import { defaultAudioVisualConfig } from "../config.ts";
 import type { Voice } from "../types.ts";
 
@@ -30,9 +30,11 @@ function fakeAudioParam(): {
   };
 }
 
-function fakeContext(currentTime: number) {
+function fakeContext(currentTime: number, sampleRate = 44100) {
   const oscillators: ReturnType<typeof fakeOscillator>[] = [];
   const gains: ReturnType<typeof fakeGain>[] = [];
+  const buffers: ReturnType<typeof fakeBuffer>[] = [];
+  const bufferSources: ReturnType<typeof fakeBufferSource>[] = [];
   const destination = { connect: vi.fn() };
 
   function fakeOscillator() {
@@ -49,9 +51,26 @@ function fakeContext(currentTime: number) {
       connect: vi.fn(),
     };
   }
+  function fakeBuffer(length: number, sr: number) {
+    const channelData = new Float32Array(length);
+    return {
+      length,
+      sampleRate: sr,
+      getChannelData: () => channelData,
+    };
+  }
+  function fakeBufferSource() {
+    return {
+      buffer: null as ReturnType<typeof fakeBuffer> | null,
+      connect: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+    };
+  }
 
   const context = {
     currentTime,
+    sampleRate,
     destination,
     createOscillator: vi.fn(() => {
       const oscillator = fakeOscillator();
@@ -63,9 +82,21 @@ function fakeContext(currentTime: number) {
       gains.push(gain);
       return gain;
     }),
+    createBuffer: vi.fn(
+      (_numberOfChannels: number, length: number, sr: number) => {
+        const buffer = fakeBuffer(length, sr);
+        buffers.push(buffer);
+        return buffer;
+      },
+    ),
+    createBufferSource: vi.fn(() => {
+      const source = fakeBufferSource();
+      bufferSources.push(source);
+      return source;
+    }),
   };
 
-  return { context, oscillators, gains, destination };
+  return { context, oscillators, gains, buffers, bufferSources, destination };
 }
 
 const toneVoice: Voice = {
@@ -74,6 +105,16 @@ const toneVoice: Voice = {
   frequencyEndHz: null,
   durationMs: 1000,
   envelope: { attackMs: 10, decayMs: 20, sustainLevel: 0.5, releaseMs: 100 },
+  seed: 1,
+};
+
+const noiseVoice: Voice = {
+  kind: "noise",
+  frequencyHz: 200,
+  frequencyEndHz: 900,
+  durationMs: 300,
+  envelope: { attackMs: 5, decayMs: 5, sustainLevel: 0.8, releaseMs: 50 },
+  seed: 7,
 };
 
 // An unusual lookahead/gain/cap, not the defaults, so hardcoded values
@@ -169,5 +210,74 @@ describe("createWebAudioSink", () => {
     sink([toneVoice, toneVoice, toneVoice]);
 
     expect(oscillators).toHaveLength(2);
+  });
+
+  // Cycle 21: a "noise" voice plays through a buffer source instead of an
+  // oscillator, connected through the same gain chain.
+  it("plays a noise voice through a buffer source, not an oscillator, connected the same way", () => {
+    const { context, oscillators, bufferSources, gains } = fakeContext(10);
+    const sink = createWebAudioSink({ context, config });
+
+    sink([noiseVoice]);
+
+    expect(oscillators).toHaveLength(0);
+    expect(bufferSources).toHaveLength(1);
+    expect(bufferSources[0]?.buffer).not.toBeNull();
+    const [master, voiceGain] = gains;
+    expect(bufferSources[0]?.connect).toHaveBeenCalledWith(voiceGain);
+    expect(voiceGain?.connect).toHaveBeenCalledWith(master);
+  });
+
+  it("builds a noise voice's buffer from its own seed and duration", () => {
+    const { context, buffers } = fakeContext(10, 8000);
+    const sink = createWebAudioSink({ context, config });
+
+    sink([noiseVoice]);
+
+    expect(context.createBuffer).toHaveBeenCalledWith(1, 2400, 8000); // 0.3s * 8000
+    // An independent context and call, fed the voice's own seed and
+    // duration, reproduces the same noise — proving the sink used those
+    // values, not some other seed or a fixed duration.
+    const { context: independentContext } = fakeContext(0, 8000);
+    const expected = createNoiseBuffer(
+      independentContext,
+      noiseVoice.seed,
+      noiseVoice.durationMs,
+    );
+    expect(buffers[0]?.getChannelData()).toEqual(expected.getChannelData(0));
+  });
+});
+
+describe("createNoiseBuffer", () => {
+  it("requests a mono buffer sized for durationMs at context.sampleRate", () => {
+    const { context } = fakeContext(0, 44100);
+
+    createNoiseBuffer(context, 1, 500);
+
+    expect(context.createBuffer).toHaveBeenCalledWith(1, 22050, 44100);
+  });
+
+  it("fills the buffer deterministically from the seed", () => {
+    const { context: contextA } = fakeContext(0, 8000);
+    const { context: contextB } = fakeContext(0, 8000);
+
+    const bufferA = createNoiseBuffer(contextA, 42, 10);
+    const bufferB = createNoiseBuffer(contextB, 42, 10);
+
+    expect(Array.from(bufferA.getChannelData(0))).toEqual(
+      Array.from(bufferB.getChannelData(0)),
+    );
+  });
+
+  it("gives different seeds different noise", () => {
+    const { context: contextA } = fakeContext(0, 8000);
+    const { context: contextB } = fakeContext(0, 8000);
+
+    const bufferA = createNoiseBuffer(contextA, 1, 10);
+    const bufferB = createNoiseBuffer(contextB, 2, 10);
+
+    expect(Array.from(bufferA.getChannelData(0))).not.toEqual(
+      Array.from(bufferB.getChannelData(0)),
+    );
   });
 });

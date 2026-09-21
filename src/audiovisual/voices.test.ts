@@ -67,12 +67,14 @@ describe("planVoices", () => {
         frequencyEndHz: null,
         durationMs: spec.burstDurationMs,
         envelope: config.audio.burst.envelope,
+        seed: spec.seed,
       },
     ]);
   });
 
   it("returns exactly one noise voice for a launch cue, rising over its duration", () => {
-    const cue: Cue = { kind: "launch", spec: fireworkSpec() };
+    const spec = fireworkSpec();
+    const cue: Cue = { kind: "launch", spec };
 
     const voices = planVoices(cue, config);
 
@@ -81,6 +83,7 @@ describe("planVoices", () => {
     expect(voice?.kind).toBe("noise");
     expect(voice?.durationMs).toBe(config.audio.launch.durationMs);
     expect(voice?.envelope).toEqual(config.audio.launch.envelope);
+    expect(voice?.seed).toBe(spec.seed);
     expect(voice?.frequencyEndHz).not.toBeNull();
     expect(voice?.frequencyEndHz ?? 0).toBeGreaterThan(voice?.frequencyHz ?? 0);
   });

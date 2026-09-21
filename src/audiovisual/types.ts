@@ -62,6 +62,7 @@ export interface Voice {
   readonly frequencyEndHz: number | null;
   readonly durationMs: number;
   readonly envelope: Envelope;
+  readonly seed: number; // drives a "noise" voice's noise buffer
 } // cycle 17, grows
 
 /** An audio port's whole contract: given the voices planned for this
