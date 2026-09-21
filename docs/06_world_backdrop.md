@@ -210,7 +210,7 @@ cell, with no systematic bias up or down.
 interface SkyGradient {
   readonly horizon: number; // 0..1, at world y = 0
   readonly zenith: number; // 0..1, at world y = 100
-} // cycle 2
+} // cycle 1
 
 /** One static object in the sky. `kind` is all a renderer needs to choose
  * a look: a glyph here, a disc in a future Canvas adapter. No brightness
@@ -459,11 +459,11 @@ Nothing visible changes in this pass. It ends with a whole sky existing as data 
 1. **`skyBrightnessAt(sky, y)`.** Hand-made fixture `{ horizon: 0.4, zenith: 0.1 }`, neither value a
    default: `y = 0` returns `0.4`; `y = 100` returns `0.1`; `y = 50` returns the exact midpoint `0.25`;
    `y = 25` returns `0.325`. A constant fails, and a gradient interpolated the wrong way round fails on
-   every case but the midpoint.
+   every case but the midpoint. Introduces `SkyGradient`, since this is the first function to name it.
 2. **`buildSky(seed, config)`.** Unusual `skyMaxBrightness: 0.11`. Across seeds `1..200`: every `horizon`
    is below `0.11` and every `zenith` is at or below its own `horizon`; and at least one `horizon`
    exceeds `0.09`, which is what proves the cap is the config value rather than some smaller fixed
-   number. Same seed twice is deep-equal; two different seeds differ. Introduces `SkyGradient`.
+   number. Same seed twice is deep-equal; two different seeds differ.
 3. **`buildBodies(seed, config, sky)` — the census.** Unusual `starCount: { min: 3, max: 3 }` and
    `celestialMinHeight: 60`, with a black sky (`{ horizon: 0, zenith: 0 }`) so no washout applies:
    exactly five bodies; `bodies.map((b) => b.kind)` equals
@@ -538,7 +538,7 @@ stars, a moon, a planet, and a dark landform along the bottom. Refresh and get a
 | Path                                        | Purpose                                                           |
 | ------------------------------------------- | ----------------------------------------------------------------- |
 | `src/audiovisual/backdrop.ts`               | Cycles 1–7 — the whole core                                       |
-| `src/audiovisual/types.ts`                  | `SkyGradient` 2, `CelestialBody` 3, `GroundPoint` 5, `Backdrop` 7 |
+| `src/audiovisual/types.ts`                  | `SkyGradient` 1, `CelestialBody` 3, `GroundPoint` 5, `Backdrop` 7 |
 | `src/audiovisual/config.ts`                 | `backdrop` key and `ascii.backdropGlyphs`                         |
 | `src/audiovisual/adapters/asciiBackdrop.ts` | Cycles 8–11                                                       |
 | `src/audiovisual/adapters/asciiGrid.ts`     | One `export` on `rampChar`; `rasteriseFrame` untouched            |

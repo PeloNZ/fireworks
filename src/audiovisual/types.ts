@@ -93,3 +93,12 @@ export interface Voice {
  * frame, play them. Every adapter implements this and nothing more —
  * the same idea as `Renderer`. */
 export type AudioSink = (voices: readonly Voice[]) => void; // cycle 18
+
+/** The sky's brightness at the two ends of world space, already capped to
+ * `backdrop.skyMaxBrightness`. `zenith <= horizon` always: a sunset glows
+ * low and darkens overhead, and a black night is both ends near zero.
+ * See `skyBrightnessAt` in backdrop.ts and docs/06_world_backdrop.md. */
+export interface SkyGradient {
+  readonly horizon: number; // 0..1, at world y = 0
+  readonly zenith: number; // 0..1, at world y = 100
+} // backdrop cycle 1
