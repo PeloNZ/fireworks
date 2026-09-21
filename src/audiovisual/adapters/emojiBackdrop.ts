@@ -6,9 +6,9 @@
 // glyph. The core (backdrop.ts) decides only what is where and how
 // bright it is, the same house rule asciiBackdrop.ts follows.
 
-import { rowCentreY, toCell } from "./cells.ts";
+import { columnCentreX, rowCentreY, toCell } from "./cells.ts";
 import { rampGlyph } from "./emojiGrid.ts";
-import { skyBrightnessAt } from "../backdrop.ts";
+import { groundHeightAt, skyBrightnessAt } from "../backdrop.ts";
 import type { AudioVisualConfig } from "../config.ts";
 import type { Backdrop } from "../types.ts";
 
@@ -55,6 +55,26 @@ export function rasteriseEmojiBackdrop(
       continue;
     }
     lineAt(cell.row)[cell.column] = emoji.backdropGlyphs[body.kind];
+  }
+
+  // The ground last. Rows run top to bottom, so the first ground cell a
+  // column meets is its topmost one — the ridge; everything under it is
+  // the fixed ground glyph, no brightness involved, unlike the ASCII
+  // fill's rampChar lookup.
+  const { ridge, ground } = emoji.backdropGlyphs;
+  for (let column = 0; column < columns; column++) {
+    const height = groundHeightAt(
+      backdrop.ground,
+      columnCentreX(column, columns),
+    );
+    let ridgeDrawn = false;
+    for (let row = 0; row < rows; row++) {
+      if (rowCentreY(row, rows) > height) {
+        continue;
+      }
+      lineAt(row)[column] = ridgeDrawn ? ground : ridge;
+      ridgeDrawn = true;
+    }
   }
 
   return cells;

@@ -94,4 +94,53 @@ describe("rasteriseEmojiBackdrop", () => {
       ["z", "z", "z"],
     ]);
   });
+
+  describe("the ground, painted last", () => {
+    // Same slope as asciiBackdrop.test.ts's own ground fixture: 4x4, a
+    // black sky, sloping from height 15 at the left edge to 100 at the
+    // right, tie-free. Column centres x = -37.5, -12.5, 12.5, 37.5 give
+    // heights 25.625, 46.875, 68.125, 89.375; row centres y = 87.5, 62.5,
+    // 37.5, 12.5.
+    const emoji = config({
+      columns: 4,
+      rows: 4,
+      sky: ["z", "z", "z", "z", "z"],
+      backdropGlyphs: {
+        ...defaultAudioVisualConfig.emoji.backdropGlyphs,
+        ridge: "R",
+        ground: "G",
+      },
+    });
+    const sloped = backdrop({
+      sky: { horizon: 0, zenith: 0 },
+      ground: [
+        { x: -50, height: 15 },
+        { x: 50, height: 100 },
+      ],
+    });
+
+    it("marks the topmost ground cell in each column with the ridge glyph and fills below it", () => {
+      expect(rasteriseEmojiBackdrop(sloped, emoji)).toEqual([
+        ["z", "z", "z", "R"],
+        ["z", "z", "R", "G"],
+        ["z", "R", "G", "G"],
+        ["R", "G", "G", "G"],
+      ]);
+    });
+
+    it("covers a body that sits inside the landform, since the ground paints last", () => {
+      // Row 3, column 0 — a ridge cell in the fixture above.
+      const buried = {
+        ...sloped,
+        bodies: [{ kind: "star" as const, position: { x: -40, y: 10, z: 0 } }],
+      };
+
+      expect(rasteriseEmojiBackdrop(buried, emoji)).toEqual([
+        ["z", "z", "z", "R"],
+        ["z", "z", "R", "G"],
+        ["z", "R", "G", "G"],
+        ["R", "G", "G", "G"],
+      ]);
+    });
+  });
 });
