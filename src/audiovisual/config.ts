@@ -91,6 +91,20 @@ export interface AudioVisualConfig {
       readonly ground: string;
     };
   };
+  // Only the pixel adapter reads this — nested under its own key for the
+  // same reason ascii is. The pixel renderer is the emoji renderer with a
+  // palette index where the glyph was, so this mirrors `emoji` field for
+  // field. See docs/09_8bit_renderer.md.
+  readonly pixel: {
+    // Nearest hue on the wheel wins, measured the short way round -- the
+    // same rule `emoji.sparkHues` uses, via the same `nearestHue`.
+    readonly sparkHues: readonly {
+      readonly hue: number;
+      readonly index: number;
+    }[];
+    readonly desaturated: number; // below saturationFloor, hue means nothing
+    readonly saturationFloor: number;
+  };
   // Only the Web Audio adapter and its planning functions read this,
   // nested under its own key for the same reason ascii is.
   readonly audio: {
@@ -191,6 +205,24 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
       ridge: "🌲",
       ground: "🟫",
     }),
+  }),
+  pixel: Object.freeze({
+    // The same hues as emoji.sparkHues, indexing PICO-8's 16-colour
+    // palette (cycle 16) instead of a glyph — 8..14 are its bright,
+    // saturated colours, one per hue band.
+    sparkHues: Object.freeze(
+      [
+        { hue: 0, index: 8 },
+        { hue: 30, index: 9 },
+        { hue: 55, index: 10 },
+        { hue: 130, index: 11 },
+        { hue: 200, index: 12 },
+        { hue: 280, index: 13 },
+        { hue: 330, index: 14 },
+      ].map((entry) => Object.freeze(entry)),
+    ),
+    desaturated: 7, // #FFF1E8, PICO-8's off-white
+    saturationFloor: 0.15,
   }),
   audio: Object.freeze({
     lookaheadMs: 30,
