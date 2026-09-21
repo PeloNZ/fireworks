@@ -19,6 +19,17 @@ export interface AudioVisualConfig {
   readonly trailMaxPoints: number; // hard cap on trail points, oldest evicted first
   readonly trailSpacingMs: number; // time between two spark-trail samples
   readonly trailMaxAgeMs: number; // how long a shell's trail persists
+  // The static sky, scenery and ground behind the fireworks, generated
+  // once per page load from one seed. World-space and brightness values
+  // only — every renderer needs these, so they sit at the top level while
+  // the characters that draw them live under `ascii`. See
+  // docs/06_world_backdrop.md.
+  readonly backdrop: {
+    // No sky brightness ever exceeds this, so the fireworks always read
+    // clearly over the sky. With the default 10-character ramp, 0.25 keeps
+    // every sky cell at or below the ramp's third character.
+    readonly skyMaxBrightness: number;
+  };
   // Only the ASCII adapter reads this — nested under its own key for the
   // same reason ControlConfig nests `keyboard`: the shape says who owns it.
   readonly ascii: {
@@ -60,6 +71,9 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
   trailMaxPoints: 4,
   trailSpacingMs: 40,
   trailMaxAgeMs: 300,
+  backdrop: Object.freeze({
+    skyMaxBrightness: 0.25,
+  }),
   ascii: Object.freeze({
     columns: 80,
     rows: 40,
