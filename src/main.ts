@@ -9,11 +9,13 @@ import { createWorld } from "./action/world.ts";
 import { createSpecConsoleSink } from "./action/debug/consoleSink.ts";
 import { createRandom, hashString } from "./action/random.ts";
 import { defaultAudioVisualConfig } from "./audiovisual/config.ts";
+import { ambientForWidth } from "./audiovisual/ambient.ts";
 import { createAudioVisualLayer } from "./audiovisual/audioVisualLayer.ts";
 import { buildBackdrop } from "./audiovisual/backdrop.ts";
 import { createAsciiRenderer } from "./audiovisual/adapters/ascii.ts";
 import { createEmojiRenderer } from "./audiovisual/adapters/emoji.ts";
 import { createPixelRenderer } from "./audiovisual/adapters/pixel.ts";
+import { worldHalfWidth } from "./audiovisual/adapters/pixelGrid.ts";
 import { createWebAudioSink } from "./audiovisual/adapters/webAudio.ts";
 import { selectRenderer } from "./audiovisual/selectRenderer.ts";
 import { attachSettingsMenu, choicesFor } from "./settings/settingsMenu.ts";
@@ -128,26 +130,41 @@ const ambientRandom = createRandom(
 // — one `<pre>` for ascii/emoji, two stacked `<canvas>`es for pixel. See
 // "Selecting a renderer" in docs/07_emoji_renderer.md and "main.ts
 // registry" in docs/09_8bit_renderer.md.
-const renderers: Record<string, (host: HTMLElement) => Renderer> = {
+//
+// Each entry also says how much of the world it shows, as a half-width in
+// world x: the ambient movers spawn across all of it. Ascii and emoji show
+// the whole square world, x from -50 to 50. The pixel grid follows the
+// window. See docs/11_ambient_movers.md.
+const squareWorldHalfWidth = 50;
+const renderers: Record<
+  string,
+  (host: HTMLElement) => { renderer: Renderer; halfWidth: number }
+> = {
   ascii: (host) => {
     const target = document.createElement("pre");
     target.className = "ascii";
     host.append(target);
-    return createAsciiRenderer({
-      target,
-      config: defaultAudioVisualConfig,
-      backdrop,
-    });
+    return {
+      renderer: createAsciiRenderer({
+        target,
+        config: defaultAudioVisualConfig,
+        backdrop,
+      }),
+      halfWidth: squareWorldHalfWidth,
+    };
   },
   emoji: (host) => {
     const target = document.createElement("pre");
     target.className = "emoji";
     host.append(target);
-    return createEmojiRenderer({
-      target,
-      config: defaultAudioVisualConfig,
-      backdrop,
-    });
+    return {
+      renderer: createEmojiRenderer({
+        target,
+        config: defaultAudioVisualConfig,
+        backdrop,
+      }),
+      halfWidth: squareWorldHalfWidth,
+    };
   },
   // Fills the viewport with square pixels: rows is fixed (the
   // chunkiness dial), columns is derived from the real window so the
@@ -183,7 +200,7 @@ const renderers: Record<string, (host: HTMLElement) => Renderer> = {
     backgroundContext.imageSmoothingEnabled = false;
     spritesContext.imageSmoothingEnabled = false;
 
-    return createPixelRenderer({
+    const renderer = createPixelRenderer({
       background: {
         paint: (pixels, width, height) => {
           backgroundContext.putImageData(
@@ -205,6 +222,7 @@ const renderers: Record<string, (host: HTMLElement) => Renderer> = {
       config,
       backdrop,
     });
+    return { renderer, halfWidth: worldHalfWidth({ columns, rows }) };
   },
 };
 const { name: rendererName, create: createRenderer } = selectRenderer(
@@ -212,7 +230,7 @@ const { name: rendererName, create: createRenderer } = selectRenderer(
   renderers,
   "ascii",
 );
-const renderer = createRenderer(app);
+const { renderer, halfWidth } = createRenderer(app);
 
 // Which sound set plays is the same kind of lookup, against its own
 // table — a `?sound=` this project now has more than one entry for. See
@@ -287,7 +305,10 @@ const audioVisual = createAudioVisualLayer({
   }),
   voicePlanner,
   ambientRandom,
-  config: defaultAudioVisualConfig,
+  config: {
+    ...defaultAudioVisualConfig,
+    ambient: ambientForWidth(defaultAudioVisualConfig.ambient, halfWidth),
+  },
   worldConfig: defaultWorldConfig,
 });
 
