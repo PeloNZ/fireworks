@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { neonFrame, toCanvas } from "./neonScene.ts";
+import { neonBackdrop, neonFrame, toCanvas } from "./neonScene.ts";
 import { defaultAudioVisualConfig } from "../config.ts";
-import type { Frame, Mover, Sprite } from "../types.ts";
+import type { Backdrop, Frame, Mover, Sprite } from "../types.ts";
 
 // Cycle 3 (docs/12_neon_renderer.md): world space to canvas pixels. The
 // canvas is not square, so the world is 100 units tall and `50 * width /
@@ -218,5 +218,49 @@ describe("neonFrame: ambient movers", () => {
     expect(dot?.radius).toBeCloseTo(0.6);
     expect(dot?.color).toEqual({ r: 0.3, g: 0.6, b: 1 });
     expect(dot?.alpha).toBe(0.6);
+  });
+});
+
+// Cycle 8: the ridge. `Backdrop.ground` covers x from -50 to 50, but the
+// canvas shows `50 * width / height` units either side of the middle, so on
+// a wide screen the raw points stop short of both edges. The ridge is the
+// ground points that are on the canvas, plus a point at each canvas edge at
+// the height `groundHeightAt` gives there.
+describe("neonBackdrop: the ridge", () => {
+  const backdrop: Backdrop = {
+    sky: { horizon: 0, zenith: 0 },
+    bodies: [],
+    ground: [
+      { x: -50, height: 10 },
+      { x: 0, height: 30 },
+      { x: 50, height: 20 },
+    ],
+  };
+
+  it("runs edge to edge on a wide canvas", () => {
+    // 400x100: 200 units either side, 1 pixel per unit. Pixel x = 200 + x,
+    // pixel y = 100 - height. The ground is held flat beyond +-50.
+    const { ridge } = neonBackdrop(backdrop, { width: 400, height: 100 });
+
+    expect(ridge).toEqual([
+      { x: 0, y: 90 },
+      { x: 150, y: 90 },
+      { x: 200, y: 70 },
+      { x: 250, y: 80 },
+      { x: 400, y: 80 },
+    ]);
+  });
+
+  it("drops the ground points that are off the canvas, and meets each edge at the height there", () => {
+    // 40x100: 20 units either side. The points at +-50 are off the canvas.
+    // At x = -20 the ground is 10 + 20 * (30 - 10) / 50 = 22. At x = 20 it is
+    // 30 - 10 * 20 / 50 = 26.
+    const { ridge } = neonBackdrop(backdrop, { width: 40, height: 100 });
+
+    expect(ridge).toEqual([
+      { x: 0, y: 78 },
+      { x: 20, y: 70 },
+      { x: 40, y: 74 },
+    ]);
   });
 });

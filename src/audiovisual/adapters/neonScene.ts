@@ -3,8 +3,10 @@
 // values onto a canvas port. See docs/12_neon_renderer.md.
 
 import type { AudioVisualConfig } from "../config.ts";
+import { groundHeightAt } from "../backdrop.ts";
+import { worldHalfWidth } from "./pixelGrid.ts";
 import type { Vec3 } from "../../action/types.ts";
-import type { Frame, Rgb } from "../types.ts";
+import type { Backdrop, Frame, Rgb } from "../types.ts";
 
 export interface Point {
   readonly x: number;
@@ -32,6 +34,12 @@ interface Disc {
 export interface NeonLight {
   readonly streaks: readonly Streak[];
   readonly discs: readonly Disc[];
+}
+
+/** What the backdrop canvas draws once, in canvas pixels. */
+export interface NeonBackdrop {
+  // The ridge, left to right, from the left canvas edge to the right one.
+  readonly ridge: readonly Point[];
 }
 
 /**
@@ -129,4 +137,34 @@ export function neonFrame(
   }
 
   return { streaks, discs };
+}
+
+/**
+ * Turns the backdrop into the shapes the backdrop canvas draws once. The
+ * ridge is the ground points that are on the canvas, with a point at each
+ * canvas edge at the height `groundHeightAt` gives there. `Backdrop.ground`
+ * stops at x = +-50 and a wide canvas shows more than that, so without the
+ * edge points the ridge would stop short of both sides.
+ */
+export function neonBackdrop(
+  backdrop: Backdrop,
+  canvas: { readonly width: number; readonly height: number },
+): NeonBackdrop {
+  // `worldHalfWidth` takes a grid; a canvas is a grid of one-pixel cells.
+  const halfWidth = worldHalfWidth({
+    columns: canvas.width,
+    rows: canvas.height,
+  });
+  const onCanvas = backdrop.ground.filter(
+    ({ x }) => x > -halfWidth && x < halfWidth,
+  );
+  const points = [
+    { x: -halfWidth, height: groundHeightAt(backdrop.ground, -halfWidth) },
+    ...onCanvas,
+    { x: halfWidth, height: groundHeightAt(backdrop.ground, halfWidth) },
+  ];
+
+  return {
+    ridge: points.map(({ x, height }) => toCanvas({ x, y: height }, canvas)),
+  };
 }
