@@ -15,6 +15,7 @@ satellite. They draw behind the fireworks and in front of the static backdrop.
 
 Cycles 1 to 14 built the movers and the ascii renderer's drawing of them.
 Cycles 15 to 19 add the emoji renderer's drawing of them.
+Cycles 20 to 26 add the pixel renderer's drawing of them.
 
 ## Decisions
 
@@ -22,8 +23,8 @@ The user made these decisions before anyone wrote this plan.
 
 1. **v1 has movers only.** The kinds are a shooting star and a satellite. No
    firework event starts a mover in v1.
-2. **The ascii and emoji renderers draw movers.** The pixel renderer ignores
-   them. (Cycles 1 to 14 built ascii only. Decisions 9 to 14 add emoji.)
+2. **All three renderers draw movers.** (Cycles 1 to 14 built ascii only.
+   Decisions 9 to 14 add emoji. Decisions 15 to 21 add pixel.)
 3. **Movers are cosmetic.** The Control and Action layers do not change. A
    firework never touches a mover.
 4. **A mover draws behind the fireworks.** A firework always covers a mover.
@@ -53,6 +54,35 @@ The user made these decisions before anyone wrote this plan.
 14. **Ascii and emoji share cell placement.** `placeMovers` in `adapters/cells.ts` puts
     each mover in its cell. Ascii and emoji each turn the mover into their own
     glyph. This is the same split as `contestCells`.
+15. **Pixel movers draw in the sprite plane.** No third canvas exists. The
+    background plane stays painted once. `paintFrame` draws the movers, and
+    the browser shows the sky through every pixel that holds `blank`.
+16. **Pixel movers merge with the fireworks as two index buffers.** `paintFrame`
+    paints the movers into a buffer of their own. It paints the fireworks with
+    the existing contest loop, which does not change. Then it merges them:
+    a firework pixel wins unless it holds `blank`. A check for `blank` inside the
+    contest loop would also skip a dead trail's brightness record, and that
+    changes firework output. The merge is `overlayEmojiGrid` over index
+    buffers.
+17. **A pixel mover takes its colour from a brightness ramp.** `pixel.moverRamp`
+    maps brightness to a palette index, as ascii maps it to a character. A
+    pixel can dim, so the shooting star fades. `kind` does not pick the colour.
+    `moverRamp[0]` equals `blank`, so a faded star leaves nothing behind. This is
+    the rule of `trail[0]`.
+18. **A shooting star has a tail on the pixel renderer.** `Mover` gets
+    `velocity: Vec3`, in world units per second. The tail runs behind the head,
+    against the velocity. Its length is `speed × tailMs`, with `tailMs` per kind
+    in `pixel.moverTailMs`. A satellite has `tailMs: 0`. The tail fades along its
+    length to zero.
+19. **A tail reaches behind the spawn point on its first frame.** `Mover` has
+    no age, so the renderer cannot make the tail grow. The user accepted this.
+    The tail is a few world units, and the time to live is under one second.
+20. **The spawn range follows the renderer's width.** The pixel grid shows
+    `x` within `±worldHalfWidth`, which is 88.75 on a 16:9 window. Ascii and
+    emoji show ±50. Each entry of the `renderers` table in `main.ts` returns
+    its half-width. `ambientForWidth` sets both x ranges of the ambient config
+    to that width. The core gets data and does not read the window.
+21. **Ascii and emoji do not use `velocity`.** Their output does not change.
 
 ## Why a mover is not a Sprite
 
@@ -131,6 +161,7 @@ This matches the separate streams in `backdrop.ts` (`:sky`, `:bodies`,
 export interface Mover {
   readonly kind: "shootingStar" | "satellite";
   readonly position: Vec3;
+  readonly velocity: Vec3; // world units per second
   readonly brightness: number; // 0..1
 }
 
@@ -150,6 +181,13 @@ export function createAmbient(options: {
    * Returns the movers to draw this frame. */
   step(elapsedMs: number): readonly Mover[];
 };
+
+/** The ambient config with both x ranges set to `[-halfWidth, halfWidth]`.
+ * Every other field stays the same. */
+export function ambientForWidth(
+  config: AudioVisualConfig["ambient"],
+  halfWidth: number,
+): AudioVisualConfig["ambient"];
 ```
 
 ```ts
@@ -181,6 +219,13 @@ export function rasteriseEmojiAmbient(
   movers: readonly Mover[],
   emoji: AudioVisualConfig["emoji"],
 ): readonly string[][];
+```
+
+```ts
+// src/audiovisual/adapters/pixelGrid.ts
+// `paintFrame(frame, pixel)` keeps its signature and now draws
+// `frame.ambient` behind the fireworks. It returns the merged buffer, the
+// same size as before: `pixel.rows * pixel.columns` palette indices.
 ```
 
 The order "later mover wins a shared cell" is a rule of `placeMovers`. A
@@ -227,6 +272,23 @@ glyph fails `tsc`. The object is frozen with `Object.freeze`, as
 `07_emoji_renderer.md` requires. Neither glyph contains `U+FE0F`, and neither
 equals `emoji.blank`.
 
+`AudioVisualConfig.pixel` gets two more fields:
+
+| Field               | Default                               | Meaning                                    |
+| ------------------- | ------------------------------------- | ------------------------------------------ |
+| `pixel.moverRamp`   | `[0, 5, 6, 7]`                        | Palette index by brightness, dimmest first |
+| `pixel.moverTailMs` | `{ shootingStar: 120, satellite: 0 }` | Tail length in milliseconds of travel      |
+
+`moverRamp[0]` equals `pixel.blank`. The type of `moverTailMs` is
+`Readonly<Record<Mover["kind"], number>>`, so a third kind with no tail length
+fails `tsc`. Both are frozen with `Object.freeze`. A shooting star at speed 40
+to 70 has a tail of 4.8 to 8.4 world units, which is 8 to 13 pixels.
+
+`main.ts` replaces the x ranges with `ambientForWidth`. On a 16:9 window the
+pixel renderer spawns movers in `x` within ±88.75. A satellite then crosses
+the whole screen. Its time to live is the span divided by its speed, so it is
+longer on a wide window.
+
 ## How the ascii renderer composites
 
 `createAsciiRenderer` already holds `base`, the backdrop grid. Each frame it
@@ -242,9 +304,6 @@ mover replaces the sky. A firework replaces a mover.
 `rasteriseAmbient` uses `placeMovers` for the position and `rampChar` for
 the character. This keeps the rule "more ink means more light". A dim mover
 is a faint character.
-
-The pixel renderer does not read `Frame.ambient`. `?renderer=pixel` shows no
-movers.
 
 ## How the emoji renderer composites
 
@@ -266,6 +325,38 @@ holds no mover, so the existing no-backdrop path stays the same.
 `brightness`. A star at brightness 0.05 draws the same 🌠 as one at 1. The
 star vanishes when `createAmbient` removes it at the ttl.
 
+## How the pixel renderer draws movers
+
+The pixel renderer has two canvases. The background plane holds the sky. The
+renderer paints it once. The renderer paints the sprite plane each frame, and
+its `blank` pixels are transparent. So the movers must go in the sprite plane, behind the
+fireworks. `paintFrame` does this with two buffers:
+
+```
+movers buffer   (all blank, then each mover)
+fireworks buffer (the existing contest loop, no change)
+out[i] = fireworks[i] !== blank ? fireworks[i] : movers[i]
+```
+
+A dead trail has brightness 0 and index `blank`. It still paints its centre
+pixel. In the fireworks buffer that pixel is `blank`, so the merge keeps the
+mover there.
+
+**The head.** A mover paints one pixel at `toPixel(position)`. The index is
+`rampLevel(brightness, moverRamp)`. A mover outside the grid paints nothing.
+This code does not use `toCell` or `placeMovers`, because they fix the grid to
+x ±50.
+
+**The tail.** The tail is `|velocity| × moverTailMs[kind] / 1000` world units
+long. It runs from the head back along the negative velocity. It has one sample
+for each `100 / rows` world units. The brightness of a sample falls in a
+straight line from the head's brightness to 0 at the far end. A sample paints
+through `rampLevel`, and it never writes `blank`. The far samples paint first,
+so the head wins. A later mover paints over an earlier one.
+
+**A satellite moving left** starts at `x = +halfWidth`. That point is outside
+the half-open box, so its first frame paints nothing.
+
 ## File layout
 
 | Path                                                                        | Role                                               |
@@ -286,6 +377,11 @@ star vanishes when `createAmbient` removes it at the ttl.
 | `src/audiovisual/adapters/emojiGrid.ts`, `config.ts` and the test           | Cycle 17 — `rasteriseEmojiAmbient`, `emoji.movers` |
 | `src/audiovisual/adapters/emoji.ts` and its test                            | Cycle 18 — composite                               |
 | `docs/11_ambient_movers.md`, `CLAUDE.md`, `README.md`, `CHANGELOG.md`       | Cycle 19 — doc sync                                |
+| `src/audiovisual/types.ts`, `ambient.ts` and the tests that build a `Mover` | Cycle 20 — `Mover.velocity`                        |
+| `src/audiovisual/ambient.ts` and its test                                   | Cycle 21 — `ambientForWidth`                       |
+| `src/audiovisual/adapters/pixelGrid.ts`, `config.ts` and the test           | Cycles 22–24 — head, merge, tail                   |
+| `src/main.ts`                                                               | Cycle 25 — `renderers` returns `halfWidth`         |
+| `docs/11_ambient_movers.md`, `CLAUDE.md`, `README.md`, `CHANGELOG.md`       | Cycle 26 — doc sync                                |
 
 ## TDD build cycles
 
@@ -380,6 +476,38 @@ tests pass.
 19. **Doc sync.** Update `CLAUDE.md` Status, `README.md`, `CHANGELOG.md` and
     the "How the cycles landed" note in this document.
 
+**Before cycle 20:** the pixel renderer ignores `Frame.ambient`. `Mover` has no
+`velocity`. All tests pass. This section of the document exists.
+
+20. **`createAmbient` gives each mover its velocity.** Add `velocity` to
+    `Mover`. Red: a scripted star (the cycle 7 example) has
+    `velocity { x: 25, y: -6.25, z: 0 }`, and a satellite moving right has
+    `{ x: 10, y: 0, z: 0 }`. The contract change forces edits to every test
+    that builds a `Mover`. None of them weakens a test.
+21. **`ambientForWidth`.** Use a half-width of 88.75. Both x ranges become
+    `[-88.75, 88.75]`. A field such as `cooldownMs` and the `y` ranges stay the
+    same.
+22. **`paintFrame` draws a mover head.** Use a small grid and an override
+    `moverRamp`, so a fixed default fails. Brightness picks the index. A mover
+    outside the grid paints nothing. The later mover wins a shared pixel. Add
+    `pixel.moverRamp` to the config here, and freeze it.
+23. **Fireworks cover movers.** A firework disc covers a mover pixel. A dead
+    trail, with index `blank`, keeps the mover pixel. The contest loop has no
+    change, so every existing `paintFrame` test stays green. Add a test that
+    pins the order "dead trail first, dimmer spark second": the pixel stays
+    `blank` in a frame with no mover.
+24. **The tail.** Put the head at a pixel centre, so no hand-written sample
+    falls on a `floor` boundary. A star that moves along x paints a tail that
+    fades along its length, and the head wins. A diagonal star paints a
+    diagonal tail. A `tailMs` of 0 paints the head only. Add `pixel.moverTailMs`
+    to the config here, and freeze it.
+25. **Wiring — UNTESTED.** Each `renderers` entry in `main.ts` returns
+    `{ renderer, halfWidth }`. The layer gets
+    `ambientForWidth(defaultAudioVisualConfig.ambient, halfWidth)` in its
+    config.
+26. **Doc sync.** Update `CLAUDE.md` Status, `README.md`, `CHANGELOG.md` and
+    the "How the cycles landed" note in this document.
+
 ## Verification
 
 Each cycle:
@@ -417,6 +545,16 @@ Manual checks on the emoji renderer, after cycle 18:
 4. Press a key when a mover is in the sky. The firework covers the mover.
 5. Load `?renderer=ascii`. It looks the same as before.
 
+Manual checks on the pixel renderer, after cycle 25:
+
+1. Load `?renderer=pixel`. Wait about 1 minute. A shooting star and a satellite
+   appear.
+2. A shooting star has a tail that fades, then it vanishes in the middle of the
+   sky.
+3. A satellite crosses from one screen edge to the other.
+4. Press a key when a mover is in the sky. The firework covers the mover.
+5. Load `?renderer=ascii` and `?renderer=emoji`. They look the same as before.
+
 ## Out of scope
 
 - **A rate the user can change.** Add a table `{ off, rare, normal, busy }`
@@ -432,6 +570,8 @@ Manual checks on the emoji renderer, after cycle 18:
   drawings that changes with the age.
 - Lightning, fog, clouds and moon phases. Lightning and fog change the whole
   sky, so each renderer must redraw its backdrop.
-- Movers in the pixel renderer.
 - A different ascii character for each kind. Ascii keeps its brightness ramp.
-- A tail on a shooting star, and any drawing that is more than one cell.
+- A tail on a shooting star in ascii or emoji, and any ascii or emoji drawing
+  that is more than one cell.
+- A pixel mover that is a disc, and a pixel colour for each kind.
+- A tail that grows from the spawn point. `Mover` would need an age.
