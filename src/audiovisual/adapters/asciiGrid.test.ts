@@ -104,6 +104,7 @@ describe("rasteriseFrame", () => {
 
 function mover(overrides: Partial<Mover> = {}): Mover {
   return {
+    kind: "satellite",
     position: { x: 0, y: 0, z: 0 },
     brightness: 1,
     ...overrides,

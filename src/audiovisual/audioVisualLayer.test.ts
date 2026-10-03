@@ -77,10 +77,18 @@ describe("createAudioVisualLayer", () => {
     layer.present({ entities: [], alpha: 0, elapsedMs: 1000 });
 
     expect(renderer.mock.calls[0]?.[0].ambient).toEqual([
-      { position: { x: -50, y: 83.75, z: 0 }, brightness: 0.6 },
+      {
+        kind: "satellite",
+        position: { x: -50, y: 83.75, z: 0 },
+        brightness: 0.6,
+      },
     ]);
     expect(renderer.mock.calls[1]?.[0].ambient).toEqual([
-      { position: { x: -43, y: 83.75, z: 0 }, brightness: 0.6 },
+      {
+        kind: "satellite",
+        position: { x: -43, y: 83.75, z: 0 },
+        brightness: 0.6,
+      },
     ]);
   });
 

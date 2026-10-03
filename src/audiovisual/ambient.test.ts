@@ -82,6 +82,24 @@ describe("createAmbient", () => {
     ]);
   });
 
+  // Cycle 15 (docs/11_ambient_movers.md). A mover says what it is, because
+  // the emoji renderer cannot tell a star from a satellite by brightness. The
+  // satellite's kind is checked in the cycle 9 test below.
+  it('gives a shooting star the kind "shootingStar"', () => {
+    const ambient = createAmbient({
+      config: {
+        ...defaultAudioVisualConfig.ambient,
+        ratePerSecond: 1,
+        shootingStar: star,
+      },
+      random: scripted([0.5, 0.3, 0.25, 0.5, 0.2, 0.75, 0.6]),
+    });
+
+    expect(ambient.step(1000).map((mover) => mover.kind)).toEqual([
+      "shootingStar",
+    ]);
+  });
+
   // Cycle 8. The time to live is the last draw: 0.6 in [1000, 2000] is 1600
   // ms. The star starts at brightness 0.8 and falls in a straight line to
   // 0, so at 800 ms, half of its life, it is 0.8 * (1 - 0.5) = 0.4. It is
@@ -131,16 +149,28 @@ describe("createAmbient", () => {
   it("crosses the span at a constant brightness, starting on the edge it leaves", () => {
     const right = satelliteAfter(0.2);
     expect(right.step(1000)).toEqual([
-      { position: { x: -30, y: 82.5, z: 0 }, brightness: 0.45 },
+      {
+        kind: "satellite",
+        position: { x: -30, y: 82.5, z: 0 },
+        brightness: 0.45,
+      },
     ]);
     expect(right.step(2000)).toEqual([
-      { position: { x: -10, y: 82.5, z: 0 }, brightness: 0.45 },
+      {
+        kind: "satellite",
+        position: { x: -10, y: 82.5, z: 0 },
+        brightness: 0.45,
+      },
     ]);
 
     const left = satelliteAfter(0.7);
     left.step(1000);
     expect(left.step(2000)).toEqual([
-      { position: { x: 10, y: 82.5, z: 0 }, brightness: 0.45 },
+      {
+        kind: "satellite",
+        position: { x: 10, y: 82.5, z: 0 },
+        brightness: 0.45,
+      },
     ]);
   });
 

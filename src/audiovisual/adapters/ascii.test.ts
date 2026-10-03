@@ -3,7 +3,7 @@ import { createAsciiRenderer } from "./ascii.ts";
 import { rasteriseFrame } from "./asciiGrid.ts";
 import { overlayGrid, rasteriseBackdrop } from "./asciiBackdrop.ts";
 import { defaultAudioVisualConfig } from "../config.ts";
-import type { Backdrop, Frame } from "../types.ts";
+import type { Backdrop, Frame, Mover } from "../types.ts";
 
 // Cycle 5 (docs/05_audio_visual_layer.md): the adapter itself is one
 // assignment — target.textContent = rasteriseFrame(frame, config.ascii) —
@@ -116,7 +116,11 @@ describe("createAsciiRenderer", () => {
         { x: 50, height: 0 },
       ],
     };
-    const mover = { position: { x: 0, y: 50, z: 0 }, brightness: 0.6 };
+    const mover: Mover = {
+      kind: "satellite",
+      position: { x: 0, y: 50, z: 0 },
+      brightness: 0.6,
+    };
     const firework = (x: number, y: number): Frame["sprites"][number] => ({
       kind: "shell",
       position: { x, y, z: 0 },

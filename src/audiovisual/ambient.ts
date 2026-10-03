@@ -3,8 +3,8 @@ import type { AudioVisualConfig } from "./config.ts";
 import type { Mover } from "./types.ts";
 
 // One entry per kind of mover. A spawn picks one with a single draw.
-const KINDS = ["shootingStar", "satellite"] as const;
-type Kind = (typeof KINDS)[number];
+const KINDS = ["shootingStar", "satellite"] as const satisfies readonly Kind[];
+type Kind = Mover["kind"];
 
 /** Maps the next value from `random` (in `[0, 1)`) onto `range`. One small
  * helper per file, the same as sparks.ts and backdrop.ts. */
@@ -15,6 +15,7 @@ function pickInRange(random: () => number, range: NumberRange): number {
 /** Everything a spawn drew. After that, the position is a function of
  * `ageMs` alone: nothing here reads `random` again. */
 interface LiveMover {
+  readonly kind: Kind;
   readonly startX: number;
   readonly startY: number;
   readonly velocityX: number; // world units per second
@@ -60,6 +61,7 @@ export function createAmbient(options: {
     const speed = pickInRange(random, star.speed);
     const ttlMs = pickInRange(random, star.ttlMs);
     return {
+      kind: "shootingStar",
       startX,
       startY,
       velocityX: direction * speed,
@@ -79,6 +81,7 @@ export function createAmbient(options: {
     const direction = pickDirection();
     const speed = pickInRange(random, sat.speed);
     return {
+      kind: "satellite",
       startX: direction === 1 ? sat.x.min : sat.x.max,
       startY,
       velocityX: direction * speed,
@@ -114,6 +117,7 @@ export function createAmbient(options: {
       }
 
       return live.map((mover) => ({
+        kind: mover.kind,
         position: {
           x: mover.startX + (mover.velocityX * mover.ageMs) / 1000,
           y: mover.startY + (mover.velocityY * mover.ageMs) / 1000,
