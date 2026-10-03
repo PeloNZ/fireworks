@@ -2,21 +2,26 @@
 // makes onto a canvas port. It calls no DOM function, so it is tested with a
 // recording fake. `main.ts` makes the canvases. See docs/12_neon_renderer.md.
 
-import { neonFrame } from "./neonScene.ts";
+import { neonBackdrop, neonFrame } from "./neonScene.ts";
 import type { AudioVisualConfig } from "../config.ts";
-import type { Renderer, Rgb } from "../types.ts";
+import type { Backdrop, Renderer, Rgb } from "../types.ts";
 
 /**
  * The slice of `CanvasRenderingContext2D` the player uses. A real context is
  * assignable to it, and a test fake records what is written to it.
  */
 export interface Canvas2DLike {
+  fillStyle: string;
   lineWidth: number;
   lineCap: "butt" | "round" | "square";
   strokeStyle: string;
+  fillRect(x: number, y: number, width: number, height: number): void;
   beginPath(): void;
   moveTo(x: number, y: number): void;
   lineTo(x: number, y: number): void;
+  arc(x: number, y: number, radius: number, start: number, end: number): void;
+  closePath(): void;
+  fill(): void;
   stroke(): void;
 }
 
@@ -33,11 +38,66 @@ function p3({ r, g, b }: Rgb, alpha: number): string {
   return `color(display-p3 ${String(r)} ${String(g)} ${String(b)} / ${String(alpha)})`;
 }
 
+const BLACK: Rgb = { r: 0, g: 0, b: 0 };
+
+// Paints the backdrop surface: a black sky, the ground under the ridge, a
+// cross for each star and a ring for the moon and the planet. The ridge line
+// itself is drawn on the light surface, so that it glows.
+function paintBackground(
+  surface: NeonSurface,
+  backdrop: Backdrop,
+  config: AudioVisualConfig["neon"],
+): void {
+  const { context, width, height } = surface;
+  const { ridge, stars, rings } = neonBackdrop(backdrop, config, surface);
+  const scale = height / 100;
+
+  context.fillStyle = p3(BLACK, 1);
+  context.fillRect(0, 0, width, height);
+
+  context.fillStyle = p3(config.groundFill, 1);
+  context.beginPath();
+  ridge.forEach(({ x, y }, index) => {
+    if (index === 0) {
+      context.moveTo(x, y);
+    } else {
+      context.lineTo(x, y);
+    }
+  });
+  context.lineTo(width, height);
+  context.lineTo(0, height);
+  context.closePath();
+  context.fill();
+
+  for (const { centre, arm } of stars) {
+    context.strokeStyle = p3(config.starColor, 1);
+    context.lineWidth = config.starWidth * scale;
+    context.beginPath();
+    context.moveTo(centre.x - arm, centre.y);
+    context.lineTo(centre.x + arm, centre.y);
+    context.moveTo(centre.x, centre.y - arm);
+    context.lineTo(centre.x, centre.y + arm);
+    context.stroke();
+  }
+
+  for (const { centre, radius } of rings) {
+    context.strokeStyle = p3(config.ringColor, 1);
+    context.lineWidth = config.ringWidth * scale;
+    context.beginPath();
+    context.arc(centre.x, centre.y, radius, 0, 2 * Math.PI);
+    context.stroke();
+  }
+}
+
 export function createNeonRenderer(options: {
   readonly light: NeonSurface;
+  readonly background: NeonSurface;
+  readonly backdrop: Backdrop;
   readonly config: AudioVisualConfig["neon"];
 }): Renderer {
-  const { light, config } = options;
+  const { light, background, backdrop, config } = options;
+
+  paintBackground(background, backdrop, config);
 
   return (frame) => {
     const { streaks } = neonFrame(frame, config, light);

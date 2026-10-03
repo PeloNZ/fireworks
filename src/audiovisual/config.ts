@@ -213,6 +213,14 @@ export interface AudioVisualConfig {
     // radius in world units.
     readonly starArm: number;
     readonly bodies: Readonly<Record<"moon" | "planet", number>>;
+    // The backdrop canvas is painted once. Line widths are world units, like
+    // every other size here, so a line is as thick on a big canvas as on a
+    // small one. `groundFill` is the colour under the ridge.
+    readonly starColor: Rgb;
+    readonly starWidth: number;
+    readonly ringColor: Rgb;
+    readonly ringWidth: number;
+    readonly groundFill: Rgb;
   };
   // Only the Web Audio adapter and its planning functions read this,
   // nested under its own key for the same reason ascii is.
@@ -422,6 +430,12 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     starArm: 0.7,
     // The same radii as the pixel renderer's discs.
     bodies: Object.freeze({ moon: 6, planet: 2.5 }),
+    // Cyan, like the ridge. The stars are pale, the rings more saturated.
+    starColor: Object.freeze({ r: 0.51, g: 1, b: 1 }),
+    starWidth: 0.17,
+    ringColor: Object.freeze({ r: 0.24, g: 0.96, b: 1 }),
+    ringWidth: 0.25,
+    groundFill: Object.freeze({ r: 0.039, g: 0.039, b: 0.063 }),
   }),
   audio: Object.freeze({
     lookaheadMs: 30,
