@@ -36,6 +36,7 @@ function shellFrame(): Frame {
         size: 1,
         color: { r: 1, g: 1, b: 1 },
         brightness: 1,
+        velocity: { x: 0, y: 0, z: 0 },
       },
     ],
     ambient: [],
@@ -128,6 +129,7 @@ describe("createAsciiRenderer", () => {
       size: 1,
       color: { r: 1, g: 1, b: 1 },
       brightness: 1,
+      velocity: { x: 0, y: 0, z: 0 },
     });
 
     function draw(frame: Frame, backdrop: Backdrop | null): string | undefined {

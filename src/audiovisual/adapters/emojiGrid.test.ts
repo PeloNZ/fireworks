@@ -98,6 +98,7 @@ describe("glyphFor", () => {
       size: 1,
       color: atHue(10),
       brightness: 1,
+      velocity: { x: 0, y: 0, z: 0 },
       ...overrides,
     };
   }
@@ -149,6 +150,7 @@ describe("rasteriseEmojiFrame", () => {
           size: 1,
           color: { r: 1, g: 1, b: 1 },
           brightness: 1,
+          velocity: { x: 0, y: 0, z: 0 },
         },
         {
           kind: "spark",
@@ -156,6 +158,7 @@ describe("rasteriseEmojiFrame", () => {
           size: 1,
           color: atHue(0),
           brightness: 1,
+          velocity: { x: 0, y: 0, z: 0 },
         },
       ],
       ambient: [],

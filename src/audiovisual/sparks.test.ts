@@ -9,7 +9,9 @@ import {
 import { parseHexColor } from "./color.ts";
 import { defaultAudioVisualConfig } from "./config.ts";
 import { defaultWorldConfig } from "../action/worldConfig.ts";
+import { add, scale } from "../action/vector.ts";
 import type { Firework, FireworkSpec, Vec3 } from "../action/types.ts";
+import type { Sprite } from "./types.ts";
 
 // Cycle 8 (docs/05_audio_visual_layer.md): the first piece of expanding a
 // burst into sparks — which way each one flies. Every pattern places
@@ -500,5 +502,71 @@ describe("expandBurst", () => {
     const sprites = expandBurst(entity, oneSparkConfig, defaultWorldConfig);
 
     expect(sprites.filter((s) => s.kind === "trail")).toHaveLength(2);
+  });
+});
+
+// Cycle 2 (docs/12_neon_renderer.md): a spark's velocity is its real motion
+// on screen. Action keeps stepping `firework.position` through "exploding",
+// and `expandBurst` uses that live position as each spark's origin, so a
+// spark moves at the shell's velocity plus its own. Each test measures the
+// motion itself: it moves the burst 1 ms either side, with the shell
+// drifting at its own velocity, and divides the position change by the time.
+describe("expandBurst sprite velocity", () => {
+  const driftConfig = {
+    ...defaultAudioVisualConfig,
+    trailSpacingMs: 50,
+    trailMaxPoints: 2,
+  };
+  const driftSpec = fireworkSpec({ particleCount: 1 });
+  // Unusual values, so a shell velocity of zero or a default cannot pass.
+  const drift = firework({
+    spec: driftSpec,
+    velocity: { x: 3, y: -7, z: 0 },
+    phaseElapsedMs: 200,
+  });
+
+  function spriteAt(index: number, offsetMs: number): Sprite {
+    const moved = firework({
+      spec: driftSpec,
+      velocity: drift.velocity,
+      position: add(drift.position, scale(drift.velocity, offsetMs / 1000)),
+      phaseElapsedMs: drift.phaseElapsedMs + offsetMs,
+    });
+    const sprite = expandBurst(moved, driftConfig, defaultWorldConfig)[index];
+    if (sprite === undefined) {
+      throw new Error(`no sprite at index ${String(index)}`);
+    }
+    return sprite;
+  }
+
+  function measuredVelocity(index: number): Vec3 {
+    const before = spriteAt(index, -1).position;
+    const after = spriteAt(index, 1).position;
+    return {
+      x: (after.x - before.x) / 0.002,
+      y: (after.y - before.y) / 0.002,
+      z: (after.z - before.z) / 0.002,
+    };
+  }
+
+  it("gives a spark the velocity it moves at, including the shell's drift", () => {
+    const measured = measuredVelocity(0);
+
+    const velocity = spriteAt(0, 0).velocity;
+
+    expect(velocity.x).toBeCloseTo(measured.x, 3);
+    expect(velocity.y).toBeCloseTo(measured.y, 3);
+    expect(velocity.z).toBeCloseTo(measured.z, 3);
+  });
+
+  it("gives a spark trail the velocity it moves at", () => {
+    const measured = measuredVelocity(1); // sprite 1 is the first trail point
+
+    const sprite = spriteAt(1, 0);
+
+    expect(sprite.kind).toBe("trail");
+    expect(sprite.velocity.x).toBeCloseTo(measured.x, 3);
+    expect(sprite.velocity.y).toBeCloseTo(measured.y, 3);
+    expect(sprite.velocity.z).toBeCloseTo(measured.z, 3);
   });
 });

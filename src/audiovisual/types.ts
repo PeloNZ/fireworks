@@ -26,6 +26,7 @@ export interface Sprite {
   readonly brightness: number; // 0..1, multiplies color; also breaks ties
   // when two sprites land in the same cell — see "brightest wins" in
   // docs/05_audio_visual_layer.md.
+  readonly velocity: Vec3; // world units per second; zero if it does not move
 } // cycle 3
 
 /** One ambient item for one frame, in world space like a `Sprite`. It is

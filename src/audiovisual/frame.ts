@@ -5,13 +5,16 @@ import type { createTrails } from "./trails.ts";
 import type { AudioVisualConfig } from "./config.ts";
 import type { WorldConfig } from "../action/worldConfig.ts";
 import type { Sprite, Frame } from "./types.ts";
-import type { Firework } from "../action/types.ts";
+import type { Firework, Vec3 } from "../action/types.ts";
 
 // A shell is visible while it's actually moving under its own power or
 // ballistically — not while "armed" (not yet launched) and not once a
 // burst has started, when the shell itself is gone and only its sparks
 // remain (cycle 12).
 const SHELL_VISIBLE_PHASES = new Set(["launching", "flying"]);
+
+// A recorded trail point does not move.
+const STILL: Vec3 = { x: 0, y: 0, z: 0 };
 
 function firstColor(spec: Firework["spec"]): string {
   const color = spec.colors[0];
@@ -49,6 +52,7 @@ export function buildFrame(options: {
         size: config.shellSize,
         color: parseHexColor(firstColor(firework.spec)),
         brightness: 1,
+        velocity: firework.velocity,
       });
     }
     sprites.push(...expandBurst(firework, config, worldConfig));
@@ -60,6 +64,7 @@ export function buildFrame(options: {
         size: config.shellSize,
         color: parseHexColor(firstColor(firework.spec)),
         brightness: Math.max(0, 1 - point.ageMs / config.trailMaxAgeMs),
+        velocity: STILL,
       });
     }
   }

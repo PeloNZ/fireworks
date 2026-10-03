@@ -80,6 +80,7 @@ describe("indexFor", () => {
       size: 1,
       color: atHue(10),
       brightness: 1,
+      velocity: { x: 0, y: 0, z: 0 },
       ...overrides,
     };
   }
@@ -234,6 +235,7 @@ describe("paintFrame", () => {
           size: 0.1,
           color: atHue(10),
           brightness: 1,
+          velocity: { x: 0, y: 0, z: 0 },
         },
       ],
       ambient: [],
@@ -280,6 +282,7 @@ describe("paintFrame -- the brightness contest", () => {
       size: 0.1,
       color: atHue(hue),
       brightness,
+      velocity: { x: 0, y: 0, z: 0 },
     };
   }
 
@@ -313,6 +316,7 @@ describe("paintFrame -- the brightness contest", () => {
           size: 0.1,
           color: atHue(10),
           brightness: 0,
+          velocity: { x: 0, y: 0, z: 0 },
         },
       ],
       ambient: [],
@@ -336,6 +340,7 @@ describe("paintFrame -- radius scales with brightness", () => {
           size: 20,
           color: atHue(10),
           brightness,
+          velocity: { x: 0, y: 0, z: 0 },
         },
       ],
       ambient: [],
@@ -419,6 +424,7 @@ describe("paintFrame -- ambient movers", () => {
       size: 0.1,
       color: atHue(10),
       brightness: 1,
+      velocity: { x: 0, y: 0, z: 0 },
       ...overrides,
     };
   }

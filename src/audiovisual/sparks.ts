@@ -1,4 +1,5 @@
 import { createRandom } from "../action/random.ts";
+import { add } from "../action/vector.ts";
 import { parseHexColor } from "./color.ts";
 import type { AudioVisualConfig } from "./config.ts";
 import type { WorldConfig } from "../action/worldConfig.ts";
@@ -284,6 +285,16 @@ export function expandBurst(
       size: config.sparkSize,
       color,
       brightness,
+      velocity: add(
+        firework.velocity,
+        sparkVelocity(
+          direction,
+          speed,
+          worldConfig.gravity,
+          worldConfig.drag,
+          phaseElapsedMs,
+        ),
+      ),
     });
 
     // A trail point is the same closed-form sparkPosition, evaluated a
@@ -309,6 +320,16 @@ export function expandBurst(
         size: config.sparkSize,
         color,
         brightness: brightness * TRAIL_DECAY ** k,
+        velocity: add(
+          firework.velocity,
+          sparkVelocity(
+            direction,
+            speed,
+            worldConfig.gravity,
+            worldConfig.drag,
+            phaseElapsedMs - k * config.trailSpacingMs,
+          ),
+        ),
       });
     }
   }

@@ -88,8 +88,26 @@ describe("buildFrame", () => {
         size: config.shellSize,
         color: parseHexColor("#ff3b30"),
         brightness: 1,
+        velocity: { x: 0, y: 10, z: 0 },
       },
     ]);
+  });
+
+  // Cycle 2 (docs/12_neon_renderer.md): a shell sprite carries the
+  // firework's own velocity, in world units per second. It is not
+  // interpolated: only the position is.
+  it("gives the shell sprite the firework's velocity", () => {
+    const entity = firework({ velocity: { x: 3, y: -7, z: 0 } });
+
+    const frame = buildFrame({
+      entities: [entity],
+      alpha: 0.5,
+      config,
+      worldConfig,
+      trails: noTrails,
+    });
+
+    expect(frame.sprites[0]?.velocity).toEqual({ x: 3, y: -7, z: 0 });
   });
 
   it("draws a shell sprite for a launching firework too", () => {
@@ -177,6 +195,8 @@ describe("buildFrame", () => {
         size: config.shellSize,
         color: parseHexColor("#ff3b30"),
         brightness: 1,
+        // A recorded trail point does not move.
+        velocity: { x: 0, y: 0, z: 0 },
       },
     ]);
   });
