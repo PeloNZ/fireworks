@@ -211,7 +211,7 @@ one commit per cycle.
 Take expected values from the worked examples below. Never compute them with
 the same formula as the code.
 
-**What was built.** Two pairs of cycles went into one commit each. Cycles 5
+**How the cycles landed.** Two pairs of cycles share one commit each. Cycles 5
 and 6 are one commit: a rate-0 test alone needs an unused parameter, which
 `eslint` rejects. Cycles 12 and 13 are one commit: a required `ambientRandom`
 option breaks the `main.ts` call at `tsc`, which the pre-commit hook runs on
@@ -267,7 +267,8 @@ Before each commit, all of these must pass: `npx vitest run`, `npx tsc`,
 `npx eslint .`, `npx prettier --check .`, `npx knip`. The Husky hook runs most
 of them.
 
-This command must print nothing:
+This command prints one line only, the comment in `adapters/webAudio.ts`. No code in
+`src/audiovisual/` calls any of the three:
 
 ```bash
 grep -rE "Math.random|Date.now|performance.now" src/audiovisual/
