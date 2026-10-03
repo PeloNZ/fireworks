@@ -69,7 +69,7 @@ const config: AudioVisualConfig = {
   ...defaultAudioVisualConfig,
   pixel: pixelConfig,
 };
-const frame: Frame = { sprites: [] };
+const frame: Frame = { sprites: [], ambient: [] };
 const backdrop: Backdrop = {
   sky: { horizon: 0, zenith: 0 },
   bodies: [],

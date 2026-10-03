@@ -28,9 +28,20 @@ export interface Sprite {
   // docs/05_audio_visual_layer.md.
 } // cycle 3
 
+/** One ambient item for one frame, in world space like a `Sprite`. It is
+ * a separate list from `Frame.sprites` on purpose: `contestCells` gives each
+ * cell to the brightest sprite, so a mover in `sprites` could take a cell
+ * from a fading trail. See docs/11_ambient_movers.md. */
+interface Mover {
+  readonly position: Vec3;
+  readonly brightness: number; // 0..1
+}
+
 /** The whole display list for one frame. See `buildFrame` in frame.ts. */
 export interface Frame {
   readonly sprites: readonly Sprite[];
+  /** Drawn behind `sprites` and in front of the backdrop. */
+  readonly ambient: readonly Mover[];
 } // cycle 3
 
 /** A renderer's whole contract: given a frame, draw it. Every adapter

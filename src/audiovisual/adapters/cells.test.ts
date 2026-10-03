@@ -47,7 +47,7 @@ describe("contestCells", () => {
       color: { r: 1, g: 0, b: 0 },
       brightness: 1,
     });
-    const frame: Frame = { sprites: [winner] };
+    const frame: Frame = { sprites: [winner], ambient: [] };
 
     const cells = contestCells(frame, grid);
 
@@ -57,7 +57,7 @@ describe("contestCells", () => {
   it("gives a strictly brighter later sprite the cell over an earlier, dimmer one", () => {
     const dim = sprite({ position: { x: 0, y: 50, z: 0 }, brightness: 0.2 });
     const bright = sprite({ position: { x: 0, y: 50, z: 0 }, brightness: 1 });
-    const frame: Frame = { sprites: [dim, bright] };
+    const frame: Frame = { sprites: [dim, bright], ambient: [] };
 
     const cells = contestCells(frame, grid);
 
@@ -67,7 +67,7 @@ describe("contestCells", () => {
   it("keeps the earlier sprite when a later one is only equally bright", () => {
     const first = sprite({ position: { x: 0, y: 50, z: 0 }, brightness: 1 });
     const second = sprite({ position: { x: 0, y: 50, z: 0 }, brightness: 1 });
-    const frame: Frame = { sprites: [first, second] };
+    const frame: Frame = { sprites: [first, second], ambient: [] };
 
     const cells = contestCells(frame, grid);
 
@@ -77,6 +77,7 @@ describe("contestCells", () => {
   it("omits a sprite outside the grid instead of wrapping it to an edge", () => {
     const frame: Frame = {
       sprites: [sprite({ position: { x: 1000, y: 50, z: 0 } })],
+      ambient: [],
     };
 
     const cells = contestCells(frame, grid);
@@ -85,7 +86,7 @@ describe("contestCells", () => {
   });
 
   it("leaves an untouched cell as null", () => {
-    const frame: Frame = { sprites: [] };
+    const frame: Frame = { sprites: [], ambient: [] };
 
     const cells = contestCells(frame, grid);
 

@@ -62,5 +62,5 @@ export function buildFrame(options: {
     }
   }
 
-  return { sprites };
+  return { sprites, ambient: [] };
 }

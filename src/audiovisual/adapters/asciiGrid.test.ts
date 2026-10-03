@@ -50,6 +50,7 @@ describe("rasteriseFrame", () => {
         sprite({ position: { x: -50, y: 90, z: 0 } }),
         sprite({ position: { x: -50, y: 10, z: 0 } }),
       ],
+      ambient: [],
     };
 
     expect(rasteriseFrame(frame, ascii)).toBe(
@@ -63,6 +64,7 @@ describe("rasteriseFrame", () => {
   it("centres x: world x=0 lands at the centre column", () => {
     const frame: Frame = {
       sprites: [sprite({ position: { x: 0, y: 50, z: 0 } })],
+      ambient: [],
     };
 
     expect(rasteriseFrame(frame, ascii)).toBe(
@@ -73,6 +75,7 @@ describe("rasteriseFrame", () => {
   it("clips a sprite outside world bounds instead of wrapping it to the opposite edge", () => {
     const frame: Frame = {
       sprites: [sprite({ position: { x: 1000, y: 50, z: 0 } })],
+      ambient: [],
     };
 
     expect(rasteriseFrame(frame, ascii)).toBe(expectedGrid(9, 5, []));
@@ -84,6 +87,7 @@ describe("rasteriseFrame", () => {
         sprite({ position: { x: 0, y: 50, z: 0 }, brightness: 0.2 }),
         sprite({ position: { x: 0, y: 50, z: 0 }, brightness: 1 }),
       ],
+      ambient: [],
     };
 
     expect(rasteriseFrame(frame, ascii)).toBe(

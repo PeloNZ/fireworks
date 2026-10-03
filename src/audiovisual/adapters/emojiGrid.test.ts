@@ -157,6 +157,7 @@ describe("rasteriseEmojiFrame", () => {
           brightness: 1,
         },
       ],
+      ambient: [],
     };
 
     expect(rasteriseEmojiFrame(frame, config)).toEqual([

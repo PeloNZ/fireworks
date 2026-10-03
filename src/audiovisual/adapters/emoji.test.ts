@@ -37,6 +37,7 @@ function shellFrame(): Frame {
         brightness: 1,
       },
     ],
+    ambient: [],
   };
 }
 

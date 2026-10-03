@@ -236,6 +236,7 @@ describe("paintFrame", () => {
           brightness: 1,
         },
       ],
+      ambient: [],
     };
 
     const buffer = paintFrame(frame, pixel);
@@ -285,6 +286,7 @@ describe("paintFrame -- the brightness contest", () => {
   it("the brighter sprite wins, whichever order they're drawn in", () => {
     const frame: Frame = {
       sprites: [spark(10, 0.9), spark(200, 0.2)],
+      ambient: [],
     };
 
     expect(paintFrame(frame, contestPixel)[offset]).toBe(3);
@@ -293,6 +295,7 @@ describe("paintFrame -- the brightness contest", () => {
   it("on a tied brightness, the earlier sprite keeps the pixel", () => {
     const frame: Frame = {
       sprites: [spark(10, 0.5), spark(200, 0.5)],
+      ambient: [],
     };
 
     expect(paintFrame(frame, contestPixel)[offset]).toBe(3);
@@ -312,6 +315,7 @@ describe("paintFrame -- the brightness contest", () => {
           brightness: 0,
         },
       ],
+      ambient: [],
     };
 
     expect(paintFrame(frame, contestPixel)[offset]).toBe(4);
@@ -334,6 +338,7 @@ describe("paintFrame -- radius scales with brightness", () => {
           brightness,
         },
       ],
+      ambient: [],
     };
   }
 

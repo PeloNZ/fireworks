@@ -69,6 +69,7 @@ describe("buildFrame", () => {
       }),
     ).toEqual({
       sprites: [],
+      ambient: [],
     });
   });
 
