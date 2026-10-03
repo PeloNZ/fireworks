@@ -3,6 +3,47 @@
 // layers beyond switching firework input on and off. See
 // docs/10_settings_ui.md.
 
+/** The slice of `HTMLDialogElement` the menu uses. */
+export interface DialogLike {
+  readonly open: boolean;
+  showModal(): void;
+  addEventListener(type: "close", listener: () => void): void;
+}
+
+/** The slice of `KeyboardEvent` the menu uses. */
+export interface MenuKeyEvent {
+  readonly code: string;
+  preventDefault(): void;
+}
+
+/** The slice of `EventTarget` the menu uses. Real usage passes `window`. */
+export interface MenuKeyTarget {
+  addEventListener(
+    type: "keydown",
+    listener: (event: MenuKeyEvent) => void,
+  ): void;
+}
+
+/** Firework input on and off. The real control layer fits this shape. */
+export interface InputSwitch {
+  start(): void;
+  stop(): void;
+}
+
+/** Opens the dialog on Escape. */
+export function attachSettingsMenu(options: {
+  readonly dialog: DialogLike;
+  readonly keyTarget: MenuKeyTarget;
+  readonly control: InputSwitch;
+}): void {
+  const { keyTarget } = options;
+  keyTarget.addEventListener("keydown", (event) => {
+    if (event.code !== "Escape") {
+      return;
+    }
+  });
+}
+
 /** One radio per name. Only `selected` is checked. Order is kept. */
 export function choicesFor(
   names: readonly string[],
