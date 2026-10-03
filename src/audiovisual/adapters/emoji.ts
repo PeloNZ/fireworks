@@ -1,4 +1,8 @@
-import { overlayEmojiGrid, rasteriseEmojiFrame } from "./emojiGrid.ts";
+import {
+  overlayEmojiGrid,
+  rasteriseEmojiAmbient,
+  rasteriseEmojiFrame,
+} from "./emojiGrid.ts";
 import { rasteriseEmojiBackdrop } from "./emojiBackdrop.ts";
 import type { TextTarget } from "./ascii.ts";
 import type { AudioVisualConfig } from "../config.ts";
@@ -16,7 +20,9 @@ import type { Backdrop, Renderer } from "../types.ts";
  *
  * `backdrop` of `null` means no sky. Given one, it is rasterised **once,
  * here**, outside the returned closure, exactly as `createAsciiRenderer`
- * does — nothing in a backdrop changes frame to frame.
+ * does — nothing in a backdrop changes frame to frame. Each frame's
+ * `ambient` movers draw over the backdrop and under the fireworks. See
+ * docs/11_ambient_movers.md.
  */
 export function createEmojiRenderer(options: {
   readonly target: TextTarget;
@@ -29,9 +35,17 @@ export function createEmojiRenderer(options: {
     backdrop === null ? null : rasteriseEmojiBackdrop(backdrop, emoji);
 
   return (frame) => {
-    const grid = rasteriseEmojiFrame(frame, emoji);
-    const composited =
-      base === null ? grid : overlayEmojiGrid(base, grid, emoji.blank);
+    // Painted back to front: backdrop, then movers, then fireworks. With no
+    // backdrop the movers are the base. They fill every cell with `blank`
+    // where no mover sits, so nothing needs a fallback.
+    const ambient = rasteriseEmojiAmbient(frame.ambient, emoji);
+    const behind =
+      base === null ? ambient : overlayEmojiGrid(base, ambient, emoji.blank);
+    const composited = overlayEmojiGrid(
+      behind,
+      rasteriseEmojiFrame(frame, emoji),
+      emoji.blank,
+    );
     target.textContent = composited.map((row) => row.join("")).join("\n");
   };
 }

@@ -3,7 +3,7 @@ import { createEmojiRenderer } from "./emoji.ts";
 import { overlayEmojiGrid, rasteriseEmojiFrame } from "./emojiGrid.ts";
 import { rasteriseEmojiBackdrop } from "./emojiBackdrop.ts";
 import { defaultAudioVisualConfig } from "../config.ts";
-import type { Backdrop, Frame } from "../types.ts";
+import type { Backdrop, Frame, Mover } from "../types.ts";
 
 // Cycle 10 (docs/07_emoji_renderer.md): the adapter itself, mirroring
 // ascii.test.ts's own two cases — one write per call, and the two paths
@@ -94,5 +94,68 @@ describe("createEmojiRenderer", () => {
         ),
       ),
     );
+  });
+});
+
+// Cycle 18 (docs/11_ambient_movers.md): the composite order, backdrop then
+// movers then fireworks. The expected grids are written out by hand, not
+// built with the functions under test, so a wrong layer order cannot pass. A
+// 5x3 grid over a flat sky of brightness 0.2 is "🌌" in every cell, because
+// the sky ramp has 5 glyphs and the index is round(0.2 * 4) = 1. A mover at
+// (0, 50) is row 1, column 2. A shell at (-50, 90) is row 0, column 0.
+
+describe("createEmojiRenderer with ambient movers", () => {
+  const config = {
+    ...defaultAudioVisualConfig,
+    emoji: { ...defaultAudioVisualConfig.emoji, columns: 5, rows: 3 },
+  };
+  const flatSky: Backdrop = {
+    sky: { horizon: 0.2, zenith: 0.2 },
+    bodies: [],
+    ground: [
+      { x: -50, height: 0 },
+      { x: 50, height: 0 },
+    ],
+  };
+  const satellite: Mover = {
+    kind: "satellite",
+    position: { x: 0, y: 50, z: 0 },
+    brightness: 0.6,
+  };
+  const firework = (x: number, y: number): Frame["sprites"][number] => ({
+    kind: "shell",
+    position: { x, y, z: 0 },
+    size: 1,
+    color: { r: 1, g: 1, b: 1 },
+    brightness: 1,
+  });
+
+  function draw(frame: Frame, backdrop: Backdrop | null): string | undefined {
+    const { target, writes } = createTarget();
+    createEmojiRenderer({ target, config, backdrop })(frame);
+    return writes[0];
+  }
+
+  it("shows a mover over the sky, and the sky everywhere else", () => {
+    const frame: Frame = { sprites: [], ambient: [satellite] };
+
+    expect(draw(frame, flatSky)).toBe("🌌🌌🌌🌌🌌\n🌌🌌🛸🌌🌌\n🌌🌌🌌🌌🌌");
+  });
+
+  // This test passes before the mover pass exists. It guards the layer
+  // order: a mover pass drawn over the fireworks fails it.
+  it("shows a firework over a mover in the same cell", () => {
+    const frame: Frame = {
+      sprites: [firework(0, 50), firework(-50, 90)],
+      ambient: [satellite],
+    };
+
+    expect(draw(frame, flatSky)).toBe("🚀🌌🌌🌌🌌\n🌌🌌🚀🌌🌌\n🌌🌌🌌🌌🌌");
+  });
+
+  it("shows a mover when there is no backdrop", () => {
+    const frame: Frame = { sprites: [], ambient: [satellite] };
+
+    expect(draw(frame, null)).toBe("⬛⬛⬛⬛⬛\n⬛⬛🛸⬛⬛\n⬛⬛⬛⬛⬛");
   });
 });
