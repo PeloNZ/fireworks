@@ -192,6 +192,13 @@ export interface AudioVisualConfig {
     // mover kind with no entry fails tsc.
     readonly moverTailMs: Readonly<Record<Mover["kind"], number>>;
   };
+  // Only the neon adapter reads this, nested under its own key for the same
+  // reason ascii is. See docs/12_neon_renderer.md.
+  readonly neon: {
+    // How long a streak is, in milliseconds of motion: its length in world
+    // units is the sprite's speed times this.
+    readonly streakMs: number;
+  };
   // Only the Web Audio adapter and its planning functions read this,
   // nested under its own key for the same reason ascii is.
   readonly audio: {
@@ -383,6 +390,11 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     // (its vertical part adds to the speed), so it trails 5.4..9.4 world units,
     // which is 8 to 15 pixels. A satellite is a single pixel.
     moverTailMs: Object.freeze({ shootingStar: 120, satellite: 0 }),
+  }),
+  neon: Object.freeze({
+    // A spark moves 15..40 world units per second, so a streak is 0.7..1.8
+    // world units long: a short bright dash, not a line.
+    streakMs: 45,
   }),
   audio: Object.freeze({
     lookaheadMs: 30,

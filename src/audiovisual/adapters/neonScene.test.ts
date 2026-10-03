@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { toCanvas } from "./neonScene.ts";
+import { neonFrame, toCanvas } from "./neonScene.ts";
+import { defaultAudioVisualConfig } from "../config.ts";
+import type { Frame, Sprite } from "../types.ts";
 
 // Cycle 3 (docs/12_neon_renderer.md): world space to canvas pixels. The
 // canvas is not square, so the world is 100 units tall and `50 * width /
@@ -20,5 +22,58 @@ describe("toCanvas", () => {
 
   it("puts the middle of the world at the middle of the canvas", () => {
     expect(toCanvas({ x: 0, y: 50 }, canvas)).toEqual({ x: 150, y: 60 });
+  });
+});
+
+// Cycle 4: one rule draws every sprite. A sprite that moves is a streak: a
+// line from where it was `streakMs` ago to where it is now, along its
+// velocity. (Cycle 5 gives a sprite that does not move a disc.)
+
+// An unusual streakMs, not the default, so a hard-coded length cannot pass.
+const neon = { ...defaultAudioVisualConfig.neon, streakMs: 100 };
+
+function sprite(overrides: Partial<Sprite> = {}): Sprite {
+  return {
+    kind: "spark",
+    position: { x: 10, y: 50, z: 0 },
+    size: 0.5,
+    color: { r: 0.2, g: 0.9, b: 0.4 },
+    brightness: 0.7,
+    velocity: { x: 30, y: -20, z: 0 },
+    ...overrides,
+  };
+}
+
+function frameOf(...sprites: Sprite[]): Frame {
+  return { sprites, ambient: [] };
+}
+
+describe("neonFrame: a moving sprite", () => {
+  it("is a streak from where it was streakMs ago to where it is", () => {
+    const light = neonFrame(frameOf(sprite()), neon, canvas);
+
+    // Tail: (10, 50) - (30, -20) * 0.1 s = (7, 52) -> pixel (158.4, 57.6).
+    // Head: (10, 50) -> pixel (162, 60). Scale is 1.2 pixels per unit.
+    expect(light.streaks).toHaveLength(1);
+    const streak = light.streaks[0];
+    expect(streak?.from.x).toBeCloseTo(158.4);
+    expect(streak?.from.y).toBeCloseTo(57.6);
+    expect(streak?.to.x).toBeCloseTo(162);
+    expect(streak?.to.y).toBeCloseTo(60);
+  });
+
+  it("is as wide as the sprite, in pixels, and keeps its colour and brightness", () => {
+    const light = neonFrame(frameOf(sprite()), neon, canvas);
+
+    // Width: 2 * radius 0.5 * 1.2 pixels per unit.
+    expect(light.streaks[0]?.width).toBeCloseTo(1.2);
+    expect(light.streaks[0]?.color).toEqual({ r: 0.2, g: 0.9, b: 0.4 });
+    expect(light.streaks[0]?.alpha).toBe(0.7);
+  });
+
+  it("is not also a disc", () => {
+    const light = neonFrame(frameOf(sprite()), neon, canvas);
+
+    expect(light.discs).toEqual([]);
   });
 });
