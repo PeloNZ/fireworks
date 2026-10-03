@@ -407,6 +407,18 @@ layer order, and a mutation that draws movers over fireworks fails it. Cycle 17
 also adds a test for house rules 1 and 2 on the default glyphs, because
 nothing else stops a glyph with `U+FE0F` from shearing the grid.
 
+Cycles 20 to 26 each have their own commit. Three tests pass on their first
+run, and a mutation shows that each can fail. In cycle 22, "paints nothing for
+a mover outside the grid" guards the `toPixel` check before any mover paints.
+In cycle 23, "lets a firework cover a mover" guards the merge order, and
+"keeps a blank pixel blank when a dimmer spark follows a dead trail" guards
+the contest loop against a `blank` skip. In cycle 24, "tailMs 0 draws the head
+only" guards the per-kind lookup. The cycle 23 test "keeps the mover where a
+dead trail sits" failed first, against the cycle 22 code that painted movers
+into the firework buffer. Cycle 23 then moved them into a buffer of their own.
+Cycle 22 also adds a test that the default `moverRamp` starts on `blank`,
+because nothing else pins that house rule.
+
 A cleanup after cycle 19 changed two things that cycle 1 and cycle 16 describe.
 `buildFrame` now returns `Omit<Frame, "ambient">`, so no placeholder empty list
 exists and the layer adds the movers. `contestCells` and `placeMovers` now share
