@@ -30,13 +30,17 @@ export interface InputSwitch {
   stop(): void;
 }
 
-/** Opens the dialog on Escape. */
+/** Opens the dialog on Escape and stops firework input while it is open.
+ * Any close of the dialog starts firework input again. */
 export function attachSettingsMenu(options: {
   readonly dialog: DialogLike;
   readonly keyTarget: MenuKeyTarget;
   readonly control: InputSwitch;
 }): void {
   const { dialog, keyTarget, control } = options;
+  dialog.addEventListener("close", () => {
+    control.start();
+  });
   keyTarget.addEventListener("keydown", (event) => {
     // On an open dialog the browser closes it, so this stays out of the way.
     if (event.code !== "Escape" || dialog.open) {

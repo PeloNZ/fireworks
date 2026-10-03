@@ -87,4 +87,16 @@ describe("attachSettingsMenu", () => {
     expect(control.stop).not.toHaveBeenCalled();
     expect(event.preventDefault).not.toHaveBeenCalled();
   });
+
+  // One event covers every way out: Escape, Cancel and Apply.
+  it("restarts firework input when the dialog closes", () => {
+    const { control, listeners } = setup({ open: true });
+
+    if (listeners.close === undefined) {
+      throw new Error("no close listener registered");
+    }
+    listeners.close();
+
+    expect(control.start).toHaveBeenCalledTimes(1);
+  });
 });
