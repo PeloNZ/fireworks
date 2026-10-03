@@ -6,6 +6,18 @@ import { defaultAudioVisualConfig } from "./config.ts";
 // spawner takes `random` as a plain function, so each test scripts the
 // dice. Nothing here reads a clock: `step` receives the elapsed time.
 
+// Hands out the scripted values in order. After the script ends it returns
+// 0.99, which is above every chance these tests build, so no later step
+// spawns.
+function scripted(values: readonly number[]): () => number {
+  let next = 0;
+  return () => {
+    const value = values[next] ?? 0.99;
+    next += 1;
+    return value;
+  };
+}
+
 describe("createAmbient", () => {
   // Cycle 5. The comparison is strict (`roll < chance`), so a roll of 0
   // does not spawn when the chance is 0. A `<=` would spawn on every step.
@@ -32,5 +44,39 @@ describe("createAmbient", () => {
     expect(spawnsAt(0.64, 1000)).toBe(0);
     expect(spawnsAt(0.39, 500)).toBe(1);
     expect(spawnsAt(0.4, 500)).toBe(0);
+  });
+
+  // Cycle 7. The draws come in a fixed order: spawn roll, kind, then x, y,
+  // direction and speed. Every roll is different, so swapping any two draws
+  // changes the result. Worked by hand for this config:
+  //   x 0.25 in [-20, 20]  -> -10        y 0.5 in [60, 100]  -> 80
+  //   speed 0.75 in [10, 30] -> 25       vy = -0.25 * 25     -> -6.25
+  //   a direction roll under 0.5 moves right, so vx = +25; else vx = -25.
+  // After 500 ms the star is 12.5 along x and 3.125 down from (-10, 80).
+  const star = {
+    x: { min: -20, max: 20 },
+    y: { min: 60, max: 100 },
+    speed: { min: 10, max: 30 },
+    descent: 0.25,
+  };
+
+  function starPositionAfter(directionRoll: number, laterMs: number) {
+    const ambient = createAmbient({
+      config: {
+        ...defaultAudioVisualConfig.ambient,
+        ratePerSecond: 1,
+        shootingStar: star,
+      },
+      random: scripted([0.5, 0.3, 0.25, 0.5, directionRoll, 0.75]),
+    });
+    ambient.step(1000);
+    return ambient.step(laterMs).map((mover) => mover.position);
+  }
+
+  it("moves a shooting star from its drawn start along its drawn velocity", () => {
+    expect(starPositionAfter(0.2, 500)).toEqual([{ x: 2.5, y: 76.875, z: 0 }]);
+    expect(starPositionAfter(0.7, 500)).toEqual([
+      { x: -22.5, y: 76.875, z: 0 },
+    ]);
   });
 });

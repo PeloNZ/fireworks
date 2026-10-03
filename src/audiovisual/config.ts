@@ -58,6 +58,15 @@ export interface AudioVisualConfig {
     // About one spawn in 1 / ratePerSecond seconds, whatever the frame
     // rate — `createAmbient` turns it into a chance per frame.
     readonly ratePerSecond: number;
+    // A streak across the upper sky. World units throughout.
+    readonly shootingStar: {
+      readonly x: NumberRange; // start, across the world width
+      readonly y: NumberRange; // start height, above the ground and bodies
+      readonly speed: NumberRange; // units per second along its path
+      // Vertical speed is `descent` times the speed, downward: 0 is level
+      // and 1 is as fast down as it is across.
+      readonly descent: number;
+    };
   };
   // Only the ASCII adapter reads this — nested under its own key for the
   // same reason ControlConfig nests `keyboard`: the shape says who owns it.
@@ -216,6 +225,12 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
   }),
   ambient: Object.freeze({
     ratePerSecond: 0.05,
+    shootingStar: Object.freeze({
+      x: Object.freeze({ min: -50, max: 50 }),
+      y: Object.freeze({ min: 65, max: 95 }),
+      speed: Object.freeze({ min: 40, max: 70 }),
+      descent: 0.5,
+    }),
   }),
   ascii: Object.freeze({
     columns: 80,
