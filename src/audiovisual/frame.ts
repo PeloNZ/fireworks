@@ -28,6 +28,8 @@ function firstColor(spec: Firework["spec"]): string {
 /**
  * Builds this frame's display list from Action's current snapshot. Reads
  * only what Action already decided — nothing here derives a new fact.
+ * `ambient` is empty: the movers come from `createAmbient`, and the layer
+ * fills them in.
  */
 export function buildFrame(options: {
   readonly entities: readonly Firework[];

@@ -6,7 +6,7 @@ import { planToneVoices } from "./voices/tones.ts";
 import { defaultAudioVisualConfig } from "./config.ts";
 import { defaultWorldConfig } from "../action/worldConfig.ts";
 import type { Firework, FireworkSpec } from "../action/types.ts";
-import type { Voice, VoicePlanner } from "./types.ts";
+import type { Renderer, Voice, VoicePlanner } from "./types.ts";
 
 // Cycle 6 (docs/05_audio_visual_layer.md): createAudioVisualLayer wires
 // Action's snapshot to a renderer port, one call per frame. Cycle 19
@@ -52,12 +52,45 @@ function firework(overrides: Partial<Firework> = {}): Firework {
 }
 
 describe("createAudioVisualLayer", () => {
+  // Cycle 12 (docs/11_ambient_movers.md): the layer owns the ambient
+  // spawner, steps it with each frame's elapsed time, and hands the movers
+  // to the renderer in `frame.ambient`. The default config is used, worked
+  // by hand. The draws are spawn 0.0 (under any chance), kind 0.7 (the
+  // satellite), y 0.25 in [80, 95] -> 83.75, direction 0.2 (right, so it
+  // starts at x = -50), speed 0.5 in [5, 9] -> 7. A second present 1000 ms
+  // later has moved it 7 units, to x = -43. Only a layer that passes the
+  // elapsed time through gets that.
+  it("gives the renderer the ambient movers, stepped by each frame's elapsed time", () => {
+    const renderer = vi.fn<Renderer>();
+    const draws = [0, 0.7, 0.25, 0.2, 0.5];
+    let next = 0;
+    const layer = createAudioVisualLayer({
+      renderer,
+      audio: vi.fn(),
+      voicePlanner: planToneVoices,
+      ambientRandom: () => draws[next++] ?? 0.99,
+      config: defaultAudioVisualConfig,
+      worldConfig: defaultWorldConfig,
+    });
+
+    layer.present({ entities: [], alpha: 0, elapsedMs: 16 });
+    layer.present({ entities: [], alpha: 0, elapsedMs: 1000 });
+
+    expect(renderer.mock.calls[0]?.[0].ambient).toEqual([
+      { position: { x: -50, y: 83.75, z: 0 }, brightness: 0.6 },
+    ]);
+    expect(renderer.mock.calls[1]?.[0].ambient).toEqual([
+      { position: { x: -43, y: 83.75, z: 0 }, brightness: 0.6 },
+    ]);
+  });
+
   it("calls the renderer once per present, with the frame buildFrame would build", () => {
     const renderer = vi.fn();
     const layer = createAudioVisualLayer({
       renderer,
       audio: vi.fn(),
       voicePlanner: planToneVoices,
+      ambientRandom: () => 0.99,
       config: defaultAudioVisualConfig,
       worldConfig: defaultWorldConfig,
     });
@@ -92,6 +125,7 @@ describe("createAudioVisualLayer", () => {
       renderer: vi.fn(),
       audio,
       voicePlanner: planToneVoices,
+      ambientRandom: () => 0.99,
       config: defaultAudioVisualConfig,
       worldConfig: defaultWorldConfig,
     });
@@ -112,6 +146,7 @@ describe("createAudioVisualLayer", () => {
       renderer: vi.fn(),
       audio,
       voicePlanner: planToneVoices,
+      ambientRandom: () => 0.99,
       config: defaultAudioVisualConfig,
       worldConfig: defaultWorldConfig,
     });
@@ -157,6 +192,7 @@ describe("createAudioVisualLayer", () => {
       renderer: vi.fn(),
       audio,
       voicePlanner,
+      ambientRandom: () => 0.99,
       config: defaultAudioVisualConfig,
       worldConfig: defaultWorldConfig,
     });

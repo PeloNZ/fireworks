@@ -7,7 +7,7 @@ import { defaultWorldConfig } from "./action/worldConfig.ts";
 import { createActionLayer } from "./action/actionLayer.ts";
 import { createWorld } from "./action/world.ts";
 import { createSpecConsoleSink } from "./action/debug/consoleSink.ts";
-import { hashString } from "./action/random.ts";
+import { createRandom, hashString } from "./action/random.ts";
 import { defaultAudioVisualConfig } from "./audiovisual/config.ts";
 import { createAudioVisualLayer } from "./audiovisual/audioVisualLayer.ts";
 import { buildBackdrop } from "./audiovisual/backdrop.ts";
@@ -112,6 +112,13 @@ const backdropSeed = hashString(
   `${Date.now().toString()}:${Math.random().toString()}`,
 );
 const backdrop = buildBackdrop(backdropSeed, defaultAudioVisualConfig.backdrop);
+// The ambient movers (shooting stars, satellites) roll their dice from a
+// stream of their own, seeded off the same page-load seed, the way
+// `buildBackdrop` splits its sky, bodies and ground. See
+// docs/11_ambient_movers.md.
+const ambientRandom = createRandom(
+  hashString(`${backdropSeed.toString()}:ambient`),
+);
 
 // Which renderer runs is a lookup in this table, not a two-way branch —
 // the point of building a second renderer is that this project now has
@@ -279,6 +286,7 @@ const audioVisual = createAudioVisualLayer({
     config: defaultAudioVisualConfig,
   }),
   voicePlanner,
+  ambientRandom,
   config: defaultAudioVisualConfig,
   worldConfig: defaultWorldConfig,
 });

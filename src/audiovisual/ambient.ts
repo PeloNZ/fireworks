@@ -28,7 +28,7 @@ interface LiveMover {
 /**
  * Rare, random movers that cross the sky. Holds the live movers across
  * frames, and nothing else: `random` is injected, and `step` receives the
- * elapsed time, so this reads no clock and never calls `Math.random`. See
+ * elapsed time, so this reads no clock and no random source of its own. See
  * docs/11_ambient_movers.md.
  */
 export function createAmbient(options: {
