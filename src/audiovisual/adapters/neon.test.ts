@@ -9,23 +9,34 @@ import type { Backdrop, Frame, Sprite } from "../types.ts";
 // order, as `name(args)` and `name = value`. A canvas is 400x100 here, so one
 // world unit is exactly one pixel and the logged numbers are exact.
 
-function createSurface() {
+// `timeline` gets every line of every surface, prefixed with the surface name,
+// so a test can check the order across surfaces.
+function createSurface(
+  name: string,
+  width: number,
+  height: number,
+  timeline: string[],
+) {
   const log: string[] = [];
+  const record = (line: string) => {
+    log.push(line);
+    timeline.push(`${name}: ${line}`);
+  };
   const context = new Proxy(
     {},
     {
       get:
-        (_target, name) =>
+        (_target, property) =>
         (...args: unknown[]) => {
-          log.push(`${String(name)}(${args.join(", ")})`);
+          record(`${String(property)}(${args.join(", ")})`);
         },
-      set: (_target, name, value) => {
-        log.push(`${String(name)} = ${String(value)}`);
+      set: (_target, property, value) => {
+        record(`${String(property)} = ${String(value)}`);
         return true;
       },
     },
-  ) as unknown as Canvas2DLike;
-  return { surface: { context, width: 400, height: 100 }, log };
+  ) as unknown as Canvas2DLike<string>;
+  return { surface: { context, source: name, width, height }, log };
 }
 
 // Asserts that `lines` appear in `log` one right after another.
@@ -48,6 +59,7 @@ const config = {
   groundFill: { r: 0.05, g: 0.06, b: 0.07 },
   ridgeColor: { r: 0.7, g: 0.8, b: 0.9 },
   ridgeWidth: 0.6,
+  bloom: { quarterAlpha: 0.6, eighthAlpha: 0.3 },
 };
 
 const backdrop: Backdrop = {
@@ -63,15 +75,27 @@ const backdrop: Backdrop = {
 };
 
 function build() {
-  const light = createSurface();
-  const background = createSurface();
+  const timeline: string[] = [];
+  const light = createSurface("light", 400, 100, timeline);
+  const background = createSurface("background", 400, 100, timeline);
+  const quarter = createSurface("quarter", 100, 25, timeline);
+  const eighth = createSurface("eighth", 50, 13, timeline);
   const render = createNeonRenderer({
     light: light.surface,
     background: background.surface,
+    quarter: quarter.surface,
+    eighth: eighth.surface,
     backdrop,
     config,
   });
-  return { render, light: light.log, background: background.log };
+  return {
+    render,
+    timeline,
+    light: light.log,
+    background: background.log,
+    quarter: quarter.log,
+    eighth: eighth.log,
+  };
 }
 
 function spark(overrides: Partial<Sprite> = {}): Sprite {
@@ -276,5 +300,62 @@ describe("createNeonRenderer: the light surface", () => {
     expect(ridge).toBeGreaterThanOrEqual(0);
     expect(streak).toBeGreaterThan(ridge);
     expect(disc).toBeGreaterThan(streak);
+  });
+});
+
+// Cycle 13: the bloom. Copy the light surface to a quarter-size surface and
+// that to an eighth-size one, then draw both back over the light surface at
+// full size, added on. Scaling a small copy up blurs it, and it works in
+// Safari, which has no `ctx.filter`. The bloom comes last, so it also
+// brightens the ridge, the streaks and the discs just drawn.
+describe("createNeonRenderer: the bloom", () => {
+  it("copies the light surface down to the quarter surface", () => {
+    const { render, quarter } = build();
+
+    render(frameOf(spark()));
+
+    expect(quarter).toEqual([
+      "clearRect(0, 0, 100, 25)",
+      "drawImage(light, 0, 0, 100, 25)",
+    ]);
+  });
+
+  it("copies the quarter surface down to the eighth surface", () => {
+    const { render, eighth } = build();
+
+    render(frameOf(spark()));
+
+    expect(eighth).toEqual([
+      "clearRect(0, 0, 50, 13)",
+      "drawImage(quarter, 0, 0, 50, 13)",
+    ]);
+  });
+
+  it("ends each frame by drawing both copies over the light surface, then resetting the blend", () => {
+    const { render, timeline } = build();
+
+    render(frameOf(spark()));
+
+    expect(timeline.slice(-10)).toEqual([
+      "quarter: clearRect(0, 0, 100, 25)",
+      "quarter: drawImage(light, 0, 0, 100, 25)",
+      "eighth: clearRect(0, 0, 50, 13)",
+      "eighth: drawImage(quarter, 0, 0, 50, 13)",
+      "light: globalAlpha = 0.6",
+      "light: drawImage(quarter, 0, 0, 400, 100)",
+      "light: globalAlpha = 0.3",
+      "light: drawImage(eighth, 0, 0, 400, 100)",
+      "light: globalAlpha = 1",
+      "light: globalCompositeOperation = source-over",
+    ]);
+  });
+
+  it("blooms every frame, including one with no sprites", () => {
+    const { render, quarter } = build();
+
+    render(frameOf());
+    render(frameOf());
+
+    expect(quarter).toHaveLength(4);
   });
 });

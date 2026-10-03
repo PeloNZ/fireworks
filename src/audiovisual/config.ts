@@ -224,6 +224,13 @@ export interface AudioVisualConfig {
     // The ridge line is drawn on the light canvas, so that it glows.
     readonly ridgeColor: Rgb;
     readonly ridgeWidth: number;
+    // The bloom: the light canvas, shrunk to a quarter and then an eighth, is
+    // drawn back at full size over the light canvas, added on. Each is drawn
+    // at its own alpha, 0..1.
+    readonly bloom: {
+      readonly quarterAlpha: number;
+      readonly eighthAlpha: number;
+    };
   };
   // Only the Web Audio adapter and its planning functions read this,
   // nested under its own key for the same reason ascii is.
@@ -441,6 +448,7 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     groundFill: Object.freeze({ r: 0.039, g: 0.039, b: 0.063 }),
     ridgeColor: Object.freeze({ r: 0.2, g: 0.95, b: 1 }),
     ridgeWidth: 0.33,
+    bloom: Object.freeze({ quarterAlpha: 0.85, eighthAlpha: 1 }),
   }),
   audio: Object.freeze({
     lookaheadMs: 30,

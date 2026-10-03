@@ -11,7 +11,8 @@ import type { Backdrop, Renderer, Rgb } from "../types.ts";
  * The slice of `CanvasRenderingContext2D` the player uses. A real context is
  * assignable to it, and a test fake records what is written to it.
  */
-export interface Canvas2DLike {
+export interface Canvas2DLike<Source> {
+  globalAlpha: number;
   globalCompositeOperation: "source-over" | "lighter";
   fillStyle: string;
   lineWidth: number;
@@ -26,10 +27,20 @@ export interface Canvas2DLike {
   closePath(): void;
   fill(): void;
   stroke(): void;
+  drawImage(
+    source: Source,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ): void;
 }
 
-interface NeonSurface {
-  readonly context: Canvas2DLike;
+interface NeonSurface<Source> {
+  readonly context: Canvas2DLike<Source>;
+  // What another surface's `drawImage` takes to draw this one: a canvas in a
+  // page, a plain token in a test.
+  readonly source: Source;
   readonly width: number; // pixels
   readonly height: number; // pixels
 }
@@ -46,8 +57,8 @@ const BLACK: Rgb = { r: 0, g: 0, b: 0 };
 // Paints the backdrop surface: a black sky, the ground under the ridge, a
 // cross for each star and a ring for the moon and the planet. The ridge line
 // itself is drawn on the light surface, so that it glows.
-function paintBackground(
-  surface: NeonSurface,
+function paintBackground<Source>(
+  surface: NeonSurface<Source>,
   { ridge, stars, rings }: NeonBackdrop,
   config: AudioVisualConfig["neon"],
 ): void {
@@ -91,13 +102,16 @@ function paintBackground(
   }
 }
 
-export function createNeonRenderer(options: {
-  readonly light: NeonSurface;
-  readonly background: NeonSurface;
+export function createNeonRenderer<Source>(options: {
+  readonly light: NeonSurface<Source>;
+  readonly background: NeonSurface<Source>;
+  // The bloom's two shrunk copies of `light`.
+  readonly quarter: NeonSurface<Source>;
+  readonly eighth: NeonSurface<Source>;
   readonly backdrop: Backdrop;
   readonly config: AudioVisualConfig["neon"];
 }): Renderer {
-  const { light, background, backdrop, config } = options;
+  const { light, background, quarter, eighth, backdrop, config } = options;
   const scene = neonBackdrop(backdrop, config, light);
   const scale = light.height / 100;
 
@@ -138,5 +152,25 @@ export function createNeonRenderer(options: {
       context.arc(centre.x, centre.y, radius, 0, 2 * Math.PI);
       context.fill();
     }
+
+    // The bloom. Each surface is cleared before it is drawn on, so that the
+    // last frame's copy does not stay.
+    quarter.context.clearRect(0, 0, quarter.width, quarter.height);
+    quarter.context.drawImage(
+      light.source,
+      0,
+      0,
+      quarter.width,
+      quarter.height,
+    );
+    eighth.context.clearRect(0, 0, eighth.width, eighth.height);
+    eighth.context.drawImage(quarter.source, 0, 0, eighth.width, eighth.height);
+
+    context.globalAlpha = config.bloom.quarterAlpha;
+    context.drawImage(quarter.source, 0, 0, light.width, light.height);
+    context.globalAlpha = config.bloom.eighthAlpha;
+    context.drawImage(eighth.source, 0, 0, light.width, light.height);
+    context.globalAlpha = 1;
+    context.globalCompositeOperation = "source-over";
   };
 }
