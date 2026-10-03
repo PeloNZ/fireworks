@@ -75,4 +75,16 @@ describe("attachSettingsMenu", () => {
     expect(control.stop).toHaveBeenCalledTimes(1);
     expect(event.preventDefault).toHaveBeenCalledTimes(1);
   });
+
+  // A second showModal on an open dialog throws, and cancelling this Escape
+  // would stop the browser from closing the dialog.
+  it("does nothing on Escape when the dialog is already open", () => {
+    const { dialog, control, press } = setup({ open: true });
+
+    const event = press("Escape");
+
+    expect(dialog.showModal).not.toHaveBeenCalled();
+    expect(control.stop).not.toHaveBeenCalled();
+    expect(event.preventDefault).not.toHaveBeenCalled();
+  });
 });
