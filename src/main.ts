@@ -84,7 +84,7 @@ heading.textContent = "Fireworks — AudioVisual layer dev harness.";
 const instructions = document.createElement("p");
 instructions.textContent =
   "Press any key. Press Esc for settings. Open the console to see events.";
-app.append(heading, instructions);
+// app.append(heading, instructions);
 
 // Browsers refuse to make sound before the user has interacted with the
 // page — create the context any time, but only resume it once a keydown
