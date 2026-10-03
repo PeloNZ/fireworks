@@ -58,6 +58,18 @@ describe("interpretKeyEvent", () => {
     expect(decision.input).toBeNull();
   });
 
+  // Escape belongs to the settings menu (docs/10_settings_ui.md). It must
+  // not also launch a firework, and the browser keeps its own handling of
+  // it, so the decision does not cancel the event.
+  it("drops Escape without cancelling it, because the settings menu owns that key", () => {
+    const decision = interpretKeyEvent(
+      { ...baseEvent, code: "Escape" },
+      keyboardConfig,
+    );
+
+    expect(decision).toEqual({ input: null, preventDefault: false });
+  });
+
   it("drops any press held with Ctrl, so a browser shortcut like Ctrl+W is never hijacked", () => {
     const decision = interpretKeyEvent(
       { ...baseEvent, code: "KeyW", ctrlKey: true },

@@ -33,6 +33,8 @@ export const defaultConfig: ControlConfig = Object.freeze({
       "MetaLeft",
       "MetaRight",
       "CapsLock",
+      // Opens the settings menu, so it must not also launch a firework.
+      "Escape",
     ]),
   }),
 });

@@ -16,6 +16,7 @@ import { createEmojiRenderer } from "./audiovisual/adapters/emoji.ts";
 import { createPixelRenderer } from "./audiovisual/adapters/pixel.ts";
 import { createWebAudioSink } from "./audiovisual/adapters/webAudio.ts";
 import { selectRenderer } from "./audiovisual/selectRenderer.ts";
+import { attachSettingsMenu, choicesFor } from "./settings/settingsMenu.ts";
 import { soundSets } from "./audiovisual/voices/sets.ts";
 import type { FireworkPhase } from "./action/types.ts";
 import type { Renderer } from "./audiovisual/types.ts";
@@ -81,7 +82,8 @@ if (app === null) {
 const heading = document.createElement("p");
 heading.textContent = "Fireworks — AudioVisual layer dev harness.";
 const instructions = document.createElement("p");
-instructions.textContent = "Press any key. Open the console to see events.";
+instructions.textContent =
+  "Press any key. Press Esc for settings. Open the console to see events.";
 app.append(heading, instructions);
 
 // Browsers refuse to make sound before the user has interacted with the
@@ -198,7 +200,7 @@ const renderers: Record<string, (host: HTMLElement) => Renderer> = {
     });
   },
 };
-const { create: createRenderer } = selectRenderer(
+const { name: rendererName, create: createRenderer } = selectRenderer(
   new URLSearchParams(location.search).get("renderer"),
   renderers,
   "ascii",
@@ -208,11 +210,67 @@ const renderer = createRenderer(app);
 // Which sound set plays is the same kind of lookup, against its own
 // table — a `?sound=` this project now has more than one entry for. See
 // docs/08_sound_effects.md.
-const { create: voicePlanner } = selectRenderer(
+const { name: soundName, create: voicePlanner } = selectRenderer(
   new URLSearchParams(location.search).get("sound"),
   soundSets,
   "tones",
 );
+
+// The settings menu: Escape opens a native <dialog> with one radio group per
+// lookup table above. Apply submits a GET form, so the browser itself writes
+// `?renderer=…&sound=…` and reloads — no code here builds a query string.
+// The radios start on the names that actually run (`rendererName`,
+// `soundName`), not the raw URL values, so `?renderer=foo` shows `ascii`
+// checked. See docs/10_settings_ui.md.
+function radioGroup(
+  legendText: string,
+  field: string,
+  names: readonly string[],
+  selected: string,
+): HTMLFieldSetElement {
+  const fieldset = document.createElement("fieldset");
+  const legend = document.createElement("legend");
+  legend.textContent = legendText;
+  fieldset.append(legend);
+  for (const choice of choicesFor(names, selected)) {
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = field;
+    input.value = choice.value;
+    input.checked = choice.checked;
+    const label = document.createElement("label");
+    label.append(input, ` ${choice.value}`);
+    const row = document.createElement("div");
+    row.append(label);
+    fieldset.append(row);
+  }
+  return fieldset;
+}
+
+const settingsForm = document.createElement("form");
+settingsForm.method = "get";
+const apply = document.createElement("button");
+apply.type = "submit";
+apply.textContent = "Apply";
+// `formMethod = "dialog"` closes the dialog and skips the GET navigation.
+const cancel = document.createElement("button");
+cancel.type = "submit";
+cancel.formMethod = "dialog";
+cancel.textContent = "Cancel";
+settingsForm.append(
+  radioGroup("Renderer", "renderer", Object.keys(renderers), rendererName),
+  radioGroup("Sound", "sound", Object.keys(soundSets), soundName),
+  apply,
+  cancel,
+);
+const settingsDialog = document.createElement("dialog");
+settingsDialog.append(settingsForm);
+app.append(settingsDialog);
+attachSettingsMenu({
+  dialog: settingsDialog,
+  keyTarget: window,
+  control: layer,
+});
 
 const audioVisual = createAudioVisualLayer({
   renderer,
