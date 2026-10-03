@@ -66,6 +66,24 @@
       canvas.pixel-sprites {
         z-index: 1;
       }
+      /* The neon renderer's two stacked planes: the backdrop painted once,
+         the light redrawn every frame. They are as big as the screen's real
+         pixels and drawn at their own size, so there is no
+         image-rendering: pixelated here: it would turn the thin glowing
+         lines into stairs. The same z-index rules as pixel apply. See
+         docs/12_neon_renderer.md. */
+      canvas.neon {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+      }
+      canvas.neon-backdrop {
+        z-index: 0;
+      }
+      canvas.neon-light {
+        z-index: 1;
+      }
     </style>
   </head>
   <body>
