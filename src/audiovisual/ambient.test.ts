@@ -152,4 +152,59 @@ describe("createAmbient", () => {
     expect(ambient.step(3999)).toHaveLength(1);
     expect(ambient.step(1)).toEqual([]);
   });
+
+  // Cycle 10. A kind waits `cooldownMs` after it spawns. The rate is 1000
+  // per second, so even a 1 ms step has a chance of 1 - e^-1 = 0.632, above
+  // the roll of 0.5, and each step below rolls a spawn. A satellite lives
+  // 6000 ms here, so a second spawn shows as a second mover. With a cooldown
+  // of 5000 ms, the spawn at 0 leaves 4000 ms after 1000 ms and 1 ms after
+  // 3999 more. Both of those steps draw a spawn roll and a kind, find the
+  // kind waiting, and spawn nothing. One more millisecond ends the wait.
+  const cooldownConfig = {
+    ...defaultAudioVisualConfig.ambient,
+    ratePerSecond: 1000,
+    cooldownMs: 5000,
+    shootingStar: star,
+    satellite,
+  };
+  const satelliteDraws = [0.5, 0.7, 0.25, 0.2, 0.5];
+
+  it("does not spawn the same kind again until its cooldown ends", () => {
+    const ambient = createAmbient({
+      config: cooldownConfig,
+      random: scripted([
+        ...satelliteDraws,
+        0.5,
+        0.7,
+        0.5,
+        0.7,
+        ...satelliteDraws,
+      ]),
+    });
+
+    expect(ambient.step(1000)).toHaveLength(1);
+    expect(ambient.step(1000)).toHaveLength(1);
+    expect(ambient.step(3999)).toHaveLength(1);
+    expect(ambient.step(1)).toHaveLength(2);
+  });
+
+  it("keeps a separate cooldown for each kind", () => {
+    const ambient = createAmbient({
+      config: cooldownConfig,
+      random: scripted([
+        ...satelliteDraws,
+        0.5,
+        0.3,
+        0.25,
+        0.5,
+        0.2,
+        0.75,
+        0.6,
+      ]),
+    });
+
+    ambient.step(1000);
+
+    expect(ambient.step(1000)).toHaveLength(2);
+  });
 });

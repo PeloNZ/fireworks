@@ -58,6 +58,9 @@ export interface AudioVisualConfig {
     // About one spawn in 1 / ratePerSecond seconds, whatever the frame
     // rate — `createAmbient` turns it into a chance per frame.
     readonly ratePerSecond: number;
+    // After a mover spawns, no mover of the same kind spawns for this long.
+    // It keeps random events from arriving in clusters.
+    readonly cooldownMs: number;
     // A streak across the upper sky. World units throughout.
     readonly shootingStar: {
       readonly x: NumberRange; // start, across the world width
@@ -237,6 +240,7 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
   }),
   ambient: Object.freeze({
     ratePerSecond: 0.05,
+    cooldownMs: 8000,
     shootingStar: Object.freeze({
       x: Object.freeze({ min: -50, max: 50 }),
       y: Object.freeze({ min: 65, max: 95 }),

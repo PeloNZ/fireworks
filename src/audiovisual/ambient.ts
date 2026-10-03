@@ -4,6 +4,7 @@ import type { Mover } from "./types.ts";
 
 // One entry per kind of mover. A spawn picks one with a single draw.
 const KINDS = ["shootingStar", "satellite"] as const;
+type Kind = (typeof KINDS)[number];
 
 /** Maps the next value from `random` (in `[0, 1)`) onto `range`. One small
  * helper per file, the same as sparks.ts and backdrop.ts. */
@@ -40,6 +41,11 @@ export function createAmbient(options: {
 } {
   const { config, random } = options;
   let live: LiveMover[] = [];
+  // Time left before each kind may spawn again. 0 means it may spawn now.
+  const cooldownLeftMs: Record<Kind, number> = {
+    shootingStar: 0,
+    satellite: 0,
+  };
 
   // Left or right, from one draw.
   const pickDirection = (): 1 | -1 => (random() < 0.5 ? 1 : -1);
@@ -90,16 +96,20 @@ export function createAmbient(options: {
         mover.ageMs += elapsedMs;
       }
       live = live.filter((mover) => mover.ageMs < mover.ttlMs);
+      for (const kind of KINDS) {
+        cooldownLeftMs[kind] = Math.max(0, cooldownLeftMs[kind] - elapsedMs);
+      }
 
       // A rate per second, not a chance per frame, so a 144 Hz screen and a
       // 60 Hz screen spawn at the same pace.
       const chance = 1 - Math.exp((-config.ratePerSecond * elapsedMs) / 1000);
       if (random() < chance) {
         const kind = KINDS[Math.floor(random() * KINDS.length)];
-        if (kind === "shootingStar") {
-          live.push(spawnShootingStar());
-        } else if (kind === "satellite") {
-          live.push(spawnSatellite());
+        if (kind !== undefined && cooldownLeftMs[kind] === 0) {
+          live.push(
+            kind === "shootingStar" ? spawnShootingStar() : spawnSatellite(),
+          );
+          cooldownLeftMs[kind] = config.cooldownMs;
         }
       }
 
