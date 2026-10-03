@@ -18,6 +18,8 @@ interface LiveMover {
   readonly startY: number;
   readonly velocityX: number; // world units per second
   readonly velocityY: number;
+  readonly ttlMs: number;
+  readonly brightness: number; // at age 0; it falls to 0 at `ttlMs`
   ageMs: number;
 }
 
@@ -36,21 +38,24 @@ export function createAmbient(options: {
   step(elapsedMs: number): readonly Mover[];
 } {
   const { config, random } = options;
-  const live: LiveMover[] = [];
+  let live: LiveMover[] = [];
 
   // The draws are in a fixed order, so a test can script them: x, y,
-  // direction, then speed.
+  // direction, speed, then time to live.
   function spawnShootingStar(): LiveMover {
     const star = config.shootingStar;
     const startX = pickInRange(random, star.x);
     const startY = pickInRange(random, star.y);
     const direction = random() < 0.5 ? 1 : -1;
     const speed = pickInRange(random, star.speed);
+    const ttlMs = pickInRange(random, star.ttlMs);
     return {
       startX,
       startY,
       velocityX: direction * speed,
       velocityY: -star.descent * speed,
+      ttlMs,
+      brightness: star.brightness,
       ageMs: 0,
     };
   }
@@ -60,6 +65,7 @@ export function createAmbient(options: {
       for (const mover of live) {
         mover.ageMs += elapsedMs;
       }
+      live = live.filter((mover) => mover.ageMs < mover.ttlMs);
 
       // A rate per second, not a chance per frame, so a 144 Hz screen and a
       // 60 Hz screen spawn at the same pace.
@@ -77,7 +83,7 @@ export function createAmbient(options: {
           y: mover.startY + (mover.velocityY * mover.ageMs) / 1000,
           z: 0,
         },
-        brightness: 1,
+        brightness: mover.brightness * (1 - mover.ageMs / mover.ttlMs),
       }));
     },
   };

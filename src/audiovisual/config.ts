@@ -66,6 +66,8 @@ export interface AudioVisualConfig {
       // Vertical speed is `descent` times the speed, downward: 0 is level
       // and 1 is as fast down as it is across.
       readonly descent: number;
+      readonly ttlMs: NumberRange; // time to live
+      readonly brightness: number; // at spawn; it falls to 0 over the ttl
     };
   };
   // Only the ASCII adapter reads this — nested under its own key for the
@@ -230,6 +232,8 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
       y: Object.freeze({ min: 65, max: 95 }),
       speed: Object.freeze({ min: 40, max: 70 }),
       descent: 0.5,
+      ttlMs: Object.freeze({ min: 400, max: 800 }),
+      brightness: 1,
     }),
   }),
   ascii: Object.freeze({
