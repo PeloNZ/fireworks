@@ -65,4 +65,14 @@ describe("attachSettingsMenu", () => {
     expect(control.stop).not.toHaveBeenCalled();
     expect(event.preventDefault).not.toHaveBeenCalled();
   });
+
+  it("opens the dialog, stops firework input and cancels the key on Escape when the dialog is closed", () => {
+    const { dialog, control, press } = setup({ open: false });
+
+    const event = press("Escape");
+
+    expect(dialog.showModal).toHaveBeenCalledTimes(1);
+    expect(control.stop).toHaveBeenCalledTimes(1);
+    expect(event.preventDefault).toHaveBeenCalledTimes(1);
+  });
 });

@@ -36,11 +36,16 @@ export function attachSettingsMenu(options: {
   readonly keyTarget: MenuKeyTarget;
   readonly control: InputSwitch;
 }): void {
-  const { keyTarget } = options;
+  const { dialog, keyTarget, control } = options;
   keyTarget.addEventListener("keydown", (event) => {
     if (event.code !== "Escape") {
       return;
     }
+    // Cancelled so the browser's own Escape handling cannot close the
+    // dialog this call just opened.
+    event.preventDefault();
+    control.stop();
+    dialog.showModal();
   });
 }
 
