@@ -33,11 +33,11 @@ export interface ActionConfig {
 
 export const defaultActionConfig: ActionConfig = Object.freeze({
   launchOrigin: Object.freeze({ x: 0, y: 0, z: 0 }),
-  launchSpeed: Object.freeze({ min: 30, max: 55 }),
+  launchSpeed: Object.freeze({ min: 35, max: 65 }),
   launchAngle: Object.freeze({ min: -25, max: 25 }),
-  thrust: Object.freeze({ min: 20, max: 40 }),
-  fuelMs: Object.freeze({ min: 300, max: 700 }),
-  fuseMs: Object.freeze({ min: 800, max: 1400 }),
+  thrust: Object.freeze({ min: 25, max: 50 }),
+  fuelMs: Object.freeze({ min: 300, max: 800 }),
+  fuseMs: Object.freeze({ min: 800, max: 2400 }),
   patterns: Object.freeze<readonly FireworkPattern[]>([
     "peony",
     "willow",
@@ -77,8 +77,8 @@ export const defaultActionConfig: ActionConfig = Object.freeze({
     ]),
   ]),
   paletteSize: 3,
-  particleCount: Object.freeze({ min: 40, max: 120 }),
-  burstDurationMs: Object.freeze({ min: 600, max: 1200 }),
+  particleCount: Object.freeze({ min: 40, max: 220 }),
+  burstDurationMs: Object.freeze({ min: 800, max: 2800 }),
   launchDurationMs: 200,
   sound: Object.freeze({
     pitch: Object.freeze({ min: 220, max: 880 }),
