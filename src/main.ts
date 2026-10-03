@@ -14,6 +14,7 @@ import { createAudioVisualLayer } from "./audiovisual/audioVisualLayer.ts";
 import { buildBackdrop } from "./audiovisual/backdrop.ts";
 import { createAsciiRenderer } from "./audiovisual/adapters/ascii.ts";
 import { createEmojiRenderer } from "./audiovisual/adapters/emoji.ts";
+import { createNeonRenderer } from "./audiovisual/adapters/neon.ts";
 import { createPixelRenderer } from "./audiovisual/adapters/pixel.ts";
 import { worldHalfWidth } from "./audiovisual/adapters/pixelGrid.ts";
 import { createWebAudioSink } from "./audiovisual/adapters/webAudio.ts";
@@ -223,6 +224,58 @@ const renderers: Record<
       backdrop,
     });
     return { renderer, halfWidth: worldHalfWidth({ columns, rows }) };
+  },
+  // Smooth lines in Display P3, on canvases as big as the screen's real
+  // pixels: `devicePixelRatio` is read once here, like the window size for
+  // pixel, so the renderer in src/audiovisual/ never reads either. Two
+  // stacked canvases: the backdrop is painted once and the light is redrawn
+  // each frame. The two bloom canvases are never in the page: they hold
+  // shrunk copies of the light canvas. See docs/12_neon_renderer.md.
+  neon: (host) => {
+    const pixelRatio = window.devicePixelRatio;
+    const width = Math.round(window.innerWidth * pixelRatio);
+    const height = Math.round(window.innerHeight * pixelRatio);
+
+    const canvasOf = (canvasWidth: number, canvasHeight: number) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+      return canvas;
+    };
+    // `colorSpace` makes the canvas Display P3 on a browser that supports it.
+    // Firefox ignores it and gives an sRGB canvas, which maps the same
+    // colours into sRGB.
+    const surfaceOf = (canvas: HTMLCanvasElement) => {
+      const context = canvas.getContext("2d", { colorSpace: "display-p3" });
+      if (context === null) {
+        throw new Error("neon renderer: 2d canvas context unavailable");
+      }
+      return {
+        context,
+        source: canvas,
+        width: canvas.width,
+        height: canvas.height,
+      };
+    };
+
+    const backdropCanvas = canvasOf(width, height);
+    backdropCanvas.className = "neon neon-backdrop";
+    const lightCanvas = canvasOf(width, height);
+    lightCanvas.className = "neon neon-light";
+    host.append(backdropCanvas, lightCanvas);
+
+    const renderer = createNeonRenderer({
+      background: surfaceOf(backdropCanvas),
+      light: surfaceOf(lightCanvas),
+      quarter: surfaceOf(canvasOf(Math.ceil(width / 4), Math.ceil(height / 4))),
+      eighth: surfaceOf(canvasOf(Math.ceil(width / 8), Math.ceil(height / 8))),
+      backdrop,
+      config: defaultAudioVisualConfig.neon,
+    });
+    return {
+      renderer,
+      halfWidth: worldHalfWidth({ columns: width, rows: height }),
+    };
   },
 };
 const { name: rendererName, create: createRenderer } = selectRenderer(

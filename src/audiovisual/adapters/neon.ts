@@ -8,25 +8,29 @@ import type { AudioVisualConfig } from "../config.ts";
 import type { Backdrop, Renderer, Rgb } from "../types.ts";
 
 /**
- * The slice of `CanvasRenderingContext2D` the player uses. A real context is
- * assignable to it, and a test fake records what is written to it.
+ * The slice of `CanvasRenderingContext2D` the player uses. It is picked from
+ * the real type, so a real context is assignable to it, and a test fake
+ * records what is written to it. Only `drawImage` is its own: it takes
+ * whatever `Source` the surfaces carry.
  */
-export interface Canvas2DLike<Source> {
-  globalAlpha: number;
-  globalCompositeOperation: "source-over" | "lighter";
-  fillStyle: string;
-  lineWidth: number;
-  lineCap: "butt" | "round" | "square";
-  strokeStyle: string;
-  clearRect(x: number, y: number, width: number, height: number): void;
-  fillRect(x: number, y: number, width: number, height: number): void;
-  beginPath(): void;
-  moveTo(x: number, y: number): void;
-  lineTo(x: number, y: number): void;
-  arc(x: number, y: number, radius: number, start: number, end: number): void;
-  closePath(): void;
-  fill(): void;
-  stroke(): void;
+export interface Canvas2DLike<Source> extends Pick<
+  CanvasRenderingContext2D,
+  | "globalAlpha"
+  | "globalCompositeOperation"
+  | "fillStyle"
+  | "strokeStyle"
+  | "lineWidth"
+  | "lineCap"
+  | "clearRect"
+  | "fillRect"
+  | "beginPath"
+  | "moveTo"
+  | "lineTo"
+  | "arc"
+  | "closePath"
+  | "fill"
+  | "stroke"
+> {
   drawImage(
     source: Source,
     x: number,
