@@ -1,4 +1,4 @@
-import type { Frame, Sprite } from "../types.ts";
+import type { Frame, Mover, Sprite } from "../types.ts";
 
 // The geometry and the cell contest, shared by every renderer that works
 // in world-to-grid cells — ASCII and emoji today. No character or glyph
@@ -95,6 +95,34 @@ export function contestCells(
       continue;
     }
     rowAt(cell.row)[cell.column] = sprite;
+  }
+
+  return cells;
+}
+
+/**
+ * Puts each ambient mover in its cell — the half of drawing a mover that has
+ * nothing to do with glyphs, shared by the ASCII and emoji adapters. A mover
+ * outside the grid is not placed. When two movers share a cell, the later
+ * one in `movers` wins: brightness does not decide here, because a shooting
+ * star and a satellite share a cell for a frame or two at most. An empty
+ * cell is `null`. See docs/11_ambient_movers.md.
+ */
+export function placeMovers(
+  movers: readonly Mover[],
+  grid: { readonly columns: number; readonly rows: number },
+): readonly (Mover | null)[][] {
+  const { columns, rows } = grid;
+  const cells = Array.from({ length: rows }, () =>
+    new Array<Mover | null>(columns).fill(null),
+  );
+
+  for (const mover of movers) {
+    const cell = toCell(mover.position.x, mover.position.y, grid);
+    const line = cell === null ? undefined : cells[cell.row];
+    if (cell !== null && line !== undefined) {
+      line[cell.column] = mover;
+    }
   }
 
   return cells;

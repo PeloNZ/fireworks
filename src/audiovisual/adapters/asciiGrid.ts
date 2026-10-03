@@ -1,4 +1,4 @@
-import { contestCells, toCell } from "./cells.ts";
+import { contestCells, placeMovers } from "./cells.ts";
 import type { AudioVisualConfig } from "../config.ts";
 import type { Frame, Mover } from "../types.ts";
 
@@ -61,21 +61,13 @@ export function rasteriseAmbient(
   movers: readonly Mover[],
   ascii: AudioVisualConfig["ascii"],
 ): string {
-  const { columns, rows, ramp } = ascii;
-  const keyOf = (row: number, column: number): string =>
-    `${row.toString()}:${column.toString()}`;
-  const drawn = new Map<string, string>();
-  for (const mover of movers) {
-    const cell = toCell(mover.position.x, mover.position.y, ascii);
-    if (cell !== null) {
-      drawn.set(keyOf(cell.row, cell.column), rampChar(mover.brightness, ramp));
-    }
-  }
+  const { ramp } = ascii;
 
-  return Array.from({ length: rows }, (_row, row) =>
-    Array.from(
-      { length: columns },
-      (_column, column) => drawn.get(keyOf(row, column)) ?? " ",
-    ).join(""),
-  ).join("\n");
+  return placeMovers(movers, ascii)
+    .map((row) =>
+      row
+        .map((mover) => (mover ? rampChar(mover.brightness, ramp) : " "))
+        .join(""),
+    )
+    .join("\n");
 }

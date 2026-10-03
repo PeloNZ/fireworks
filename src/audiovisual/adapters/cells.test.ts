@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { columnCentreX, contestCells, rowCentreY, toCell } from "./cells.ts";
-import type { Frame, Sprite } from "../types.ts";
+import {
+  columnCentreX,
+  contestCells,
+  placeMovers,
+  rowCentreY,
+  toCell,
+} from "./cells.ts";
+import type { Frame, Mover, Sprite } from "../types.ts";
 
 // Cycle 1 (docs/07_emoji_renderer.md): the seam shared by both renderers.
 // toCell, rowCentreY and columnCentreX move here unchanged from
@@ -94,5 +100,61 @@ describe("contestCells", () => {
       [null, null, null],
       [null, null, null],
     ]);
+  });
+});
+
+// Cycle 16 (docs/11_ambient_movers.md): the half of a mover's drawing that
+// has nothing to do with glyphs, shared by ascii and emoji. On the 3x2 grid,
+// (0, 50) is row 0, column 1 and (-50, 0) is row 1, column 0.
+
+function mover(overrides: Partial<Mover> = {}): Mover {
+  return {
+    kind: "satellite",
+    position: { x: 0, y: 0, z: 0 },
+    brightness: 1,
+    ...overrides,
+  };
+}
+
+describe("placeMovers", () => {
+  it("returns the mover itself in its cell and null in every other cell", () => {
+    const placed = mover({ position: { x: 0, y: 50, z: 0 } });
+
+    expect(placeMovers([placed], grid)).toEqual([
+      [null, placed, null],
+      [null, null, null],
+    ]);
+    expect(placeMovers([placed], grid)[0]?.[1]).toBe(placed);
+  });
+
+  it("places nothing for a mover outside the grid", () => {
+    const outside = [
+      mover({ position: { x: 60, y: 50, z: 0 } }),
+      mover({ position: { x: 50, y: 50, z: 0 } }),
+      mover({ position: { x: 0, y: -5, z: 0 } }),
+    ];
+
+    expect(placeMovers(outside, grid)).toEqual([
+      [null, null, null],
+      [null, null, null],
+    ]);
+  });
+
+  // `rasteriseAmbient` drew the later mover before this function existed, so
+  // this test states a rule that already held. It also pins the order: a
+  // brighter earlier mover does not win.
+  it("gives a shared cell to the later mover, even when it is dimmer", () => {
+    const earlier = mover({
+      kind: "shootingStar",
+      position: { x: 0, y: 50, z: 0 },
+      brightness: 1,
+    });
+    const later = mover({
+      kind: "satellite",
+      position: { x: 0, y: 50, z: 0 },
+      brightness: 0.2,
+    });
+
+    expect(placeMovers([earlier, later], grid)[0]?.[1]).toBe(later);
   });
 });
