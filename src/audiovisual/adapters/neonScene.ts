@@ -53,7 +53,8 @@ export function toCanvas(
  * Turns one frame's sprites into the shapes the light canvas draws. A
  * sprite that moves is a streak: a line from where it was `streakMs` ago
  * to where it is now, along its velocity. A sprite that does not move has
- * no direction, so it is a disc.
+ * no direction, so it is a disc. A moving shell also gets a hot core disc
+ * at its head.
  */
 export function neonFrame(
   frame: Frame,
@@ -65,7 +66,14 @@ export function neonFrame(
   const streaks: Streak[] = [];
   const discs: Disc[] = [];
 
-  for (const { position, velocity, size, color, brightness } of frame.sprites) {
+  for (const {
+    kind,
+    position,
+    velocity,
+    size,
+    color,
+    brightness,
+  } of frame.sprites) {
     if (velocity.x === 0 && velocity.y === 0) {
       discs.push({
         centre: toCanvas(position, canvas),
@@ -88,6 +96,14 @@ export function neonFrame(
       color,
       alpha: brightness,
     });
+    if (kind === "shell") {
+      discs.push({
+        centre: toCanvas(position, canvas),
+        radius: size * config.shellCore.scale * scale,
+        color: config.shellCore.color,
+        alpha: brightness,
+      });
+    }
   }
 
   return { streaks, discs };

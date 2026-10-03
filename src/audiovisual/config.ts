@@ -3,7 +3,7 @@
 // discipline src/action/config.ts follows for ActionConfig.
 
 import type { NumberRange } from "../action/config.ts";
-import type { Envelope, Mover } from "./types.ts";
+import type { Envelope, Mover, Rgb } from "./types.ts";
 
 /** A body's fixed look — no brightness field, the same reason
  * `CelestialBody` itself has none: a disc drawn at one size has nothing
@@ -198,6 +198,10 @@ export interface AudioVisualConfig {
     // How long a streak is, in milliseconds of motion: its length in world
     // units is the sprite's speed times this.
     readonly streakMs: number;
+    // A shell also gets a hot core at its head: a disc `scale` times the
+    // shell's own size, in `color`. Near white, so the shell is the
+    // brightest thing in the sky until it bursts.
+    readonly shellCore: { readonly scale: number; readonly color: Rgb };
   };
   // Only the Web Audio adapter and its planning functions read this,
   // nested under its own key for the same reason ascii is.
@@ -395,6 +399,10 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     // A spark moves 15..40 world units per second, so a streak is 0.7..1.8
     // world units long: a short bright dash, not a line.
     streakMs: 45,
+    shellCore: Object.freeze({
+      scale: 1.8,
+      color: Object.freeze({ r: 1, g: 0.95, b: 0.85 }),
+    }),
   }),
   audio: Object.freeze({
     lookaheadMs: 30,

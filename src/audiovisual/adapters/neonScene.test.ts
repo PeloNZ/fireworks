@@ -114,3 +114,40 @@ describe("neonFrame: a sprite that does not move", () => {
     expect(light.discs).toHaveLength(1);
   });
 });
+
+// Cycle 6: a shell is the brightest thing in the sky until it bursts, so
+// besides its streak it gets a small hot core: a disc at its head, drawn in
+// `shellCore.color` and `shellCore.scale` times the shell's own size.
+describe("neonFrame: a shell", () => {
+  // Unusual values, so a hard-coded scale or colour cannot pass.
+  const coreNeon = {
+    ...neon,
+    shellCore: { scale: 3, color: { r: 0.9, g: 0.8, b: 1 } },
+  };
+  const shell = sprite({
+    kind: "shell",
+    brightness: 0.8,
+    velocity: { x: 0, y: 40, z: 0 },
+  });
+
+  it("is a streak along its velocity, like any moving sprite", () => {
+    const light = neonFrame(frameOf(shell), coreNeon, canvas);
+
+    expect(light.streaks).toHaveLength(1);
+    expect(light.streaks[0]?.width).toBeCloseTo(1.2);
+    expect(light.streaks[0]?.color).toEqual({ r: 0.2, g: 0.9, b: 0.4 });
+  });
+
+  it("also has a core disc at its head, in the core colour and scale", () => {
+    const light = neonFrame(frameOf(shell), coreNeon, canvas);
+
+    // Head: world (10, 50) is pixel (162, 60). Radius: 0.5 * 3 * 1.2.
+    expect(light.discs).toHaveLength(1);
+    const core = light.discs[0];
+    expect(core?.centre.x).toBeCloseTo(162);
+    expect(core?.centre.y).toBeCloseTo(60);
+    expect(core?.radius).toBeCloseTo(1.8);
+    expect(core?.color).toEqual({ r: 0.9, g: 0.8, b: 1 });
+    expect(core?.alpha).toBe(0.8);
+  });
+});
