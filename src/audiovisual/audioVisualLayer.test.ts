@@ -80,6 +80,7 @@ describe("createAudioVisualLayer", () => {
       {
         kind: "satellite",
         position: { x: -50, y: 83.75, z: 0 },
+        velocity: { x: 7, y: 0, z: 0 },
         brightness: 0.6,
       },
     ]);
@@ -87,6 +88,7 @@ describe("createAudioVisualLayer", () => {
       {
         kind: "satellite",
         position: { x: -43, y: 83.75, z: 0 },
+        velocity: { x: 7, y: 0, z: 0 },
         brightness: 0.6,
       },
     ]);

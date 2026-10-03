@@ -128,6 +128,7 @@ export function createAmbient(options: {
           y: mover.startY + (mover.velocityY * mover.ageMs) / 1000,
           z: 0,
         },
+        velocity: { x: mover.velocityX, y: mover.velocityY, z: 0 },
         brightness: mover.fades
           ? mover.brightness * (1 - mover.ageMs / mover.ttlMs)
           : mover.brightness,

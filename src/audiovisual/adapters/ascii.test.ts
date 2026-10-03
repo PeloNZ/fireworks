@@ -119,6 +119,7 @@ describe("createAsciiRenderer", () => {
     const mover: Mover = {
       kind: "satellite",
       position: { x: 0, y: 50, z: 0 },
+      velocity: { x: 0, y: 0, z: 0 },
       brightness: 0.6,
     };
     const firework = (x: number, y: number): Frame["sprites"][number] => ({

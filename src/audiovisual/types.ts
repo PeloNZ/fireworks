@@ -37,6 +37,7 @@ export interface Mover {
   // brightness picks its picture from this, not from `brightness`.
   readonly kind: "shootingStar" | "satellite";
   readonly position: Vec3;
+  readonly velocity: Vec3; // world units per second
   readonly brightness: number; // 0..1
 }
 

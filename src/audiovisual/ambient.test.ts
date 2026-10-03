@@ -99,6 +99,20 @@ describe("createAmbient", () => {
     ]);
   });
 
+  // Cycle 20 (docs/11_ambient_movers.md). A mover carries its velocity, so a
+  // renderer can draw a tail behind it. Worked above: speed 25, descent 0.25,
+  // so vy = -6.25. The direction roll picks the sign of vx. The satellite's
+  // velocity is checked in the cycle 9 test below.
+  it("gives a shooting star its drawn velocity", () => {
+    const velocityOf = (directionRoll: number) => {
+      const ambient = starAmbient(directionRoll);
+      return ambient.step(1000).map((mover) => mover.velocity);
+    };
+
+    expect(velocityOf(0.2)).toEqual([{ x: 25, y: -6.25, z: 0 }]);
+    expect(velocityOf(0.7)).toEqual([{ x: -25, y: -6.25, z: 0 }]);
+  });
+
   // Cycle 8. The time to live is the last draw: 0.6 in [1000, 2000] is 1600
   // ms. The star starts at brightness 0.8 and falls in a straight line to
   // 0, so at 800 ms, half of its life, it is 0.8 * (1 - 0.5) = 0.4. It is
@@ -144,6 +158,7 @@ describe("createAmbient", () => {
       {
         kind: "satellite",
         position: { x: -30, y: 82.5, z: 0 },
+        velocity: { x: 10, y: 0, z: 0 },
         brightness: 0.45,
       },
     ]);
@@ -151,6 +166,7 @@ describe("createAmbient", () => {
       {
         kind: "satellite",
         position: { x: -10, y: 82.5, z: 0 },
+        velocity: { x: 10, y: 0, z: 0 },
         brightness: 0.45,
       },
     ]);
@@ -161,6 +177,7 @@ describe("createAmbient", () => {
       {
         kind: "satellite",
         position: { x: 10, y: 82.5, z: 0 },
+        velocity: { x: -10, y: 0, z: 0 },
         brightness: 0.45,
       },
     ]);
