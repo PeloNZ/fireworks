@@ -197,11 +197,15 @@ export function discCells(
 
 /**
  * Paints the ambient movers into a buffer of their own, `blank` where no mover
- * sits. A mover is one pixel at `toPixel`, with the index `rampLevel` picks
- * from `pixel.moverRamp` by brightness. A mover outside the grid paints
- * nothing. A later mover wins a shared pixel, and `blank` is never written, so
- * a mover too dim to show leaves the one before it. See
- * docs/11_ambient_movers.md.
+ * sits. A mover is a head and a tail. The head is one pixel at `toPixel`. The
+ * tail runs behind it, against the velocity, for `speed * moverTailMs[kind]`
+ * world units, with one sample for each pixel step (`100 / rows`). Brightness
+ * falls in a straight line from the head's to 0 at the far end. Each sample
+ * takes its index from `pixel.moverRamp` through `rampLevel`. The far samples
+ * paint first and the head last, so the head wins a pixel its own tail shares.
+ * A mover outside the grid paints nothing. A later mover wins a shared pixel,
+ * and `blank` is never written, so a mover too dim to show leaves the one
+ * before it. See docs/11_ambient_movers.md.
  */
 function paintMovers(
   movers: readonly Mover[],
@@ -209,13 +213,29 @@ function paintMovers(
 ): Uint8Array {
   const { columns, rows, blank } = pixel;
   const buffer = new Uint8Array(columns * rows).fill(blank);
+  const step = 100 / rows;
 
-  for (const mover of movers) {
-    const offset = toPixel(mover.position.x, mover.position.y, pixel);
-    const index = rampLevel(mover.brightness, pixel.moverRamp);
+  const paintAt = (x: number, y: number, brightness: number): void => {
+    const offset = toPixel(x, y, pixel);
+    const index = rampLevel(brightness, pixel.moverRamp);
     if (offset !== null && index !== blank) {
       buffer[offset] = index;
     }
+  };
+
+  for (const mover of movers) {
+    const { position, velocity, brightness } = mover;
+    const speed = Math.hypot(velocity.x, velocity.y);
+    const length = (speed * pixel.moverTailMs[mover.kind]) / 1000;
+    for (let sample = Math.floor(length / step); sample >= 1; sample--) {
+      const distance = sample * step;
+      paintAt(
+        position.x - (velocity.x / speed) * distance,
+        position.y - (velocity.y / speed) * distance,
+        brightness * (1 - distance / length),
+      );
+    }
+    paintAt(position.x, position.y, brightness);
   }
 
   return buffer;

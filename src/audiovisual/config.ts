@@ -187,6 +187,10 @@ export interface AudioVisualConfig {
     // equal blank, the same rule as trail[0]: a fully faded mover has to
     // vanish, not leave a visible pixel. See docs/11_ambient_movers.md.
     readonly moverRamp: readonly number[];
+    // How long a tail is, in milliseconds of travel: its length in world
+    // units is the mover's speed times this. 0 draws the head only. A third
+    // mover kind with no entry fails tsc.
+    readonly moverTailMs: Readonly<Record<Mover["kind"], number>>;
   };
   // Only the Web Audio adapter and its planning functions read this,
   // nested under its own key for the same reason ascii is.
@@ -375,6 +379,9 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     ]),
     // Black, dark grey, light grey, off-white: a mover fades through greys.
     moverRamp: Object.freeze([0, 5, 6, 7]),
+    // A shooting star at speed 40..70 trails 4.8..8.4 world units, which is 8
+    // to 13 pixels. A satellite is a single pixel.
+    moverTailMs: Object.freeze({ shootingStar: 120, satellite: 0 }),
   }),
   audio: Object.freeze({
     lookaheadMs: 30,

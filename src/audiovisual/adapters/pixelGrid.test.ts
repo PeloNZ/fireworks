@@ -385,6 +385,7 @@ describe("paintFrame -- ambient movers", () => {
   const moverPixel: AudioVisualConfig["pixel"] = {
     ...defaultAudioVisualConfig.pixel,
     moverRamp: [7, 2, 3, 4],
+    moverTailMs: { shootingStar: 0, satellite: 0 },
     sparkHues: [{ hue: 10, index: 3 }],
     trail: [7, 5, 6],
     columns: wideGrid.columns,
@@ -405,8 +406,9 @@ describe("paintFrame -- ambient movers", () => {
   function paint(
     movers: readonly Mover[],
     sprites: readonly Sprite[] = [],
+    config: AudioVisualConfig["pixel"] = moverPixel,
   ): number[] {
-    return Array.from(paintFrame({ sprites, ambient: movers }, moverPixel));
+    return Array.from(paintFrame({ sprites, ambient: movers }, config));
   }
 
   // A sprite on the pixel at offset 35, the same pixel as `mover()`.
@@ -491,5 +493,93 @@ describe("paintFrame -- ambient movers", () => {
     ];
 
     expect(paint([], sprites)).toEqual(blankWith({}));
+  });
+
+  // Cycle 24. A tail runs behind the head, against the velocity, one sample
+  // for each pixel step (100 / 8 = 12.5 world units). Brightness falls in a
+  // straight line from the head's to 0 at the far end of the tail. The ramp
+  // is [7, 2, 3, 4], so a sample at brightness b gets index round(3b):
+  // blank (7) at 0, 2 at 1, 3 at 2 and 4 at 3. Samples that land on blank are
+  // not painted.
+  describe("the tail", () => {
+    const tailed: AudioVisualConfig["pixel"] = {
+      ...moverPixel,
+      moverTailMs: { shootingStar: 1000, satellite: 0 },
+    };
+
+    // Speed 40 for 1000 ms: a tail 40 units long, so floor(40 / 12.5) = 3
+    // samples at 12.5, 25 and 37.5 units behind the head. They fall on the
+    // centres of columns 4, 3 and 2 of row 3. Brightness there is
+    // 1 - 12.5 / 40 = 0.6875 (3 * 0.6875 = 2.06, index 2, so 3),
+    // 1 - 25 / 40 = 0.375 (1.125, index 1, so 2) and
+    // 1 - 37.5 / 40 = 0.0625 (0.19, index 0, which is blank).
+    it("fades along its length, behind the head", () => {
+      const star = mover({
+        kind: "shootingStar",
+        velocity: { x: 40, y: 0, z: 0 },
+      });
+
+      expect(paint([star], [], tailed)).toEqual(
+        blankWith({ 35: 4, 34: 3, 33: 2 }),
+      );
+    });
+
+    it("runs against the velocity, so a mover that goes left has its tail on the right", () => {
+      const star = mover({
+        kind: "shootingStar",
+        velocity: { x: -40, y: 0, z: 0 },
+      });
+
+      expect(paint([star], [], tailed)).toEqual(
+        blankWith({ 35: 4, 36: 3, 37: 2 }),
+      );
+    });
+
+    // Velocity (30, 40) is speed 50 along (0.6, 0.8). 700 ms makes the tail
+    // 35 units: 2 samples, at 12.5 and 25 units. They are 7.5 left and 10
+    // down, then 15 left and 20 down, from the head at (6.25, 56.25):
+    // (-1.25, 46.25) is column 4, row 4 (offset 44), and (-8.75, 36.25) is
+    // column 4, row 5 (offset 54). Brightness is 1 - 12.5 / 35 = 0.643
+    // (1.93, index 2, so 3) and 1 - 25 / 35 = 0.286 (0.86, index 1, so 2).
+    it("runs along a diagonal velocity", () => {
+      const star = mover({
+        kind: "shootingStar",
+        velocity: { x: 30, y: 40, z: 0 },
+      });
+      const config = {
+        ...moverPixel,
+        moverTailMs: { shootingStar: 700, satellite: 0 },
+      };
+
+      expect(paint([star], [], config)).toEqual(
+        blankWith({ 35: 4, 44: 3, 54: 2 }),
+      );
+    });
+
+    it("takes its length from the mover's kind: tailMs 0 draws the head only", () => {
+      const satellite = mover({
+        kind: "satellite",
+        velocity: { x: 40, y: 0, z: 0 },
+      });
+
+      expect(paint([satellite], [], tailed)).toEqual(blankWith({ 35: 4 }));
+    });
+
+    // The head at (11.9, 61.9) is column 5, row 3 (offset 35). So is the first
+    // tail sample, at (4.4, 51.9). The head paints last, so it keeps the pixel.
+    // The second sample is at (-3.1, 41.9): column 4, row 4 (offset 44).
+    it("lets the head win a pixel its own tail shares", () => {
+      const star = mover({
+        kind: "shootingStar",
+        position: { x: 11.9, y: 61.9, z: 0 },
+        velocity: { x: 30, y: 40, z: 0 },
+      });
+      const config = {
+        ...moverPixel,
+        moverTailMs: { shootingStar: 700, satellite: 0 },
+      };
+
+      expect(paint([star], [], config)).toEqual(blankWith({ 35: 4, 44: 2 }));
+    });
   });
 });
