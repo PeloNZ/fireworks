@@ -190,7 +190,7 @@ and no visible gain. Cycle 16 adds a test that states this order.
 
 ## Config
 
-`AudioVisualConfig.ambient`. All values are read-only.
+`AudioVisualConfig.ambient`. No code changes these values.
 
 | Field                     | Default      | Meaning                               |
 | ------------------------- | ------------ | ------------------------------------- |
@@ -302,6 +302,14 @@ and 6 are one commit: a rate-0 test alone needs an unused parameter, which
 option breaks the `main.ts` call at `tsc`, which the pre-commit hook runs on
 the whole project. Cycle 3 passes on its first run, because `toCell` returns
 `null` outside the grid and the type checker forces the guard in cycle 2.
+
+Cycles 15 to 18 each have their own commit. Two tests there pass against a
+rule that already held. In cycle 16, the test "the later mover wins a shared
+cell" states what `rasteriseAmbient` already did. In cycle 18, the test "a
+firework covers a mover" passes before the mover pass exists. It guards the
+layer order, and a mutation that draws movers over fireworks fails it. Cycle 17
+also adds a test for house rules 1 and 2 on the default glyphs, because
+nothing else stops a glyph with `U+FE0F` from shearing the grid.
 
 **Before cycle 1:** this document exists. `Frame` has no `ambient` field. All
 tests pass.
