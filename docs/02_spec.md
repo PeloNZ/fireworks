@@ -48,7 +48,7 @@ flowchart TD
 Notes on each stage:
 
 - **Repeat filter**: the browser fires repeated `keydown` events while a key is held. Filter these out — one physical press should produce one signal. This happens in the keyboard adapter, not the core (see "Where noise filtering belongs" below).
-- **Noise filter**: a deny-list, not an allow-list (see "Why a deny-list, not an allow-list" below). It drops keydowns that are pure modifiers (`ShiftLeft`, `ShiftRight`, `ControlLeft`, `ControlRight`, `AltLeft`, `AltRight`, `MetaLeft`, `MetaRight`, `CapsLock`) and any press held together with Ctrl or Meta, so OS/browser shortcuts (Cmd+R, Ctrl+W, etc.) are never hijacked. Everything else passes through — letters, digits, punctuation, Tab, arrows, function keys, Space. This also happens in the keyboard adapter.
+- **Noise filter**: a deny-list, not an allow-list (see "Why a deny-list, not an allow-list" below). It drops keydowns that are pure modifiers (`ShiftLeft`, `ShiftRight`, `ControlLeft`, `ControlRight`, `AltLeft`, `AltRight`, `MetaLeft`, `MetaRight`, `CapsLock`) and `Escape`, which opens the settings menu (see `docs/10_settings_ui.md`), and any press held together with Ctrl or Meta, so OS/browser shortcuts (Cmd+R, Ctrl+W, etc.) are never hijacked. Everything else passes through — letters, digits, punctuation, Tab, arrows, function keys other than Escape, Space. This also happens in the keyboard adapter.
 - **Build control signal**: assembles the five-field object below, from the adapter's device-neutral `RawInput`. `intensity` is currently always the config's `defaultIntensity` constant (hold-based charging is descoped — see `01_intent.md`). This step runs in the Control layer's core, which never sees a raw DOM event.
 - **History buffer**: every signal is pushed to a single bounded, timestamped buffer. Control does not interpret this history — it only keeps it and hands the Action layer both the new signal and, on request, recent history. Interpreting the history (recognizing a sequence pattern in it) is Action's job (see below).
 
@@ -139,7 +139,8 @@ keyboard: {
     "ControlLeft", "ControlRight",
     "AltLeft", "AltRight",
     "MetaLeft", "MetaRight",
-    "CapsLock"
+    "CapsLock",
+    "Escape"
   ]
 }
 ```

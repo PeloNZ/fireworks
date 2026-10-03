@@ -183,6 +183,7 @@ menu must show `ascii` checked.
 | `src/settings/settingsMenu.ts`                              | Cycles 1–5 — `choicesFor`, `attachSettingsMenu` |
 | `src/settings/settingsMenu.test.ts`                         | Cycles 1–5                                      |
 | `src/control/config.ts`                                     | Cycle 6 — `"Escape"` added to `deniedCodes`     |
+| `src/control/adapters/keyboard.test.ts`                     | Cycle 6 — Escape is dropped, not cancelled      |
 | `src/main.ts`                                               | Cycle 6 — dialog, form and wiring               |
 | `index.html`                                                | Cycle 6 — only if the dialog needs CSS          |
 | `docs/02_spec.md`, `CLAUDE.md`, `README.md`, `CHANGELOG.md` | Cycle 7 — doc sync                              |
@@ -213,10 +214,13 @@ tests pass.
 5. **The dialog `close` event restarts firework input.** Fire the fake
    dialog's `close` listener. Assert: `control.start` called once. This one
    event covers Esc, Cancel and Apply.
-6. **Wiring — UNTESTED.** Same as every `main.ts` cycle before it.
-   - Add `"Escape"` to `deniedCodes` in `src/control/config.ts`. This is
-     config, so no test cycle. The existing deny-list tests cover the
-     behaviour.
+6. **Wiring — UNTESTED.** Same as every `main.ts` cycle before it. The
+   `deniedCodes` change has one test.
+   - Add `"Escape"` to `deniedCodes` in `src/control/config.ts`. The test
+     goes first, in `keyboard.test.ts`: `interpretKeyEvent` with
+     `code: "Escape"` returns `{ input: null, preventDefault: false }`. The
+     existing deny-list test uses `ShiftLeft`. It does not fail if someone
+     removes Escape from the default list.
    - Keep `name` from both `selectRenderer` calls. Today `main.ts` keeps only
      `create`.
    - Build `<dialog>` → `<form method="get">`. Add one `<fieldset>` with a
@@ -225,7 +229,8 @@ tests pass.
    - Add an Apply `<button type="submit">` and a Cancel button with
      `formMethod = "dialog"`.
    - Call `attachSettingsMenu({ dialog, keyTarget: window, control: layer })`.
-   - Change the instruction line to "Press any key. Press Esc for settings."
+   - Change the instruction line to "Press any key. Press Esc for settings.
+     Open the console to see events."
    - Add CSS to `index.html` only if the dialog is hard to read on the dark
      page.
 7. **Doc sync.** Add Escape to the deny-list in `docs/02_spec.md`. Add the
