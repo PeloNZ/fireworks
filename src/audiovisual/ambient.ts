@@ -10,6 +10,24 @@ function pickInRange(random: () => number, range: NumberRange): number {
   return range.min + random() * (range.max - range.min);
 }
 
+/**
+ * The ambient config with both x ranges set to `[-halfWidth, halfWidth]`, for
+ * a renderer that shows more or less than the default world x of +-50. Every
+ * other field stays the same. `main.ts` calls this with the half-width of the
+ * renderer it picked.
+ */
+export function ambientForWidth(
+  config: AudioVisualConfig["ambient"],
+  halfWidth: number,
+): AudioVisualConfig["ambient"] {
+  const x = { min: -halfWidth, max: halfWidth };
+  return {
+    ...config,
+    shootingStar: { ...config.shootingStar, x },
+    satellite: { ...config.satellite, x },
+  };
+}
+
 /** Everything a spawn drew. After that, the position is a function of
  * `ageMs` alone: nothing here reads `random` again. */
 interface LiveMover {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createAmbient } from "./ambient.ts";
+import { ambientForWidth, createAmbient } from "./ambient.ts";
 import { defaultAudioVisualConfig } from "./config.ts";
 
 // docs/11_ambient_movers.md: rare, random movers behind the fireworks. The
@@ -17,6 +17,36 @@ function scripted(values: readonly number[]): () => number {
     return value;
   };
 }
+
+// Cycle 21 (docs/11_ambient_movers.md). A renderer that shows more than the
+// default +-50 of world x needs movers to spawn across all of it. The test
+// uses a cooldown and a rate that differ from the default, so a function that
+// rebuilds the config from defaults fails.
+describe("ambientForWidth", () => {
+  const base = {
+    ...defaultAudioVisualConfig.ambient,
+    ratePerSecond: 0.3,
+    cooldownMs: 1234,
+    maxLive: 5,
+  };
+
+  it("sets both x ranges to the half-width, on each side of 0", () => {
+    const widened = ambientForWidth(base, 88.75);
+
+    expect(widened.shootingStar.x).toEqual({ min: -88.75, max: 88.75 });
+    expect(widened.satellite.x).toEqual({ min: -88.75, max: 88.75 });
+  });
+
+  it("leaves every other field as it was", () => {
+    const widened = ambientForWidth(base, 88.75);
+
+    expect(widened).toEqual({
+      ...base,
+      shootingStar: { ...base.shootingStar, x: { min: -88.75, max: 88.75 } },
+      satellite: { ...base.satellite, x: { min: -88.75, max: 88.75 } },
+    });
+  });
+});
 
 describe("createAmbient", () => {
   // Cycle 5. The comparison is strict (`roll < chance`), so a roll of 0
