@@ -95,4 +95,61 @@ describe("createAsciiRenderer", () => {
       ),
     );
   });
+
+  // Cycle 4 (docs/11_ambient_movers.md): movers draw between the backdrop
+  // and the fireworks. The expected grids are written out by hand, not built
+  // with the functions under test, so a wrong layer order cannot pass. A 5x3
+  // grid over a flat sky of brightness 0.2 is ":" in every cell, because
+  // ramp index round(0.2 * 9) = 2. A mover at (0, 50) is row 1, column 2.
+  // Brightness 0.6 is ramp index round(5.4) = 5, which is "+".
+
+  describe("with ambient movers", () => {
+    const config = {
+      ...defaultAudioVisualConfig,
+      ascii: { ...defaultAudioVisualConfig.ascii, columns: 5, rows: 3 },
+    };
+    const flatSky: Backdrop = {
+      sky: { horizon: 0.2, zenith: 0.2 },
+      bodies: [],
+      ground: [
+        { x: -50, height: 0 },
+        { x: 50, height: 0 },
+      ],
+    };
+    const mover = { position: { x: 0, y: 50, z: 0 }, brightness: 0.6 };
+    const firework = (x: number, y: number): Frame["sprites"][number] => ({
+      kind: "shell",
+      position: { x, y, z: 0 },
+      size: 1,
+      color: { r: 1, g: 1, b: 1 },
+      brightness: 1,
+    });
+
+    function draw(frame: Frame, backdrop: Backdrop | null): string | undefined {
+      const { target, writes } = createTarget();
+      createAsciiRenderer({ target, config, backdrop })(frame);
+      return writes[0];
+    }
+
+    it("shows a mover over the sky, and the sky everywhere else", () => {
+      const frame: Frame = { sprites: [], ambient: [mover] };
+
+      expect(draw(frame, flatSky)).toBe(":::::\n::+::\n:::::");
+    });
+
+    it("shows a firework over a mover in the same cell", () => {
+      const frame: Frame = {
+        sprites: [firework(0, 50), firework(-50, 90)],
+        ambient: [mover],
+      };
+
+      expect(draw(frame, flatSky)).toBe("@::::\n::@::\n:::::");
+    });
+
+    it("shows a mover when there is no backdrop", () => {
+      const frame: Frame = { sprites: [], ambient: [mover] };
+
+      expect(draw(frame, null)).toBe("     \n  +  \n     ");
+    });
+  });
 });

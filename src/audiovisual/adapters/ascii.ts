@@ -1,4 +1,4 @@
-import { rasteriseFrame } from "./asciiGrid.ts";
+import { rasteriseAmbient, rasteriseFrame } from "./asciiGrid.ts";
 import { overlayGrid, rasteriseBackdrop } from "./asciiBackdrop.ts";
 import type { AudioVisualConfig } from "../config.ts";
 import type { Backdrop, Renderer } from "../types.ts";
@@ -27,6 +27,10 @@ export interface TextTarget {
  * frame then composites over it: the foreground wins every cell it draws
  * in, and the sky shows through the ones it leaves blank. See
  * docs/06_world_backdrop.md.
+ *
+ * The frame's ambient movers draw in a layer of their own, between the
+ * backdrop and the fireworks: a mover replaces the sky, and a firework
+ * replaces a mover. See docs/11_ambient_movers.md.
  */
 export function createAsciiRenderer(options: {
   readonly target: TextTarget;
@@ -36,7 +40,11 @@ export function createAsciiRenderer(options: {
   const { target, config, backdrop } = options;
   const base = backdrop === null ? null : rasteriseBackdrop(backdrop, config);
   return (frame) => {
-    const grid = rasteriseFrame(frame, config.ascii);
-    target.textContent = base === null ? grid : overlayGrid(base, grid);
+    const ambient = rasteriseAmbient(frame.ambient, config.ascii);
+    const behind = base === null ? ambient : overlayGrid(base, ambient);
+    target.textContent = overlayGrid(
+      behind,
+      rasteriseFrame(frame, config.ascii),
+    );
   };
 }
