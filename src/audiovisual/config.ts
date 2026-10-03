@@ -51,6 +51,14 @@ export interface AudioVisualConfig {
     // the horizon it meets and the landform becomes invisible.
     readonly groundFillBrightness: number;
   };
+  // Rare, random movers that cross the sky behind the fireworks. World
+  // space only, so any renderer can draw them. Grown one cycle at a time.
+  // See docs/11_ambient_movers.md.
+  readonly ambient: {
+    // About one spawn in 1 / ratePerSecond seconds, whatever the frame
+    // rate — `createAmbient` turns it into a chance per frame.
+    readonly ratePerSecond: number;
+  };
   // Only the ASCII adapter reads this — nested under its own key for the
   // same reason ControlConfig nests `keyboard`: the shape says who owns it.
   readonly ascii: {
@@ -205,6 +213,9 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     groundPoints: 9,
     groundHeight: Object.freeze({ min: 5, max: 14 }),
     groundFillBrightness: 0.4,
+  }),
+  ambient: Object.freeze({
+    ratePerSecond: 0.05,
   }),
   ascii: Object.freeze({
     columns: 80,
