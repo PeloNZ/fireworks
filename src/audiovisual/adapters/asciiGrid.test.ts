@@ -124,4 +124,18 @@ describe("rasteriseAmbient", () => {
       ]),
     );
   });
+
+  // Cycle 3. The guard for this came with cycle 2, because `toCell` returns
+  // null outside the grid and the type checker forces a branch. This test
+  // pins it, so a later edit cannot wrap a mover to the opposite edge. The
+  // box is half-open, so x = 50 is outside too.
+  it("clips a mover outside world bounds instead of wrapping it to the opposite edge", () => {
+    const movers = [
+      mover({ position: { x: 60, y: 50, z: 0 } }),
+      mover({ position: { x: 0, y: -5, z: 0 } }),
+      mover({ position: { x: 50, y: 50, z: 0 } }),
+    ];
+
+    expect(rasteriseAmbient(movers, ascii)).toBe(expectedGrid(9, 5, []));
+  });
 });
