@@ -13,14 +13,17 @@ draws it once. Nothing in the sky moves.
 This plan adds rare, random movers that cross the sky: a shooting star and a
 satellite. They draw behind the fireworks and in front of the static backdrop.
 
+Cycles 1 to 14 built the movers and the ascii renderer's drawing of them.
+Cycles 15 to 19 add the emoji renderer's drawing of them.
+
 ## Decisions
 
 The user made these decisions before anyone wrote this plan.
 
 1. **v1 has movers only.** The kinds are a shooting star and a satellite. No
    firework event starts a mover in v1.
-2. **Only the ascii renderer draws movers.** The emoji and pixel renderers
-   ignore them.
+2. **The ascii and emoji renderers draw movers.** The pixel renderer ignores
+   them. (Cycles 1 to 14 built ascii only. Decisions 9 to 14 add emoji.)
 3. **Movers are cosmetic.** The Control and Action layers do not change. A
    firework never touches a mover.
 4. **A mover draws behind the fireworks.** A firework always covers a mover.
@@ -31,6 +34,25 @@ The user made these decisions before anyone wrote this plan.
 7. **A shooting star fades.** It has one cell and no tail. Its brightness
    falls to zero at the end of its time to live (ttl).
 8. **A satellite crosses the full width.** Its brightness stays constant.
+9. **A mover has a kind.** `Mover` gets `kind: "shootingStar" | "satellite"`.
+   An emoji cannot dim, so the emoji renderer cannot tell the two kinds apart
+   by brightness. The type states the union once. `ambient.ts` and the emoji
+   config both derive from it.
+10. **A shooting star is 🌠 for its whole life on the emoji renderer.** Then it
+    vanishes. There is no fade ramp, and the ttl is under one second. House
+    rule 2 of `07_emoji_renderer.md` stays true: only `trail[0]` equals
+    `blank`.
+11. **A satellite is 🛸 on the emoji renderer.** The core still names the kind
+    `"satellite"`. The core states what moves, and each renderer picks the
+    picture. The backdrop star works the same way: `"star"` in the core, `*`
+    in ascii, ⭐ in emoji. 🛰️ is not usable. It needs `U+FE0F`, and house rule
+    1 forbids that.
+12. **A 🌠 that moves right looks backwards.** The user accepted this. One
+    cell, under one second, rare.
+13. **Ascii does not use `kind`.** Its output does not change.
+14. **Ascii and emoji share cell placement.** `placeMovers` in `adapters/cells.ts` puts
+    each mover in its cell. Ascii and emoji each turn the mover into their own
+    glyph. This is the same split as `contestCells`.
 
 ## Why a mover is not a Sprite
 
@@ -39,8 +61,8 @@ brightest sprite (`adapters/cells.ts`). A mover in `sprites` could take a
 cell from a fading trail. `06_world_backdrop.md` gives the same reason for
 the backdrop.
 
-So `Frame` gets a second list, `ambient`. The ascii renderer composites it
-in its own pass.
+So `Frame` gets a second list, `ambient`. Each renderer that draws movers
+composites it in its own pass.
 
 ```
 backdrop (once) ──► ambient movers (each frame) ──► fireworks (each frame)
@@ -107,6 +129,7 @@ This matches the separate streams in `backdrop.ts` (`:sky`, `:bodies`,
 // src/audiovisual/types.ts
 /** One ambient item for one frame. World space, like a Sprite. */
 export interface Mover {
+  readonly kind: "shootingStar" | "satellite";
   readonly position: Vec3;
   readonly brightness: number; // 0..1
 }
@@ -139,6 +162,32 @@ export function rasteriseAmbient(
 ): string;
 ```
 
+```ts
+// src/audiovisual/adapters/cells.ts
+/** The mover in each cell, or null. A mover outside the grid is not placed.
+ * When two movers share a cell, the later one in the list wins. */
+export function placeMovers(
+  movers: readonly Mover[],
+  grid: { readonly columns: number; readonly rows: number },
+): readonly (Mover | null)[][];
+```
+
+```ts
+// src/audiovisual/adapters/emojiGrid.ts
+/** A grid of glyphs, the size of the firework grid. A mover becomes
+ * `emoji.movers[kind]`. Every other cell is `emoji.blank`. Brightness is not
+ * read. */
+export function rasteriseEmojiAmbient(
+  movers: readonly Mover[],
+  emoji: AudioVisualConfig["emoji"],
+): readonly string[][];
+```
+
+The order "later mover wins a shared cell" is a rule of `placeMovers`. A
+brighter mover does not take priority. A shooting star and a satellite share
+a cell for a frame or two at most, so a rule for the brighter mover adds cost
+and no visible gain. Cycle 16 adds a test that states this order.
+
 ## Config
 
 `AudioVisualConfig.ambient`. All values are read-only.
@@ -167,6 +216,17 @@ the default span of 100 units, the ttl is `100 / speed` seconds.
 All start heights are above the highest ground point (14 units). Nothing
 hides a mover behind the ridge.
 
+`AudioVisualConfig.emoji` gets one more field:
+
+| Field          | Default                                   | Meaning                       |
+| -------------- | ----------------------------------------- | ----------------------------- |
+| `emoji.movers` | `{ shootingStar: "🌠", satellite: "🛸" }` | The glyph for each mover kind |
+
+Its type is `Readonly<Record<Mover["kind"], string>>`. A third kind with no
+glyph fails `tsc`. The object is frozen with `Object.freeze`, as
+`07_emoji_renderer.md` requires. Neither glyph contains `U+FE0F`, and neither
+equals `emoji.blank`.
+
 ## How the ascii renderer composites
 
 `createAsciiRenderer` already holds `base`, the backdrop grid. Each frame it
@@ -183,24 +243,49 @@ mover replaces the sky. A firework replaces a mover.
 character. This keeps the rule "more ink means more light". A dim mover
 is a faint character.
 
-The emoji and pixel renderers do not read `Frame.ambient`. `?renderer=emoji`
-shows no movers.
+The pixel renderer does not read `Frame.ambient`. `?renderer=pixel` shows no
+movers.
+
+## How the emoji renderer composites
+
+`createEmojiRenderer` already holds `base`, the backdrop glyph grid. Each frame
+it makes the mover grid and the firework grid, then joins the three:
+
+```ts
+overlayEmojiGrid(overlayEmojiGrid(base, ambient, blank), fireworks, blank);
+```
+
+`overlayEmojiGrid` keeps the foreground glyph unless it is `blank`. So a mover
+replaces the sky, and a firework replaces a mover. A trail at `trail[0]` is
+`blank`, so a mover shows through a dead trail. Ascii does the same.
+
+With no backdrop, `ambient` is the base. It has `blank` in every cell that
+holds no mover, so the existing no-backdrop path stays the same.
+
+`rasteriseEmojiAmbient` uses `placeMovers` for the position. It does not read
+`brightness`. A star at brightness 0.05 draws the same 🌠 as one at 1. The
+star vanishes when `createAmbient` removes it at the ttl.
 
 ## File layout
 
-| Path                                                                  | Role                                         |
-| --------------------------------------------------------------------- | -------------------------------------------- |
-| `docs/11_ambient_movers.md`                                           | This plan, written before cycle 1            |
-| `src/audiovisual/types.ts`                                            | Cycle 1 — `Mover`, `Frame.ambient`           |
-| `src/audiovisual/frame.ts`                                            | Cycle 1 — `buildFrame` returns `ambient: []` |
-| the 8 test files that build a `Frame`                                 | Cycle 1 — add `ambient: []`                  |
-| `src/audiovisual/adapters/asciiGrid.ts` and its test                  | Cycles 2–3 — `rasteriseAmbient`              |
-| `src/audiovisual/adapters/ascii.ts` and its test                      | Cycle 4 — composite                          |
-| `src/audiovisual/config.ts`                                           | Cycle 5 — `ambient` config                   |
-| `src/audiovisual/ambient.ts` and `ambient.test.ts`                    | Cycles 5–11                                  |
-| `src/audiovisual/audioVisualLayer.ts` and its test                    | Cycle 12 — `ambientRandom`                   |
-| `src/main.ts`                                                         | Cycle 13 — seed and wiring                   |
-| `docs/06_world_backdrop.md`, `CLAUDE.md`, `README.md`, `CHANGELOG.md` | Cycle 14 — doc sync                          |
+| Path                                                                        | Role                                               |
+| --------------------------------------------------------------------------- | -------------------------------------------------- |
+| `docs/11_ambient_movers.md`                                                 | This plan, written before cycle 1                  |
+| `src/audiovisual/types.ts`                                                  | Cycle 1 — `Mover`, `Frame.ambient`                 |
+| `src/audiovisual/frame.ts`                                                  | Cycle 1 — `buildFrame` returns `ambient: []`       |
+| the 8 test files that build a `Frame`                                       | Cycle 1 — add `ambient: []`                        |
+| `src/audiovisual/adapters/asciiGrid.ts` and its test                        | Cycles 2–3 — `rasteriseAmbient`                    |
+| `src/audiovisual/adapters/ascii.ts` and its test                            | Cycle 4 — composite                                |
+| `src/audiovisual/config.ts`                                                 | Cycle 5 — `ambient` config                         |
+| `src/audiovisual/ambient.ts` and `ambient.test.ts`                          | Cycles 5–11                                        |
+| `src/audiovisual/audioVisualLayer.ts` and its test                          | Cycle 12 — `ambientRandom`                         |
+| `src/main.ts`                                                               | Cycle 13 — seed and wiring                         |
+| `docs/06_world_backdrop.md`, `CLAUDE.md`, `README.md`, `CHANGELOG.md`       | Cycle 14 — doc sync                                |
+| `src/audiovisual/types.ts`, `ambient.ts` and the tests that build a `Mover` | Cycle 15 — `Mover.kind`                            |
+| `src/audiovisual/adapters/cells.ts`, `asciiGrid.ts` and their tests         | Cycle 16 — `placeMovers`                           |
+| `src/audiovisual/adapters/emojiGrid.ts`, `config.ts` and the test           | Cycle 17 — `rasteriseEmojiAmbient`, `emoji.movers` |
+| `src/audiovisual/adapters/emoji.ts` and its test                            | Cycle 18 — composite                               |
+| `docs/11_ambient_movers.md`, `CLAUDE.md`, `README.md`, `CHANGELOG.md`       | Cycle 19 — doc sync                                |
 
 ## TDD build cycles
 
@@ -255,6 +340,33 @@ tests pass.
 14. **Doc sync.** Update `CLAUDE.md` Status, `docs/06_world_backdrop.md` (its
     "Out of scope" says motion does not exist), `README.md`, `CHANGELOG.md`.
 
+**Before cycle 15:** the emoji renderer ignores `Frame.ambient`. `Mover` has no
+`kind`. All tests pass. This section of the document exists.
+
+15. **`createAmbient` gives each mover its kind.** Add `kind` to `Mover` in
+    `types.ts`. `ambient.ts` derives its local `Kind` from `Mover["kind"]`.
+    Red: a scripted star has `kind: "shootingStar"` and a scripted satellite
+    has `kind: "satellite"`. This fails at run time. The contract change also
+    forces three test edits, and none of them weakens a test: the `toEqual` in
+    `audioVisualLayer.test.ts` gains `kind`, and the `mover()` helper in
+    `asciiGrid.test.ts` and the literal in `ascii.test.ts` get a `kind`.
+16. **`placeMovers` moves into `cells.ts`.** `rasteriseAmbient` calls it. This
+    is a refactor, so every ascii test stays green. Add one test in
+    `cells.test.ts`: when two movers share a cell, the later one wins. That
+    test passes on its first run, because it states a rule that already holds.
+    The commit message says so.
+17. **`rasteriseEmojiAmbient` draws each kind's glyph.** Use override glyphs
+    (`{ shootingStar: "A", satellite: "B" }`) on a small grid, so a fixed 🌠
+    fails the test. A star at brightness 0.05 still draws its glyph. A mover
+    outside the grid draws nothing. Every other cell is `blank`. Add
+    `emoji.movers` to the config here, and freeze it.
+18. **The emoji renderer composites in order.** Use the fake target from
+    `emoji.test.ts` and write the expected grids by hand. A mover alone over
+    the sky shows its glyph. A mover and a firework in one cell show the
+    firework. With no backdrop, a mover shows on the blank grid.
+19. **Doc sync.** Update `CLAUDE.md` Status, `README.md`, `CHANGELOG.md` and
+    the "How the cycles landed" note in this document.
+
 ## Verification
 
 Each cycle:
@@ -282,8 +394,15 @@ Manual checks in `npm run dev`, after cycle 13:
    full width.
 3. Press a key when a mover is in the sky. A firework rises over the mover.
    The firework covers it.
-4. Load `?renderer=emoji`, then `?renderer=pixel`. No movers appear. Nothing
-   breaks.
+4. Load `?renderer=pixel`. No movers appear. Nothing breaks.
+
+Manual checks on the emoji renderer, after cycle 18:
+
+1. Load `?renderer=emoji`. Wait about 1 minute. 🌠 and 🛸 appear.
+2. 🌠 vanishes in the middle of the sky. 🛸 crosses the full width.
+3. The columns stay in line while a mover is on screen.
+4. Press a key when a mover is in the sky. The firework covers the mover.
+5. Load `?renderer=ascii`. It looks the same as before.
 
 ## Out of scope
 
@@ -300,5 +419,6 @@ Manual checks in `npm run dev`, after cycle 13:
   drawings that changes with the age.
 - Lightning, fog, clouds and moon phases. Lightning and fog change the whole
   sky, so each renderer must redraw its backdrop.
-- Movers in the emoji and pixel renderers.
+- Movers in the pixel renderer.
+- A different ascii character for each kind. Ascii keeps its brightness ramp.
 - A tail on a shooting star, and any drawing that is more than one cell.
