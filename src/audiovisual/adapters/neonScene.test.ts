@@ -240,7 +240,7 @@ describe("neonBackdrop: the ridge", () => {
   it("runs edge to edge on a wide canvas", () => {
     // 400x100: 200 units either side, 1 pixel per unit. Pixel x = 200 + x,
     // pixel y = 100 - height. The ground is held flat beyond +-50.
-    const { ridge } = neonBackdrop(backdrop, { width: 400, height: 100 });
+    const { ridge } = neonBackdrop(backdrop, neon, { width: 400, height: 100 });
 
     expect(ridge).toEqual([
       { x: 0, y: 90 },
@@ -255,12 +255,60 @@ describe("neonBackdrop: the ridge", () => {
     // 40x100: 20 units either side. The points at +-50 are off the canvas.
     // At x = -20 the ground is 10 + 20 * (30 - 10) / 50 = 22. At x = 20 it is
     // 30 - 10 * 20 / 50 = 26.
-    const { ridge } = neonBackdrop(backdrop, { width: 40, height: 100 });
+    const { ridge } = neonBackdrop(backdrop, neon, { width: 40, height: 100 });
 
     expect(ridge).toEqual([
       { x: 0, y: 78 },
       { x: 20, y: 70 },
       { x: 40, y: 74 },
     ]);
+  });
+});
+
+// Cycle 9: stars and the two bodies that are not stars. A star is a small
+// cross, `starArm` long each way. The moon and the planet are rings of the
+// radius `bodies` gives. All lengths are world units, scaled to pixels.
+describe("neonBackdrop: stars and rings", () => {
+  // Unusual values, so a hard-coded arm or radius cannot pass.
+  const bodyNeon = { ...neon, starArm: 2, bodies: { moon: 10, planet: 4 } };
+  const backdrop: Backdrop = {
+    sky: { horizon: 0, zenith: 0 },
+    ground: [
+      { x: -50, height: 0 },
+      { x: 50, height: 0 },
+    ],
+    bodies: [
+      { kind: "star", position: { x: -20, y: 80, z: 0 } },
+      { kind: "moon", position: { x: 30, y: 70, z: 0 } },
+      { kind: "planet", position: { x: -60, y: 40, z: 0 } },
+      { kind: "star", position: { x: 0, y: 50, z: 0 } },
+    ],
+  };
+
+  it("gives each star a cross at its position, scaled to pixels", () => {
+    const { stars } = neonBackdrop(backdrop, bodyNeon, canvas);
+
+    // World (-20, 80) is pixel (126, 24). Arm: 2 * 1.2. World (0, 50) is
+    // pixel (150, 60).
+    expect(stars).toHaveLength(2);
+    expect(stars[0]?.centre.x).toBeCloseTo(126);
+    expect(stars[0]?.centre.y).toBeCloseTo(24);
+    expect(stars[0]?.arm).toBeCloseTo(2.4);
+    expect(stars[1]?.centre.x).toBeCloseTo(150);
+    expect(stars[1]?.centre.y).toBeCloseTo(60);
+  });
+
+  it("gives the moon and the planet a ring each, of the radius for its kind", () => {
+    const { rings } = neonBackdrop(backdrop, bodyNeon, canvas);
+
+    // Moon: world (30, 70) is pixel (186, 36), radius 10 * 1.2. Planet:
+    // world (-60, 40) is pixel (78, 72), radius 4 * 1.2.
+    expect(rings).toHaveLength(2);
+    expect(rings[0]?.centre.x).toBeCloseTo(186);
+    expect(rings[0]?.centre.y).toBeCloseTo(36);
+    expect(rings[0]?.radius).toBeCloseTo(12);
+    expect(rings[1]?.centre.x).toBeCloseTo(78);
+    expect(rings[1]?.centre.y).toBeCloseTo(72);
+    expect(rings[1]?.radius).toBeCloseTo(4.8);
   });
 });

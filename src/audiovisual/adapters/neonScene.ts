@@ -36,10 +36,25 @@ export interface NeonLight {
   readonly discs: readonly Disc[];
 }
 
+/** A plus sign: a line `arm` pixels each way from `centre`, along both axes. */
+interface Cross {
+  readonly centre: Point;
+  readonly arm: number;
+}
+
+/** A circle outline, `radius` pixels across from the centre. */
+interface Ring {
+  readonly centre: Point;
+  readonly radius: number;
+}
+
 /** What the backdrop canvas draws once, in canvas pixels. */
 export interface NeonBackdrop {
   // The ridge, left to right, from the left canvas edge to the right one.
   readonly ridge: readonly Point[];
+  readonly stars: readonly Cross[];
+  // The moon and the planet, in the order the backdrop lists them.
+  readonly rings: readonly Ring[];
 }
 
 /**
@@ -144,10 +159,12 @@ export function neonFrame(
  * ridge is the ground points that are on the canvas, with a point at each
  * canvas edge at the height `groundHeightAt` gives there. `Backdrop.ground`
  * stops at x = +-50 and a wide canvas shows more than that, so without the
- * edge points the ridge would stop short of both sides.
+ * edge points the ridge would stop short of both sides. Each star is a
+ * cross and the moon and the planet are rings.
  */
 export function neonBackdrop(
   backdrop: Backdrop,
+  config: AudioVisualConfig["neon"],
   canvas: { readonly width: number; readonly height: number },
 ): NeonBackdrop {
   // `worldHalfWidth` takes a grid; a canvas is a grid of one-pixel cells.
@@ -164,7 +181,21 @@ export function neonBackdrop(
     { x: halfWidth, height: groundHeightAt(backdrop.ground, halfWidth) },
   ];
 
+  const scale = canvas.height / 100;
+  const stars: Cross[] = [];
+  const rings: Ring[] = [];
+  for (const body of backdrop.bodies) {
+    const centre = toCanvas(body.position, canvas);
+    if (body.kind === "star") {
+      stars.push({ centre, arm: config.starArm * scale });
+    } else {
+      rings.push({ centre, radius: config.bodies[body.kind] * scale });
+    }
+  }
+
   return {
     ridge: points.map(({ x, height }) => toCanvas({ x, y: height }, canvas)),
+    stars,
+    rings,
   };
 }

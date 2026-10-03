@@ -208,6 +208,11 @@ export interface AudioVisualConfig {
     readonly moverColor: Rgb;
     readonly moverSize: number; // world units, radius
     readonly moverTailMs: Readonly<Record<Mover["kind"], number>>;
+    // A star is a cross, this many world units long each way from its
+    // centre. The moon and the planet are rings: `bodies` is each one's
+    // radius in world units.
+    readonly starArm: number;
+    readonly bodies: Readonly<Record<"moon" | "planet", number>>;
   };
   // Only the Web Audio adapter and its planning functions read this,
   // nested under its own key for the same reason ascii is.
@@ -414,6 +419,9 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     // The same tails as the pixel renderer: a shooting star at 45..78 world
     // units per second streaks 5.4..9.4 world units. A satellite is a dot.
     moverTailMs: Object.freeze({ shootingStar: 120, satellite: 0 }),
+    starArm: 0.7,
+    // The same radii as the pixel renderer's discs.
+    bodies: Object.freeze({ moon: 6, planet: 2.5 }),
   }),
   audio: Object.freeze({
     lookaheadMs: 30,
