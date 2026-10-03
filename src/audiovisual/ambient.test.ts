@@ -62,8 +62,10 @@ describe("createAmbient", () => {
     brightness: 0.8,
   };
 
-  function starPositionAfter(directionRoll: number, laterMs: number) {
-    const ambient = createAmbient({
+  // A shooting star spawns on the first 1000 ms step. Only the direction
+  // roll varies between tests.
+  function starAmbient(directionRoll: number) {
+    return createAmbient({
       config: {
         ...defaultAudioVisualConfig.ambient,
         ratePerSecond: 1,
@@ -71,6 +73,10 @@ describe("createAmbient", () => {
       },
       random: scripted([0.5, 0.3, 0.25, 0.5, directionRoll, 0.75, 0.6]),
     });
+  }
+
+  function starPositionAfter(directionRoll: number, laterMs: number) {
+    const ambient = starAmbient(directionRoll);
     ambient.step(1000);
     return ambient.step(laterMs).map((mover) => mover.position);
   }
@@ -86,14 +92,7 @@ describe("createAmbient", () => {
   // the emoji renderer cannot tell a star from a satellite by brightness. The
   // satellite's kind is checked in the cycle 9 test below.
   it('gives a shooting star the kind "shootingStar"', () => {
-    const ambient = createAmbient({
-      config: {
-        ...defaultAudioVisualConfig.ambient,
-        ratePerSecond: 1,
-        shootingStar: star,
-      },
-      random: scripted([0.5, 0.3, 0.25, 0.5, 0.2, 0.75, 0.6]),
-    });
+    const ambient = starAmbient(0.2);
 
     expect(ambient.step(1000).map((mover) => mover.kind)).toEqual([
       "shootingStar",
@@ -105,14 +104,7 @@ describe("createAmbient", () => {
   // 0, so at 800 ms, half of its life, it is 0.8 * (1 - 0.5) = 0.4. It is
   // still there at 1599 ms and gone at 1600 ms.
   it("fades a shooting star over its time to live, then removes it", () => {
-    const ambient = createAmbient({
-      config: {
-        ...defaultAudioVisualConfig.ambient,
-        ratePerSecond: 1,
-        shootingStar: star,
-      },
-      random: scripted([0.5, 0.3, 0.25, 0.5, 0.2, 0.75, 0.6]),
-    });
+    const ambient = starAmbient(0.2);
     const brightnessAfter = (elapsedMs: number): number[] =>
       ambient.step(elapsedMs).map((mover) => mover.brightness);
 

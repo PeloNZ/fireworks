@@ -33,8 +33,8 @@ export interface Sprite {
  * cell to the brightest sprite, so a mover in `sprites` could take a cell
  * from a fading trail. See docs/11_ambient_movers.md. */
 export interface Mover {
-  // Says what the mover is. A renderer that cannot dim (emoji) picks its
-  // picture from this, not from `brightness`.
+  // Says what the mover is. A renderer that cannot vary a glyph by
+  // brightness picks its picture from this, not from `brightness`.
   readonly kind: "shootingStar" | "satellite";
   readonly position: Vec3;
   readonly brightness: number; // 0..1

@@ -67,10 +67,7 @@ describe("buildFrame", () => {
         worldConfig,
         trails: noTrails,
       }),
-    ).toEqual({
-      sprites: [],
-      ambient: [],
-    });
+    ).toEqual({ sprites: [] });
   });
 
   it("draws one shell sprite for a flying firework, interpolated by alpha", () => {

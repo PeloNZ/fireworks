@@ -2,8 +2,6 @@ import type { NumberRange } from "../action/config.ts";
 import type { AudioVisualConfig } from "./config.ts";
 import type { Mover } from "./types.ts";
 
-// One entry per kind of mover. A spawn picks one with a single draw.
-const KINDS = ["shootingStar", "satellite"] as const satisfies readonly Kind[];
 type Kind = Mover["kind"];
 
 /** Maps the next value from `random` (in `[0, 1)`) onto `range`. One small
@@ -93,6 +91,15 @@ export function createAmbient(options: {
     };
   }
 
+  // One entry per kind of mover, so a new kind in `Mover["kind"]` fails
+  // `tsc` here. A spawn picks one with a single draw, as `floor(roll *
+  // length)` over the keys in this order: shooting star, then satellite.
+  const spawners: Record<Kind, () => LiveMover> = {
+    shootingStar: spawnShootingStar,
+    satellite: spawnSatellite,
+  };
+  const KINDS = Object.keys(spawners) as Kind[];
+
   return {
     step(elapsedMs) {
       for (const mover of live) {
@@ -109,9 +116,7 @@ export function createAmbient(options: {
       if (live.length < config.maxLive && random() < chance) {
         const kind = KINDS[Math.floor(random() * KINDS.length)];
         if (kind !== undefined && cooldownLeftMs[kind] === 0) {
-          live.push(
-            kind === "shootingStar" ? spawnShootingStar() : spawnSatellite(),
-          );
+          live.push(spawners[kind]());
           cooldownLeftMs[kind] = config.cooldownMs;
         }
       }

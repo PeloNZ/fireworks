@@ -28,8 +28,8 @@ function firstColor(spec: Firework["spec"]): string {
 /**
  * Builds this frame's display list from Action's current snapshot. Reads
  * only what Action already decided — nothing here derives a new fact.
- * `ambient` is empty: the movers come from `createAmbient`, and the layer
- * fills them in.
+ * Returns no `ambient` list: the movers come from `createAmbient`, and the
+ * layer adds them.
  */
 export function buildFrame(options: {
   readonly entities: readonly Firework[];
@@ -37,7 +37,7 @@ export function buildFrame(options: {
   readonly config: AudioVisualConfig;
   readonly worldConfig: WorldConfig;
   readonly trails: ReturnType<typeof createTrails>;
-}): Frame {
+}): Omit<Frame, "ambient"> {
   const { entities, alpha, config, worldConfig, trails } = options;
   const sprites: Sprite[] = [];
 
@@ -64,5 +64,5 @@ export function buildFrame(options: {
     }
   }
 
-  return { sprites, ambient: [] };
+  return { sprites };
 }

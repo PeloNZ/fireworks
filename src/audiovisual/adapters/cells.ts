@@ -1,3 +1,4 @@
+import type { Vec3 } from "../../action/types.ts";
 import type { Frame, Mover, Sprite } from "../types.ts";
 
 // The geometry and the cell contest, shared by every renderer that works
@@ -56,6 +57,48 @@ export function columnCentreX(column: number, columns: number): number {
 }
 
 /**
+ * The grid walk both cell contests share: puts each item in the cell
+ * `toCell` gives it, clips anything outside the grid, and leaves an empty
+ * cell `null`. `wins` settles two items in one cell: it is true when the
+ * incoming item takes the cell from the one already there.
+ */
+function placeInCells<T extends { readonly position: Vec3 }>(
+  items: readonly T[],
+  grid: { readonly columns: number; readonly rows: number },
+  wins: (incoming: T, existing: T) => boolean,
+): readonly (T | null)[][] {
+  const { columns, rows } = grid;
+  const cells: (T | null)[][] = [];
+  for (let row = 0; row < rows; row++) {
+    cells.push(new Array<T | null>(columns).fill(null));
+  }
+
+  const rowAt = (row: number): (T | null)[] => {
+    const line = cells[row];
+    if (line === undefined) {
+      // row always comes from toCell, which already rejected anything
+      // outside [0, rows). noUncheckedIndexedAccess can't see that.
+      throw new Error("unreachable: cell row outside the grid");
+    }
+    return line;
+  };
+
+  for (const item of items) {
+    const cell = toCell(item.position.x, item.position.y, grid);
+    if (cell === null) {
+      continue;
+    }
+    const existing = rowAt(cell.row)[cell.column];
+    if (existing && !wins(item, existing)) {
+      continue;
+    }
+    rowAt(cell.row)[cell.column] = item;
+  }
+
+  return cells;
+}
+
+/**
  * Decides which sprite wins each cell of the grid — the half of
  * `rasteriseFrame`'s old job that has nothing to do with characters. When
  * two sprites land in one cell, the brighter one wins; on equal
@@ -69,35 +112,11 @@ export function contestCells(
   frame: Frame,
   grid: { readonly columns: number; readonly rows: number },
 ): readonly (Sprite | null)[][] {
-  const { columns, rows } = grid;
-  const cells: (Sprite | null)[][] = [];
-  for (let row = 0; row < rows; row++) {
-    cells.push(new Array<Sprite | null>(columns).fill(null));
-  }
-
-  const rowAt = (row: number): (Sprite | null)[] => {
-    const line = cells[row];
-    if (line === undefined) {
-      // row always comes from toCell, which already rejected anything
-      // outside [0, rows). noUncheckedIndexedAccess can't see that.
-      throw new Error("unreachable: cell row outside the grid");
-    }
-    return line;
-  };
-
-  for (const sprite of frame.sprites) {
-    const cell = toCell(sprite.position.x, sprite.position.y, grid);
-    if (cell === null) {
-      continue;
-    }
-    const existing = rowAt(cell.row)[cell.column];
-    if (existing && existing.brightness >= sprite.brightness) {
-      continue;
-    }
-    rowAt(cell.row)[cell.column] = sprite;
-  }
-
-  return cells;
+  return placeInCells(
+    frame.sprites,
+    grid,
+    (incoming, existing) => incoming.brightness > existing.brightness,
+  );
 }
 
 /**
@@ -112,18 +131,5 @@ export function placeMovers(
   movers: readonly Mover[],
   grid: { readonly columns: number; readonly rows: number },
 ): readonly (Mover | null)[][] {
-  const { columns, rows } = grid;
-  const cells = Array.from({ length: rows }, () =>
-    new Array<Mover | null>(columns).fill(null),
-  );
-
-  for (const mover of movers) {
-    const cell = toCell(mover.position.x, mover.position.y, grid);
-    const line = cell === null ? undefined : cells[cell.row];
-    if (cell !== null && line !== undefined) {
-      line[cell.column] = mover;
-    }
-  }
-
-  return cells;
+  return placeInCells(movers, grid, () => true);
 }

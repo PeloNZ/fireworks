@@ -239,8 +239,8 @@ overlayGrid(overlayGrid(base, ambientGrid), fireworkGrid);
 `overlayGrid` keeps the foreground character unless it is a space. So a
 mover replaces the sky. A firework replaces a mover.
 
-`rasteriseAmbient` uses `toCell` for the position and `rampChar` for the
-character. This keeps the rule "more ink means more light". A dim mover
+`rasteriseAmbient` uses `placeMovers` for the position and `rampChar` for
+the character. This keeps the rule "more ink means more light". A dim mover
 is a faint character.
 
 The pixel renderer does not read `Frame.ambient`. `?renderer=pixel` shows no
@@ -310,6 +310,11 @@ firework covers a mover" passes before the mover pass exists. It guards the
 layer order, and a mutation that draws movers over fireworks fails it. Cycle 17
 also adds a test for house rules 1 and 2 on the default glyphs, because
 nothing else stops a glyph with `U+FE0F` from shearing the grid.
+
+A cleanup after cycle 19 changed two things that cycle 1 and cycle 16 describe.
+`buildFrame` now returns `Omit<Frame, "ambient">`, so no placeholder empty list
+exists and the layer adds the movers. `contestCells` and `placeMovers` now share
+one grid walk, `placeInCells`, and differ only in the rule for a shared cell.
 
 **Before cycle 1:** this document exists. `Frame` has no `ambient` field. All
 tests pass.

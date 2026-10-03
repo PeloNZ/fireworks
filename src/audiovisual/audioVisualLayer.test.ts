@@ -116,15 +116,16 @@ describe("createAudioVisualLayer", () => {
     trails.record(entities, 16);
 
     expect(renderer).toHaveBeenCalledTimes(1);
-    expect(renderer).toHaveBeenCalledWith(
-      buildFrame({
+    expect(renderer).toHaveBeenCalledWith({
+      ...buildFrame({
         entities,
         alpha: 0.4,
         config: defaultAudioVisualConfig,
         worldConfig: defaultWorldConfig,
         trails,
       }),
-    );
+      ambient: [],
+    });
   });
 
   it("calls audio with no voices when nothing has transitioned yet", () => {
