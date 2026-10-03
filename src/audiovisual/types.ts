@@ -32,7 +32,7 @@ export interface Sprite {
  * a separate list from `Frame.sprites` on purpose: `contestCells` gives each
  * cell to the brightest sprite, so a mover in `sprites` could take a cell
  * from a fading trail. See docs/11_ambient_movers.md. */
-interface Mover {
+export interface Mover {
   readonly position: Vec3;
   readonly brightness: number; // 0..1
 }

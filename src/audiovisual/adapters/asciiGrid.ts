@@ -1,6 +1,6 @@
-import { contestCells } from "./cells.ts";
+import { contestCells, toCell } from "./cells.ts";
 import type { AudioVisualConfig } from "../config.ts";
-import type { Frame } from "../types.ts";
+import type { Frame, Mover } from "../types.ts";
 
 /**
  * Maps a brightness in 0..1 onto one character in `ramp`, dimmest to
@@ -47,4 +47,35 @@ export function rasteriseFrame(
         .join(""),
     )
     .join("\n");
+}
+
+/**
+ * Renders the ambient movers to one string the same size as
+ * `rasteriseFrame`'s grid: each mover is the ramp character for its
+ * brightness, and every other cell is a space. A mover outside the grid
+ * draws nothing. It is a separate pass from `rasteriseFrame` so the
+ * renderer can layer it between the backdrop and the fireworks — see
+ * docs/11_ambient_movers.md.
+ */
+export function rasteriseAmbient(
+  movers: readonly Mover[],
+  ascii: AudioVisualConfig["ascii"],
+): string {
+  const { columns, rows, ramp } = ascii;
+  const keyOf = (row: number, column: number): string =>
+    `${row.toString()}:${column.toString()}`;
+  const drawn = new Map<string, string>();
+  for (const mover of movers) {
+    const cell = toCell(mover.position.x, mover.position.y, ascii);
+    if (cell !== null) {
+      drawn.set(keyOf(cell.row, cell.column), rampChar(mover.brightness, ramp));
+    }
+  }
+
+  return Array.from({ length: rows }, (_row, row) =>
+    Array.from(
+      { length: columns },
+      (_column, column) => drawn.get(keyOf(row, column)) ?? " ",
+    ).join(""),
+  ).join("\n");
 }

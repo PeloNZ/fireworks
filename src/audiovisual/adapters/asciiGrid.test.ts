@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { rasteriseFrame } from "./asciiGrid.ts";
+import { rasteriseAmbient, rasteriseFrame } from "./asciiGrid.ts";
 import { defaultAudioVisualConfig } from "../config.ts";
-import type { Sprite, Frame } from "../types.ts";
+import type { Mover, Sprite, Frame } from "../types.ts";
 
 // Cycle 4 (docs/05_audio_visual_layer.md): the interesting part of the
 // ASCII adapter — world space to character cells — as a pure function
@@ -92,6 +92,36 @@ describe("rasteriseFrame", () => {
 
     expect(rasteriseFrame(frame, ascii)).toBe(
       expectedGrid(9, 5, [{ row: 2, column: 4, char: "@" }]),
+    );
+  });
+});
+
+// Cycle 2 (docs/11_ambient_movers.md): a mover becomes one ramp character,
+// on the same grid as the firework sprites. Positions are worked by hand on
+// the 9x5 grid: (30, 30) is column floor(0.8 * 9) = 7, row 4 - floor(1.5) =
+// 3; (-50, 90) is column 0, row 4 - floor(4.5) = 0. Brightness 0.2 is ramp
+// index round(0.2 * 9) = 2, which is ":".
+
+function mover(overrides: Partial<Mover> = {}): Mover {
+  return {
+    position: { x: 0, y: 0, z: 0 },
+    brightness: 1,
+    ...overrides,
+  };
+}
+
+describe("rasteriseAmbient", () => {
+  it("draws each mover as the ramp character for its brightness, in its own cell", () => {
+    const movers = [
+      mover({ position: { x: 30, y: 30, z: 0 }, brightness: 1 }),
+      mover({ position: { x: -50, y: 90, z: 0 }, brightness: 0.2 }),
+    ];
+
+    expect(rasteriseAmbient(movers, ascii)).toBe(
+      expectedGrid(9, 5, [
+        { row: 3, column: 7, char: "@" },
+        { row: 0, column: 0, char: ":" },
+      ]),
     );
   });
 });
