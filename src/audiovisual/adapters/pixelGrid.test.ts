@@ -385,6 +385,8 @@ describe("paintFrame -- ambient movers", () => {
   const moverPixel: AudioVisualConfig["pixel"] = {
     ...defaultAudioVisualConfig.pixel,
     moverRamp: [7, 2, 3, 4],
+    sparkHues: [{ hue: 10, index: 3 }],
+    trail: [7, 5, 6],
     columns: wideGrid.columns,
     rows: wideGrid.rows,
     blank: 7,
@@ -400,8 +402,23 @@ describe("paintFrame -- ambient movers", () => {
     };
   }
 
-  function paint(movers: readonly Mover[]): number[] {
-    return Array.from(paintFrame({ sprites: [], ambient: movers }, moverPixel));
+  function paint(
+    movers: readonly Mover[],
+    sprites: readonly Sprite[] = [],
+  ): number[] {
+    return Array.from(paintFrame({ sprites, ambient: movers }, moverPixel));
+  }
+
+  // A sprite on the pixel at offset 35, the same pixel as `mover()`.
+  function sprite(overrides: Partial<Sprite>): Sprite {
+    return {
+      kind: "spark",
+      position: { x: 6.25, y: 56.25, z: 0 },
+      size: 0.1,
+      color: atHue(10),
+      brightness: 1,
+      ...overrides,
+    };
   }
 
   function blankWith(entries: Record<number, number>): number[] {
@@ -447,5 +464,32 @@ describe("paintFrame -- ambient movers", () => {
     const movers = [mover({ brightness: 1 }), mover({ brightness: 0 })];
 
     expect(paint(movers)).toEqual(blankWith({ 35: 4 }));
+  });
+
+  // Cycle 23. A firework always covers a mover (docs/11 decision 4).
+  it("lets a firework cover a mover", () => {
+    expect(paint([mover()], [sprite({ brightness: 1 })])).toEqual(
+      blankWith({ 35: 3 }),
+    );
+  });
+
+  // A trail at brightness 0 draws index trail[0], which is blank. It still
+  // paints its centre pixel, so it must not erase the mover under it.
+  it("keeps the mover where a dead trail sits", () => {
+    const deadTrail = sprite({ kind: "trail", brightness: 0 });
+
+    expect(paint([mover()], [deadTrail])).toEqual(blankWith({ 35: 4 }));
+  });
+
+  // The firework contest is unchanged: a dead trail that paints a pixel first
+  // keeps it against a dimmer spark, so the pixel stays blank. A frame with
+  // no mover shows this.
+  it("keeps a blank pixel blank when a dimmer spark follows a dead trail", () => {
+    const sprites = [
+      sprite({ kind: "trail", size: 1, brightness: 0.1 }),
+      sprite({ brightness: 0.05 }),
+    ];
+
+    expect(paint([], sprites)).toEqual(blankWith({}));
   });
 });

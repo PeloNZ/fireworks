@@ -1,7 +1,7 @@
 import { rampLevel } from "./ramp.ts";
 import { hueOf, nearestHue, saturationOf } from "../color.ts";
 import type { AudioVisualConfig } from "../config.ts";
-import type { Frame, Rgb, Sprite } from "../types.ts";
+import type { Frame, Mover, Rgb, Sprite } from "../types.ts";
 
 // The pixel half of the frame renderer: turning a sprite's colour,
 // position and radius into palette indices on a fixed-size grid. Grown
@@ -196,6 +196,32 @@ export function discCells(
 }
 
 /**
+ * Paints the ambient movers into a buffer of their own, `blank` where no mover
+ * sits. A mover is one pixel at `toPixel`, with the index `rampLevel` picks
+ * from `pixel.moverRamp` by brightness. A mover outside the grid paints
+ * nothing. A later mover wins a shared pixel, and `blank` is never written, so
+ * a mover too dim to show leaves the one before it. See
+ * docs/11_ambient_movers.md.
+ */
+function paintMovers(
+  movers: readonly Mover[],
+  pixel: AudioVisualConfig["pixel"],
+): Uint8Array {
+  const { columns, rows, blank } = pixel;
+  const buffer = new Uint8Array(columns * rows).fill(blank);
+
+  for (const mover of movers) {
+    const offset = toPixel(mover.position.x, mover.position.y, pixel);
+    const index = rampLevel(mover.brightness, pixel.moverRamp);
+    if (offset !== null && index !== blank) {
+      buffer[offset] = index;
+    }
+  }
+
+  return buffer;
+}
+
+/**
  * Renders a frame's display list to a buffer of palette indices —
  * `pixel.rows * pixel.columns` entries, `pixel.blank` where nothing
  * draws. Unlike `rasteriseFrame`/`rasteriseEmojiFrame`, which sprite wins
@@ -221,6 +247,10 @@ export function discCells(
  * full-size discs the same width as the shell it follows, and a fading
  * spark never shrinks. One multiplication does both, with no branch on
  * `kind`.
+ *
+ * The ambient movers paint into a second buffer, which merges under this one:
+ * a firework pixel wins unless it is `blank`. The contest above runs on the
+ * firework buffer alone, as it did before movers existed.
  */
 export function paintFrame(
   frame: Frame,
@@ -229,17 +259,6 @@ export function paintFrame(
   const { columns, rows, blank } = pixel;
   const buffer = new Uint8Array(columns * rows).fill(blank);
   const painted = new Float32Array(columns * rows).fill(-1);
-
-  // Movers go first, so a firework can paint over them. A later mover wins a
-  // shared pixel, and blank is never written: a mover too dim to show must
-  // not erase the one before it.
-  for (const mover of frame.ambient) {
-    const offset = toPixel(mover.position.x, mover.position.y, pixel);
-    const index = rampLevel(mover.brightness, pixel.moverRamp);
-    if (offset !== null && index !== blank) {
-      buffer[offset] = index;
-    }
-  }
 
   for (const sprite of frame.sprites) {
     const index = indexFor(sprite, pixel);
@@ -252,5 +271,10 @@ export function paintFrame(
     }
   }
 
-  return buffer;
+  // A firework pixel wins unless it is blank. A dead trail paints blank, and
+  // the mover behind it must show through.
+  const movers = paintMovers(frame.ambient, pixel);
+  return buffer.map((index, offset) =>
+    index !== blank ? index : (movers[offset] ?? blank),
+  );
 }
