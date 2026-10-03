@@ -120,8 +120,17 @@ interface NeonBackdrop {
 }
 
 // neon.ts: the port
-interface Canvas2DLike<Source> {
-  /* a slice of CanvasRenderingContext2D */
+interface Canvas2DLike<Source> extends Pick<
+  CanvasRenderingContext2D,
+  "globalAlpha" | "fillStyle" | /* … */ "stroke"
+> {
+  drawImage(
+    source: Source,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ): void;
 }
 interface NeonSurface<Source> {
   context: Canvas2DLike<Source>;
@@ -129,10 +138,20 @@ interface NeonSurface<Source> {
   width: number;
   height: number;
 }
+
+// neon.ts: the options of the player
+createNeonRenderer({ light, background, quarter, eighth, backdrop, config });
 ```
 
-No port member is named `getContext`. Each member type accepts the real DOM
-type, so `CanvasRenderingContext2D` is assignable to the port.
+No port member is named `getContext`. The port is picked from
+`CanvasRenderingContext2D`, so a real context is assignable to it by
+construction, and `tsc` checks this in `main.ts`. A hand-written port failed
+this check: the real `globalCompositeOperation` and `fillStyle` types are
+wider than the literals the first draft used. Only `drawImage` is the port's
+own, because it takes the `Source` of the surface.
+
+`neonBackdrop(backdrop, config, canvas)` takes the config as its second
+argument, for `starArm` and `bodies`.
 
 ## The port, and its fake
 
@@ -149,11 +168,18 @@ The `neon` block of `AudioVisualConfig`. The defaults come from the board.
 - `shellCore`: `{ scale, color }`, a near-white core disc.
 - `starArm`: the cross arm length in world units. `starColor`: P3
   `(0.51, 1, 1)`.
-- `ringColor`, `ringWidth` and `bodies` (the ring radii).
+- `starWidth`, `ringColor`, `ringWidth` and `bodies` (the ring radii: moon 6,
+  planet 2.5). All widths are world units, scaled by `height / 100`.
 - `ridgeColor` (cyan), `ridgeWidth`, `groundFill` (near-black).
-- `moverColor` and `moverTailMs` (`{ shootingStar: 120, satellite: 0 }`).
-- `bloom`: `{ divisors: [4, 8], quarterAlpha: 0.85, eighthAlpha: 1 }`.
-  `main.ts` reads `divisors` to size the bloom canvases.
+- `moverColor`, `moverSize` (a mover has no size of its own) and
+  `moverTailMs` (`{ shootingStar: 120, satellite: 0 }`).
+- `bloom`: `{ quarterAlpha: 0.85, eighthAlpha: 1 }`.
+
+The bloom divisors, 4 and 8, are constants in `main.ts`, not config. They are
+tied to the names `quarter` and `eighth`.
+
+`starWidth` and `moverSize` were not in the first plan. The first build needs
+both.
 
 ## File layout
 
@@ -229,7 +255,7 @@ Rules for every cycle:
 ### Pass D: onto the screen
 
 14. **The `neon` factory in `main.ts`. UNTESTED.** Same trade-off as pixel
-    cycle 18.
+    cycle 18. `tsc` checks that a real context fits the port.
 15. **CSS in `index.html`. UNTESTED.** `canvas.neon` is fixed and fills the
     viewport. It has no `image-rendering: pixelated`, because neon lines are
     smooth.

@@ -125,17 +125,18 @@ const ambientRandom = createRandom(
 
 // Which renderer runs is a lookup in this table, not a two-way branch —
 // the point of building a second renderer is that this project now has
-// more than one, and a third means one more entry here and nothing else.
-// Each entry is a closure over the config and backdrop above it, taking
-// the element it will render into and appending whatever nodes it needs
-// — one `<pre>` for ascii/emoji, two stacked `<canvas>`es for pixel. See
-// "Selecting a renderer" in docs/07_emoji_renderer.md and "main.ts
-// registry" in docs/09_8bit_renderer.md.
+// more than one, and each further renderer is one more entry here and
+// nothing else. Each entry is a closure over the config and backdrop above
+// it, taking the element it will render into and appending whatever nodes
+// it needs — one `<pre>` for ascii/emoji, two stacked `<canvas>`es for
+// pixel and for neon. See "Selecting a renderer" in
+// docs/07_emoji_renderer.md and "main.ts registry" in
+// docs/09_8bit_renderer.md.
 //
 // Each entry also says how much of the world it shows, as a half-width in
 // world x: the ambient movers spawn across all of it. Ascii and emoji show
-// the whole square world, x from -50 to 50. The pixel grid follows the
-// window. See docs/11_ambient_movers.md.
+// the whole square world, x from -50 to 50. The pixel and neon grids
+// follow the window. See docs/11_ambient_movers.md.
 const squareWorldHalfWidth = 50;
 const renderers: Record<
   string,
