@@ -221,6 +221,9 @@ export interface AudioVisualConfig {
     readonly ringColor: Rgb;
     readonly ringWidth: number;
     readonly groundFill: Rgb;
+    // The ridge line is drawn on the light canvas, so that it glows.
+    readonly ridgeColor: Rgb;
+    readonly ridgeWidth: number;
   };
   // Only the Web Audio adapter and its planning functions read this,
   // nested under its own key for the same reason ascii is.
@@ -436,6 +439,8 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     ringColor: Object.freeze({ r: 0.24, g: 0.96, b: 1 }),
     ringWidth: 0.25,
     groundFill: Object.freeze({ r: 0.039, g: 0.039, b: 0.063 }),
+    ridgeColor: Object.freeze({ r: 0.2, g: 0.95, b: 1 }),
+    ridgeWidth: 0.33,
   }),
   audio: Object.freeze({
     lookaheadMs: 30,

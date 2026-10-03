@@ -46,6 +46,8 @@ const config = {
   ringColor: { r: 0.4, g: 0.5, b: 0.6 },
   ringWidth: 0.8,
   groundFill: { r: 0.05, g: 0.06, b: 0.07 },
+  ridgeColor: { r: 0.7, g: 0.8, b: 0.9 },
+  ridgeWidth: 0.6,
 };
 
 const backdrop: Backdrop = {
@@ -191,5 +193,88 @@ describe("createNeonRenderer: the backdrop surface", () => {
 
     expect(paintedAtConstruction).toBeGreaterThan(0);
     expect(background).toHaveLength(paintedAtConstruction);
+  });
+});
+
+// Cycle 12: the light surface is redrawn every frame. Clear it, switch to
+// additive blending so overlapping light adds up towards white, then draw
+// the ridge, the streaks and the discs, in that order. The ridge is drawn
+// here, not on the backdrop surface, so that it glows with the bloom.
+describe("createNeonRenderer: the light surface", () => {
+  const trail = spark({
+    kind: "trail",
+    color: { r: 0.2, g: 0.3, b: 0.4 },
+    brightness: 0.5,
+    velocity: { x: 0, y: 0, z: 0 },
+  });
+
+  it("clears the surface, then blends additively, at the start of each frame", () => {
+    const { render, light } = build();
+
+    render(frameOf(spark()));
+
+    expect(light.slice(0, 2)).toEqual([
+      "clearRect(0, 0, 400, 100)",
+      "globalCompositeOperation = lighter",
+    ]);
+  });
+
+  it("starts every frame the same way", () => {
+    const { render, light } = build();
+
+    render(frameOf());
+    render(frameOf());
+
+    expect(light.filter((line) => line.startsWith("clearRect"))).toHaveLength(
+      2,
+    );
+    expect(
+      light.filter((line) => line === "globalCompositeOperation = lighter"),
+    ).toHaveLength(2);
+  });
+
+  it("strokes the ridge, even in a frame with no sprites", () => {
+    const { render, light } = build();
+
+    render(frameOf());
+
+    // The ridge is world height 10 at every point: pixel y 90.
+    expectSequence(light, [
+      "strokeStyle = color(display-p3 0.7 0.8 0.9 / 1)",
+      "lineWidth = 0.6",
+      "beginPath()",
+      "moveTo(0, 90)",
+      "lineTo(150, 90)",
+      "lineTo(250, 90)",
+      "lineTo(400, 90)",
+      "stroke()",
+    ]);
+  });
+
+  it("fills a disc for a sprite that does not move", () => {
+    const { render, light } = build();
+
+    render(frameOf(trail));
+
+    // World (10, 50) is pixel (210, 50). Radius: 0.5 * 1.
+    expectSequence(light, [
+      "fillStyle = color(display-p3 0.2 0.3 0.4 / 0.5)",
+      "beginPath()",
+      `arc(210, 50, 0.5, 0, ${String(2 * Math.PI)})`,
+      "fill()",
+    ]);
+  });
+
+  it("draws the ridge first, then the streaks, then the discs", () => {
+    const { render, light } = build();
+
+    render(frameOf(trail, spark()));
+
+    const ridge = light.indexOf("moveTo(0, 90)");
+    const streak = light.indexOf("moveTo(190, 50)");
+    const disc = light.indexOf(`arc(210, 50, 0.5, 0, ${String(2 * Math.PI)})`);
+    expect(ridge).toBeGreaterThanOrEqual(0);
+    expect(streak).toBeGreaterThan(ridge);
+    expect(disc).toBeGreaterThan(streak);
   });
 });

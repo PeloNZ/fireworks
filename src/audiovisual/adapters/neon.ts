@@ -3,6 +3,7 @@
 // recording fake. `main.ts` makes the canvases. See docs/12_neon_renderer.md.
 
 import { neonBackdrop, neonFrame } from "./neonScene.ts";
+import type { NeonBackdrop } from "./neonScene.ts";
 import type { AudioVisualConfig } from "../config.ts";
 import type { Backdrop, Renderer, Rgb } from "../types.ts";
 
@@ -11,10 +12,12 @@ import type { Backdrop, Renderer, Rgb } from "../types.ts";
  * assignable to it, and a test fake records what is written to it.
  */
 export interface Canvas2DLike {
+  globalCompositeOperation: "source-over" | "lighter";
   fillStyle: string;
   lineWidth: number;
   lineCap: "butt" | "round" | "square";
   strokeStyle: string;
+  clearRect(x: number, y: number, width: number, height: number): void;
   fillRect(x: number, y: number, width: number, height: number): void;
   beginPath(): void;
   moveTo(x: number, y: number): void;
@@ -45,11 +48,10 @@ const BLACK: Rgb = { r: 0, g: 0, b: 0 };
 // itself is drawn on the light surface, so that it glows.
 function paintBackground(
   surface: NeonSurface,
-  backdrop: Backdrop,
+  { ridge, stars, rings }: NeonBackdrop,
   config: AudioVisualConfig["neon"],
 ): void {
   const { context, width, height } = surface;
-  const { ridge, stars, rings } = neonBackdrop(backdrop, config, surface);
   const scale = height / 100;
 
   context.fillStyle = p3(BLACK, 1);
@@ -96,13 +98,31 @@ export function createNeonRenderer(options: {
   readonly config: AudioVisualConfig["neon"];
 }): Renderer {
   const { light, background, backdrop, config } = options;
+  const scene = neonBackdrop(backdrop, config, light);
+  const scale = light.height / 100;
 
-  paintBackground(background, backdrop, config);
+  paintBackground(background, scene, config);
 
   return (frame) => {
-    const { streaks } = neonFrame(frame, config, light);
+    const { streaks, discs } = neonFrame(frame, config, light);
     const context = light.context;
+
+    context.clearRect(0, 0, light.width, light.height);
+    context.globalCompositeOperation = "lighter";
     context.lineCap = "round";
+
+    context.strokeStyle = p3(config.ridgeColor, 1);
+    context.lineWidth = config.ridgeWidth * scale;
+    context.beginPath();
+    scene.ridge.forEach(({ x, y }, index) => {
+      if (index === 0) {
+        context.moveTo(x, y);
+      } else {
+        context.lineTo(x, y);
+      }
+    });
+    context.stroke();
+
     for (const { from, to, width, color, alpha } of streaks) {
       context.strokeStyle = p3(color, alpha);
       context.lineWidth = width;
@@ -110,6 +130,13 @@ export function createNeonRenderer(options: {
       context.moveTo(from.x, from.y);
       context.lineTo(to.x, to.y);
       context.stroke();
+    }
+
+    for (const { centre, radius, color, alpha } of discs) {
+      context.fillStyle = p3(color, alpha);
+      context.beginPath();
+      context.arc(centre.x, centre.y, radius, 0, 2 * Math.PI);
+      context.fill();
     }
   };
 }
