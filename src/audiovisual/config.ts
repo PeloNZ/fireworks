@@ -183,6 +183,10 @@ export interface AudioVisualConfig {
     // asciiBackdrop's groundFillBrightness.
     readonly ground: number;
     readonly palette: readonly string[]; // 16 hex colours, indexed above
+    // A mover's palette index by brightness, dimmest first. moverRamp[0] must
+    // equal blank, the same rule as trail[0]: a fully faded mover has to
+    // vanish, not leave a visible pixel. See docs/11_ambient_movers.md.
+    readonly moverRamp: readonly number[];
   };
   // Only the Web Audio adapter and its planning functions read this,
   // nested under its own key for the same reason ascii is.
@@ -369,6 +373,8 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
       "#FF77A8",
       "#FFCCAA",
     ]),
+    // Black, dark grey, light grey, off-white: a mover fades through greys.
+    moverRamp: Object.freeze([0, 5, 6, 7]),
   }),
   audio: Object.freeze({
     lookaheadMs: 30,

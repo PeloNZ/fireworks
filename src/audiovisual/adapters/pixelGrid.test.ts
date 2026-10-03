@@ -10,7 +10,7 @@ import {
 } from "./pixelGrid.ts";
 import { defaultAudioVisualConfig } from "../config.ts";
 import type { AudioVisualConfig } from "../config.ts";
-import type { Frame, Rgb, Sprite } from "../types.ts";
+import type { Frame, Mover, Rgb, Sprite } from "../types.ts";
 
 // Cycle 3 (docs/09_8bit_renderer.md): the pixel renderer is the emoji
 // renderer with a palette index where the glyph was -- sparkIndex is
@@ -368,5 +368,84 @@ describe("paintFrame -- radius scales with brightness", () => {
     expect(dim).toEqual(
       Array.from(discCells({ x: 0, y: 50 }, 20 * 0.25, wideGrid)),
     );
+  });
+});
+
+// Cycle 22 (docs/11_ambient_movers.md): a mover is one pixel, its index
+// picked from `moverRamp` by brightness. Worked by hand on the 10x8 grid: a
+// pixel is 12.5 world units wide and tall, and world x spans -62.5..62.5.
+//   column c has its centre at x = -62.5 + 12.5 * (c + 0.5); row r has its
+//   centre at y = 100 * (8 - r - 0.5) / 8.
+//   (6.25, 56.25) is column 5, row 3: offset 35.
+//   (-31.25, 81.25) is column 2, row 1: offset 12.
+// blank is 7, never 0, and the ramp [7, 2, 3, 4] has four levels, so
+// brightness 1 is index round(3) = 3 -> 4, 0.67 is round(2.01) = 2 -> 3, and 0
+// is index 0 -> 7, which is blank.
+describe("paintFrame -- ambient movers", () => {
+  const moverPixel: AudioVisualConfig["pixel"] = {
+    ...defaultAudioVisualConfig.pixel,
+    moverRamp: [7, 2, 3, 4],
+    columns: wideGrid.columns,
+    rows: wideGrid.rows,
+    blank: 7,
+  };
+
+  function mover(overrides: Partial<Mover> = {}): Mover {
+    return {
+      kind: "satellite",
+      position: { x: 6.25, y: 56.25, z: 0 },
+      velocity: { x: 0, y: 0, z: 0 },
+      brightness: 1,
+      ...overrides,
+    };
+  }
+
+  function paint(movers: readonly Mover[]): number[] {
+    return Array.from(paintFrame({ sprites: [], ambient: movers }, moverPixel));
+  }
+
+  function blankWith(entries: Record<number, number>): number[] {
+    const expected = new Array<number>(80).fill(7);
+    for (const [offset, index] of Object.entries(entries)) {
+      expected[Number(offset)] = index;
+    }
+    return expected;
+  }
+
+  it("paints one pixel for each mover, with the ramp index for its brightness", () => {
+    const movers = [
+      mover({ position: { x: 6.25, y: 56.25, z: 0 }, brightness: 1 }),
+      mover({ position: { x: -31.25, y: 81.25, z: 0 }, brightness: 0.67 }),
+    ];
+
+    expect(paint(movers)).toEqual(blankWith({ 35: 4, 12: 3 }));
+  });
+
+  it("paints nothing for a mover outside the grid", () => {
+    const movers = [
+      mover({ position: { x: 70, y: 56.25, z: 0 } }),
+      mover({ position: { x: 6.25, y: 100, z: 0 } }),
+    ];
+
+    expect(paint(movers)).toEqual(blankWith({}));
+  });
+
+  it("gives a shared pixel to the later mover, not the brighter one", () => {
+    const movers = [mover({ brightness: 1 }), mover({ brightness: 0.67 })];
+
+    expect(paint(movers)).toEqual(blankWith({ 35: 3 }));
+  });
+
+  // The same house rule as trail[0] === blank: a fully faded mover must vanish.
+  it("starts the default mover ramp on blank", () => {
+    const { moverRamp, blank } = defaultAudioVisualConfig.pixel;
+
+    expect(moverRamp[0]).toBe(blank);
+  });
+
+  it("never paints blank, so a mover too dim to show leaves the pixel to the one before it", () => {
+    const movers = [mover({ brightness: 1 }), mover({ brightness: 0 })];
+
+    expect(paint(movers)).toEqual(blankWith({ 35: 4 }));
   });
 });

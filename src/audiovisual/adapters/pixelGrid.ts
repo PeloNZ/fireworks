@@ -230,6 +230,17 @@ export function paintFrame(
   const buffer = new Uint8Array(columns * rows).fill(blank);
   const painted = new Float32Array(columns * rows).fill(-1);
 
+  // Movers go first, so a firework can paint over them. A later mover wins a
+  // shared pixel, and blank is never written: a mover too dim to show must
+  // not erase the one before it.
+  for (const mover of frame.ambient) {
+    const offset = toPixel(mover.position.x, mover.position.y, pixel);
+    const index = rampLevel(mover.brightness, pixel.moverRamp);
+    if (offset !== null && index !== blank) {
+      buffer[offset] = index;
+    }
+  }
+
   for (const sprite of frame.sprites) {
     const index = indexFor(sprite, pixel);
     const radius = sprite.size * sprite.brightness;
