@@ -3,7 +3,7 @@
 // discipline src/action/config.ts follows for ActionConfig.
 
 import type { NumberRange } from "../action/config.ts";
-import type { Envelope } from "./types.ts";
+import type { Envelope, Mover } from "./types.ts";
 
 /** A body's fixed look — no brightness field, the same reason
  * `CelestialBody` itself has none: a disc drawn at one size has nothing
@@ -134,6 +134,11 @@ export interface AudioVisualConfig {
       readonly ridge: string;
       readonly ground: string;
     };
+    // One glyph per mover kind. An emoji cannot dim, so a mover keeps its
+    // glyph for its whole life. Like every glyph here, none may carry a
+    // variation selector, and none may equal `blank`. See
+    // docs/11_ambient_movers.md.
+    readonly movers: Readonly<Record<Mover["kind"], string>>;
   };
   // Only the pixel adapter reads this — nested under its own key for the
   // same reason ascii is. The pixel renderer is the emoji renderer with a
@@ -298,6 +303,7 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
       ridge: "🌲",
       ground: "🟫",
     }),
+    movers: Object.freeze({ shootingStar: "🌠", satellite: "🛸" }),
   }),
   pixel: Object.freeze({
     // The same hues as emoji.sparkHues, indexing PICO-8's 16-colour

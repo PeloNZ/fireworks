@@ -1,8 +1,8 @@
-import { contestCells } from "./cells.ts";
+import { contestCells, placeMovers } from "./cells.ts";
 import { rampLevel } from "./ramp.ts";
 import { hueOf, nearestHue, saturationOf } from "../color.ts";
 import type { AudioVisualConfig } from "../config.ts";
-import type { Frame, Rgb, Sprite } from "../types.ts";
+import type { Frame, Mover, Rgb, Sprite } from "../types.ts";
 
 // The emoji half of the frame renderer: turning a sprite's colour and
 // brightness into one glyph. Grown one cycle at a time — see
@@ -106,5 +106,24 @@ export function overlayEmojiGrid(
       const baseGlyph = baseRow?.[columnIndex];
       return baseGlyph ?? blank;
     }),
+  );
+}
+
+/**
+ * Renders the ambient movers to a glyph grid the same size as
+ * `rasteriseEmojiFrame`'s: each mover is `emoji.movers[kind]`, and every
+ * other cell is `emoji.blank`. Brightness is not read — an emoji cannot dim,
+ * so a mover keeps its glyph until `createAmbient` removes it. A separate
+ * pass from `rasteriseEmojiFrame` so the renderer can layer it between the
+ * backdrop and the fireworks. Which mover holds each cell is
+ * `placeMovers`'s job, shared with the ASCII adapter. See
+ * docs/11_ambient_movers.md.
+ */
+export function rasteriseEmojiAmbient(
+  movers: readonly Mover[],
+  emoji: AudioVisualConfig["emoji"],
+): readonly string[][] {
+  return placeMovers(movers, emoji).map((row) =>
+    row.map((mover) => (mover ? emoji.movers[mover.kind] : emoji.blank)),
   );
 }

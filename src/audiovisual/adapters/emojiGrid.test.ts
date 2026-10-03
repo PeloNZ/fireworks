@@ -3,12 +3,13 @@ import {
   glyphFor,
   overlayEmojiGrid,
   rampGlyph,
+  rasteriseEmojiAmbient,
   rasteriseEmojiFrame,
   sparkGlyph,
 } from "./emojiGrid.ts";
 import { defaultAudioVisualConfig } from "../config.ts";
 import type { AudioVisualConfig } from "../config.ts";
-import type { Frame, Rgb, Sprite } from "../types.ts";
+import type { Frame, Mover, Rgb, Sprite } from "../types.ts";
 
 // Cycle 3 (docs/07_emoji_renderer.md): the fact ASCII discards — colour —
 // becomes a glyph. An unusual two-entry hue table, so the real seven-entry
@@ -202,5 +203,68 @@ describe("overlayEmojiGrid", () => {
     expect(composited).toEqual(base);
     expect(composited).toHaveLength(2);
     expect(composited[0]).toHaveLength(2);
+  });
+});
+
+// Cycle 17 (docs/11_ambient_movers.md): a mover becomes the glyph for its
+// kind. Override glyphs and a one-character blank, so a hardcoded 🌠 or ⬛
+// fails. On a 4x2 grid, x = -40 is column floor(10 / 25) = 0 and x = 30 is
+// column floor(80 / 25) = 3. y = 75 is row 1 - floor(1.5) = 0 and y = 25 is
+// row 1 - floor(0.5) = 1.
+
+describe("rasteriseEmojiAmbient", () => {
+  const ambientEmoji: AudioVisualConfig["emoji"] = {
+    ...defaultAudioVisualConfig.emoji,
+    columns: 4,
+    rows: 2,
+    blank: ".",
+    movers: { shootingStar: "A", satellite: "B" },
+  };
+
+  function mover(overrides: Partial<Mover> = {}): Mover {
+    return {
+      kind: "satellite",
+      position: { x: 0, y: 0, z: 0 },
+      brightness: 1,
+      ...overrides,
+    };
+  }
+
+  it("draws the glyph for each mover's kind in its cell, and the blank everywhere else", () => {
+    const movers = [
+      mover({
+        kind: "shootingStar",
+        position: { x: -40, y: 75, z: 0 },
+        brightness: 0.05,
+      }),
+      mover({ kind: "satellite", position: { x: 30, y: 25, z: 0 } }),
+    ];
+
+    expect(rasteriseEmojiAmbient(movers, ambientEmoji)).toEqual([
+      ["A", ".", ".", "."],
+      [".", ".", ".", "B"],
+    ]);
+  });
+
+  it("draws nothing for a mover outside the grid", () => {
+    const outside = [mover({ position: { x: 60, y: 50, z: 0 } })];
+
+    expect(rasteriseEmojiAmbient(outside, ambientEmoji)).toEqual([
+      [".", ".", ".", "."],
+      [".", ".", ".", "."],
+    ]);
+  });
+
+  // The two house rules of docs/07_emoji_renderer.md, applied to the default
+  // mover glyphs: no variation selector (a font may draw it at another
+  // width, which shears the grid), and none equal to the blank (a mover
+  // would be invisible).
+  it("uses default glyphs that have no variation selector and are not the blank", () => {
+    const { blank, movers } = defaultAudioVisualConfig.emoji;
+
+    for (const glyph of Object.values(movers)) {
+      expect(glyph).not.toContain("\uFE0F");
+      expect(glyph).not.toBe(blank);
+    }
   });
 });
