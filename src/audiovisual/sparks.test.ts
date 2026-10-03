@@ -4,6 +4,7 @@ import {
   sparkDirections,
   sparkPosition,
   sparkSpeeds,
+  sparkVelocity,
 } from "./sparks.ts";
 import { parseHexColor } from "./color.ts";
 import { defaultAudioVisualConfig } from "./config.ts";
@@ -282,6 +283,40 @@ function firework(overrides: Partial<Firework> = {}): Firework {
     ...overrides,
   };
 }
+
+// Cycle 1 (docs/12_neon_renderer.md): the exact derivative of
+// sparkPosition, in world units per second. A streak points along it.
+describe("sparkVelocity", () => {
+  it("is v0 + gravity * seconds with no drag", () => {
+    const velocity = sparkVelocity(
+      { x: 1, y: 0, z: 0 },
+      10,
+      { x: 0, y: -18, z: 0 },
+      0,
+      1000, // 1 s
+    );
+
+    // v = (10, 0) + (0, -18) * 1
+    expect(velocity).toEqual({ x: 10, y: -18, z: 0 });
+  });
+
+  it("decays toward the terminal velocity gravity / drag with drag", () => {
+    const velocity = sparkVelocity(
+      { x: 1, y: 0, z: 0 },
+      10,
+      { x: 0, y: -18, z: 0 },
+      0.5,
+      1000, // 1 s
+    );
+
+    // terminal = (0, -36). v = terminal + (v0 - terminal) * e^-0.5
+    //   x = 10 * 0.60653 = 6.0653
+    //   y = -36 + 36 * 0.60653 = -14.1649
+    expect(velocity.x).toBeCloseTo(6.0653, 3);
+    expect(velocity.y).toBeCloseTo(-14.1649, 3);
+    expect(velocity.z).toBe(0);
+  });
+});
 
 describe("expandBurst", () => {
   it("returns round(spec.particleCount) sprites while exploding", () => {

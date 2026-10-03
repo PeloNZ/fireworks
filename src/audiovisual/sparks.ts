@@ -176,6 +176,48 @@ export function sparkPosition(
   };
 }
 
+/**
+ * A spark's velocity at `t` milliseconds since the burst began, in world
+ * units per second: the derivative of `sparkPosition` with the same
+ * arguments. It leaves out the shell's own drift, which `expandBurst` adds.
+ * `drag` of exactly `0` is its own case, for the same reason as in
+ * `sparkPosition`.
+ */
+export function sparkVelocity(
+  direction: Vec3,
+  speed: number,
+  gravity: Vec3,
+  drag: number,
+  t: number,
+): Vec3 {
+  const seconds = t / 1000;
+  const v0: Vec3 = {
+    x: direction.x * speed,
+    y: direction.y * speed,
+    z: direction.z * speed,
+  };
+
+  if (drag === 0) {
+    return {
+      x: v0.x + gravity.x * seconds,
+      y: v0.y + gravity.y * seconds,
+      z: v0.z + gravity.z * seconds,
+    };
+  }
+
+  const terminal: Vec3 = {
+    x: gravity.x / drag,
+    y: gravity.y / drag,
+    z: gravity.z / drag,
+  };
+  const decay = Math.exp(-drag * seconds);
+  return {
+    x: terminal.x + (v0.x - terminal.x) * decay,
+    y: terminal.y + (v0.y - terminal.y) * decay,
+    z: terminal.z + (v0.z - terminal.z) * decay,
+  };
+}
+
 // Each trail point is dimmer than the last by this factor, per step back
 // in time — a plain geometric falloff, not tied to any physical quantity.
 const TRAIL_DECAY = 0.6;
