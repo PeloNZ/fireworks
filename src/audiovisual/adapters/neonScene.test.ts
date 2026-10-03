@@ -77,3 +77,40 @@ describe("neonFrame: a moving sprite", () => {
     expect(light.discs).toEqual([]);
   });
 });
+
+// Cycle 5: a sprite that does not move has no direction to streak along, so
+// it is a disc. A shell trail point is the common case: Action records its
+// position and it never moves.
+describe("neonFrame: a sprite that does not move", () => {
+  const still = sprite({
+    kind: "trail",
+    brightness: 0.4,
+    velocity: { x: 0, y: 0, z: 0 },
+  });
+
+  it("is a disc at its position, as wide as the sprite", () => {
+    const light = neonFrame(frameOf(still), neon, canvas);
+
+    // World (10, 50) is pixel (162, 60). Radius: 0.5 * 1.2 pixels per unit.
+    expect(light.discs).toHaveLength(1);
+    const disc = light.discs[0];
+    expect(disc?.centre.x).toBeCloseTo(162);
+    expect(disc?.centre.y).toBeCloseTo(60);
+    expect(disc?.radius).toBeCloseTo(0.6);
+    expect(disc?.color).toEqual({ r: 0.2, g: 0.9, b: 0.4 });
+    expect(disc?.alpha).toBe(0.4);
+  });
+
+  it("is not also a streak", () => {
+    const light = neonFrame(frameOf(still), neon, canvas);
+
+    expect(light.streaks).toEqual([]);
+  });
+
+  it("sits beside the streaks of the sprites that move", () => {
+    const light = neonFrame(frameOf(sprite(), still, sprite()), neon, canvas);
+
+    expect(light.streaks).toHaveLength(2);
+    expect(light.discs).toHaveLength(1);
+  });
+});

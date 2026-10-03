@@ -52,7 +52,8 @@ export function toCanvas(
 /**
  * Turns one frame's sprites into the shapes the light canvas draws. A
  * sprite that moves is a streak: a line from where it was `streakMs` ago
- * to where it is now, along its velocity.
+ * to where it is now, along its velocity. A sprite that does not move has
+ * no direction, so it is a disc.
  */
 export function neonFrame(
   frame: Frame,
@@ -62,8 +63,18 @@ export function neonFrame(
   const scale = canvas.height / 100;
   const seconds = config.streakMs / 1000;
   const streaks: Streak[] = [];
+  const discs: Disc[] = [];
 
   for (const { position, velocity, size, color, brightness } of frame.sprites) {
+    if (velocity.x === 0 && velocity.y === 0) {
+      discs.push({
+        centre: toCanvas(position, canvas),
+        radius: size * scale,
+        color,
+        alpha: brightness,
+      });
+      continue;
+    }
     streaks.push({
       from: toCanvas(
         {
@@ -79,5 +90,5 @@ export function neonFrame(
     });
   }
 
-  return { streaks, discs: [] };
+  return { streaks, discs };
 }
