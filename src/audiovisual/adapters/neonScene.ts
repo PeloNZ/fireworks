@@ -3,6 +3,7 @@
 // values onto a canvas port. See docs/12_neon_renderer.md.
 
 import type { AudioVisualConfig } from "../config.ts";
+import type { Vec3 } from "../../action/types.ts";
 import type { Frame, Rgb } from "../types.ts";
 
 export interface Point {
@@ -50,11 +51,12 @@ export function toCanvas(
 }
 
 /**
- * Turns one frame's sprites into the shapes the light canvas draws. A
- * sprite that moves is a streak: a line from where it was `streakMs` ago
- * to where it is now, along its velocity. A sprite that does not move has
- * no direction, so it is a disc. A moving shell also gets a hot core disc
- * at its head.
+ * Turns one frame into the shapes the light canvas draws. One rule covers a
+ * sprite and a mover: a streak is a line from where it was `tail` ago to
+ * where it is now, along its velocity, and a streak with no length has no
+ * direction, so it is a disc. A sprite's tail is `streakMs`. A mover's tail
+ * is `moverTailMs` for its kind, so a satellite is a dot. A moving shell
+ * also gets a hot core disc at its head.
  */
 export function neonFrame(
   frame: Frame,
@@ -62,41 +64,50 @@ export function neonFrame(
   canvas: { readonly width: number; readonly height: number },
 ): NeonLight {
   const scale = canvas.height / 100;
-  const seconds = config.streakMs / 1000;
   const streaks: Streak[] = [];
   const discs: Disc[] = [];
 
-  for (const {
-    kind,
-    position,
-    velocity,
-    size,
-    color,
-    brightness,
-  } of frame.sprites) {
-    if (velocity.x === 0 && velocity.y === 0) {
+  // Returns true when it drew a streak.
+  const place = (
+    position: Vec3,
+    velocity: Vec3,
+    tailMs: number,
+    size: number,
+    color: Rgb,
+    alpha: number,
+  ): boolean => {
+    const dx = (velocity.x * tailMs) / 1000;
+    const dy = (velocity.y * tailMs) / 1000;
+    if (dx === 0 && dy === 0) {
       discs.push({
         centre: toCanvas(position, canvas),
         radius: size * scale,
         color,
-        alpha: brightness,
+        alpha,
       });
-      continue;
+      return false;
     }
     streaks.push({
-      from: toCanvas(
-        {
-          x: position.x - velocity.x * seconds,
-          y: position.y - velocity.y * seconds,
-        },
-        canvas,
-      ),
+      from: toCanvas({ x: position.x - dx, y: position.y - dy }, canvas),
       to: toCanvas(position, canvas),
       width: 2 * size * scale,
       color,
-      alpha: brightness,
+      alpha,
     });
-    if (kind === "shell") {
+    return true;
+  };
+
+  for (const sprite of frame.sprites) {
+    const { kind, position, velocity, size, color, brightness } = sprite;
+    const streaked = place(
+      position,
+      velocity,
+      config.streakMs,
+      size,
+      color,
+      brightness,
+    );
+    if (streaked && kind === "shell") {
       discs.push({
         centre: toCanvas(position, canvas),
         radius: size * config.shellCore.scale * scale,
@@ -104,6 +115,17 @@ export function neonFrame(
         alpha: brightness,
       });
     }
+  }
+
+  for (const mover of frame.ambient) {
+    place(
+      mover.position,
+      mover.velocity,
+      config.moverTailMs[mover.kind],
+      config.moverSize,
+      config.moverColor,
+      mover.brightness,
+    );
   }
 
   return { streaks, discs };

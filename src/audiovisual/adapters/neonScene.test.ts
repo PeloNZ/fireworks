@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { neonFrame, toCanvas } from "./neonScene.ts";
 import { defaultAudioVisualConfig } from "../config.ts";
-import type { Frame, Sprite } from "../types.ts";
+import type { Frame, Mover, Sprite } from "../types.ts";
 
 // Cycle 3 (docs/12_neon_renderer.md): world space to canvas pixels. The
 // canvas is not square, so the world is 100 units tall and `50 * width /
@@ -149,5 +149,74 @@ describe("neonFrame: a shell", () => {
     expect(core?.radius).toBeCloseTo(1.8);
     expect(core?.color).toEqual({ r: 0.9, g: 0.8, b: 1 });
     expect(core?.alpha).toBe(0.8);
+  });
+});
+
+// Cycle 7: an ambient mover follows the same rule with its own tail time.
+// `moverTailMs` says how long a mover's tail is, in milliseconds of travel:
+// a shooting star has one, so it is a streak. A satellite has 0, so its
+// streak has no length and it is a dot.
+describe("neonFrame: ambient movers", () => {
+  // Unusual values, so a hard-coded colour, size or tail cannot pass.
+  const moverNeon = {
+    ...neon,
+    moverColor: { r: 0.3, g: 0.6, b: 1 },
+    moverSize: 0.5,
+    moverTailMs: { shootingStar: 200, satellite: 0 },
+  };
+
+  function mover(overrides: Partial<Mover> = {}): Mover {
+    return {
+      kind: "shootingStar",
+      position: { x: 10, y: 50, z: 0 },
+      velocity: { x: -40, y: -30, z: 0 },
+      brightness: 0.5,
+      ...overrides,
+    };
+  }
+
+  it("draws a shooting star as a streak along its velocity", () => {
+    const light = neonFrame(
+      { sprites: [], ambient: [mover()] },
+      moverNeon,
+      canvas,
+    );
+
+    // Tail: (10, 50) - (-40, -30) * 0.2 s = (18, 56) -> pixel (171.6, 52.8).
+    // Head: (10, 50) -> pixel (162, 60). Width: 2 * 0.5 * 1.2.
+    expect(light.streaks).toHaveLength(1);
+    const streak = light.streaks[0];
+    expect(streak?.from.x).toBeCloseTo(171.6);
+    expect(streak?.from.y).toBeCloseTo(52.8);
+    expect(streak?.to.x).toBeCloseTo(162);
+    expect(streak?.to.y).toBeCloseTo(60);
+    expect(streak?.width).toBeCloseTo(1.2);
+    expect(streak?.color).toEqual({ r: 0.3, g: 0.6, b: 1 });
+    expect(streak?.alpha).toBe(0.5);
+    expect(light.discs).toEqual([]);
+  });
+
+  it("draws a satellite as a dot, although it moves", () => {
+    const satellite = mover({
+      kind: "satellite",
+      velocity: { x: 20, y: 0, z: 0 },
+      brightness: 0.6,
+    });
+
+    const light = neonFrame(
+      { sprites: [], ambient: [satellite] },
+      moverNeon,
+      canvas,
+    );
+
+    // Radius: 0.5 * 1.2.
+    expect(light.streaks).toEqual([]);
+    expect(light.discs).toHaveLength(1);
+    const dot = light.discs[0];
+    expect(dot?.centre.x).toBeCloseTo(162);
+    expect(dot?.centre.y).toBeCloseTo(60);
+    expect(dot?.radius).toBeCloseTo(0.6);
+    expect(dot?.color).toEqual({ r: 0.3, g: 0.6, b: 1 });
+    expect(dot?.alpha).toBe(0.6);
   });
 });

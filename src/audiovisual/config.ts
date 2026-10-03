@@ -202,6 +202,12 @@ export interface AudioVisualConfig {
     // shell's own size, in `color`. Near white, so the shell is the
     // brightest thing in the sky until it bursts.
     readonly shellCore: { readonly scale: number; readonly color: Rgb };
+    // An ambient mover is one colour and one size. How long its tail is, in
+    // milliseconds of travel: its length in world units is its speed times
+    // this. 0 draws a dot. A third mover kind with no entry fails tsc.
+    readonly moverColor: Rgb;
+    readonly moverSize: number; // world units, radius
+    readonly moverTailMs: Readonly<Record<Mover["kind"], number>>;
   };
   // Only the Web Audio adapter and its planning functions read this,
   // nested under its own key for the same reason ascii is.
@@ -403,6 +409,11 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
       scale: 1.8,
       color: Object.freeze({ r: 1, g: 0.95, b: 0.85 }),
     }),
+    moverColor: Object.freeze({ r: 0.8, g: 0.95, b: 1 }),
+    moverSize: 0.4,
+    // The same tails as the pixel renderer: a shooting star at 45..78 world
+    // units per second streaks 5.4..9.4 world units. A satellite is a dot.
+    moverTailMs: Object.freeze({ shootingStar: 120, satellite: 0 }),
   }),
   audio: Object.freeze({
     lookaheadMs: 30,
