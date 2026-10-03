@@ -148,18 +148,21 @@ export function rasteriseAmbient(
 | `ratePerSecond`           | `0.05`       | About 1 spawn in 20 seconds           |
 | `cooldownMs`              | `8000`       | Wait between two movers of one kind   |
 | `maxLive`                 | `2`          | Most movers alive at one time         |
+| `shootingStar.x`          | `[-50, 50]`  | World x of the start                  |
 | `shootingStar.y`          | `[65, 95]`   | World y of the start                  |
 | `shootingStar.speed`      | `[40, 70]`   | World units per second                |
 | `shootingStar.descent`    | `0.5`        | Vertical speed = −descent × speed     |
 | `shootingStar.ttlMs`      | `[400, 800]` | Time to live                          |
 | `shootingStar.brightness` | `1`          | Brightness at spawn. It fades to zero |
+| `satellite.x`             | `[-50, 50]`  | The span it crosses                   |
 | `satellite.y`             | `[80, 95]`   | World y of the whole path             |
 | `satellite.speed`         | `[5, 9]`     | World units per second                |
 | `satellite.brightness`    | `0.6`        | Constant                              |
 
-A shooting star starts at an x drawn from the world width. Its direction is
-left or right. A satellite starts at x = −50 or x = +50. It moves toward
-the other edge. Its ttl is `100 / speed` seconds.
+A shooting star starts at an x drawn from `shootingStar.x`. Its direction is
+left or right. A satellite starts at `satellite.x.min` or `satellite.x.max`.
+It moves toward the other edge. Its ttl is the span divided by its speed. With
+the default span of 100 units, the ttl is `100 / speed` seconds.
 
 All start heights are above the highest ground point (14 units). Nothing
 hides a mover behind the ridge.
@@ -207,6 +210,13 @@ one commit per cycle.
 
 Take expected values from the worked examples below. Never compute them with
 the same formula as the code.
+
+**What was built.** Two pairs of cycles went into one commit each. Cycles 5
+and 6 are one commit: a rate-0 test alone needs an unused parameter, which
+`eslint` rejects. Cycles 12 and 13 are one commit: a required `ambientRandom`
+option breaks the `main.ts` call at `tsc`, which the pre-commit hook runs on
+the whole project. Cycle 3 passes on its first run, because `toCell` returns
+`null` outside the grid and the type checker forces the guard in cycle 2.
 
 **Before cycle 1:** this document exists. `Frame` has no `ambient` field. All
 tests pass.

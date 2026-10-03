@@ -22,6 +22,8 @@ A third renderer is built: 8-bit pixel art on a `<canvas>`, filling the browser 
 
 A settings menu is built. `src/settings/settingsMenu.ts` has tested `choicesFor` and `attachSettingsMenu` — see `docs/10_settings_ui.md` for the build plan and cycle order. Esc opens the menu and stops firework input while it is open; any way of closing the menu starts it again. The menu is app state, so the Control and Action layers never see a setting: the form is a plain GET form, and the browser writes the new URL and reloads. `Escape` is on the keyboard adapter's deny-list, so it never launches a firework.
 
+Ambient movers are built. `src/audiovisual/ambient.ts` has tested `createAmbient`, and `src/audiovisual/adapters/asciiGrid.ts` has tested `rasteriseAmbient` — see `docs/11_ambient_movers.md` for the build plan and cycle order. About once in 20 seconds a shooting star streaks across the upper sky and fades, or a satellite crosses it slowly. Each kind waits 8 seconds after it appears, and at most 2 movers are in the sky at once. They draw behind the fireworks, so a firework always covers one. The chance is a rate per second, so a fast screen and a slow screen see the same number. Only the ASCII renderer draws them for now.
+
 ## Commands
 
 ```bash
@@ -58,5 +60,6 @@ All application code is written test-first. See `CLAUDE.md`'s "Development tacti
 - `docs/07_emoji_renderer.md` — the emoji renderer's build plan and cycle order.
 - `docs/09_8bit_renderer.md` — the 8-bit pixel renderer's build plan and cycle order.
 - `docs/10_settings_ui.md` — the settings menu's build plan and cycle order.
+- `docs/11_ambient_movers.md` — the ambient movers' build plan and cycle order.
 - `PLAY_TESTING.md` — what people did and said when they played it.
 - `CLAUDE.md` — guidance for Claude Code working in this repo, including build gotchas.

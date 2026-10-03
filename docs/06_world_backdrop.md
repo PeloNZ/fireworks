@@ -582,7 +582,9 @@ stars, a moon, a planet, and a dark landform along the bottom. Refresh and get a
 
 - **Motion.** Every body is static and so is the ground. Drifting stars, a rising moon, or a sky that
   changes over a session would make `buildBodies` take a time argument and the adapter rebuild its base
-  grid on some cadence. The contracts do not prevent it; nothing here implements it.
+  grid on some cadence. The contracts do not prevent it; nothing here implements it. Things that move
+  in the sky now exist as ambient movers, a separate layer drawn in front of this backdrop and behind the
+  fireworks — see `11_ambient_movers.md`. The backdrop itself stays static.
 - **Colour.** `05_audio_visual_layer.md` already lists colour in the grid as out of scope, and the same
   reasoning holds here: the ASCII adapter reads brightness only, so a sunset is ramp levels rather than
   hue. `SkyGradient` would gain a colour per end in the cycle a colour-capable adapter needs it — not
