@@ -379,8 +379,9 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
     ]),
     // Black, dark grey, light grey, off-white: a mover fades through greys.
     moverRamp: Object.freeze([0, 5, 6, 7]),
-    // A shooting star at speed 40..70 trails 4.8..8.4 world units, which is 8
-    // to 13 pixels. A satellite is a single pixel.
+    // A shooting star at speed 40..70 moves 45..78 world units per second
+    // (its vertical part adds to the speed), so it trails 5.4..9.4 world units,
+    // which is 8 to 15 pixels. A satellite is a single pixel.
     moverTailMs: Object.freeze({ shootingStar: 120, satellite: 0 }),
   }),
   audio: Object.freeze({

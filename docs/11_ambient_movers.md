@@ -32,8 +32,9 @@ The user made these decisions before anyone wrote this plan.
    A later menu setting can change it.
 6. **Two limits make the events feel random.** A kind has a cooldown of 8
    seconds. At most 2 movers live at one time.
-7. **A shooting star fades.** It has one cell and no tail. Its brightness
-   falls to zero at the end of its time to live (ttl).
+7. **A shooting star fades.** On the ascii and emoji renderers it has one cell
+   and no tail. Its brightness falls to zero at the end of its time to live
+   (ttl). Decision 18 gives it a tail on the pixel renderer.
 8. **A satellite crosses the full width.** Its brightness stays constant.
 9. **A mover has a kind.** `Mover` gets `kind: "shootingStar" | "satellite"`.
    An emoji cannot dim, so the emoji renderer cannot tell the two kinds apart
@@ -71,7 +72,7 @@ The user made these decisions before anyone wrote this plan.
     the rule of `trail[0]`.
 18. **A shooting star has a tail on the pixel renderer.** `Mover` gets
     `velocity: Vec3`, in world units per second. The tail runs behind the head,
-    against the velocity. Its length is `speed × tailMs`, with `tailMs` per kind
+    against the velocity. Its length is `|velocity| × tailMs`, with `tailMs` per kind
     in `pixel.moverTailMs`. A satellite has `tailMs: 0`. The tail fades along its
     length to zero.
 19. **A tail reaches behind the spawn point on its first frame.** `Mover` has
@@ -281,13 +282,18 @@ equals `emoji.blank`.
 
 `moverRamp[0]` equals `pixel.blank`. The type of `moverTailMs` is
 `Readonly<Record<Mover["kind"], number>>`, so a third kind with no tail length
-fails `tsc`. Both are frozen with `Object.freeze`. A shooting star at speed 40
-to 70 has a tail of 4.8 to 8.4 world units, which is 8 to 13 pixels.
+fails `tsc`. Both are frozen with `Object.freeze`. The speed of a shooting
+star includes its descent: with `descent` 0.5 and a config speed of 40 to 70,
+`|velocity|` is 45 to 78 world units per second. Its tail is 5.4 to 9.4 world
+units long, which is 8 to 15 pixels.
 
 `main.ts` replaces the x ranges with `ambientForWidth`. On a 16:9 window the
 pixel renderer spawns movers in `x` within ±88.75. A satellite then crosses
 the whole screen. Its time to live is the span divided by its speed, so it is
-longer on a wide window.
+longer on a wide window: on a 16:9 window the span is 177.5 units, so a
+satellite lives 20 to 35 seconds, against 11 to 20 seconds on ascii and emoji.
+It holds one of the `maxLive` slots for longer, so a new mover may find the
+sky full a little more often on the pixel renderer.
 
 ## How the ascii renderer composites
 
@@ -407,7 +413,7 @@ layer order, and a mutation that draws movers over fireworks fails it. Cycle 17
 also adds a test for house rules 1 and 2 on the default glyphs, because
 nothing else stops a glyph with `U+FE0F` from shearing the grid.
 
-Cycles 20 to 26 each have their own commit. Three tests pass on their first
+Cycles 20 to 26 each have their own commit. Four tests pass on their first
 run, and a mutation shows that each can fail. In cycle 22, "paints nothing for
 a mover outside the grid" guards the `toPixel` check before any mover paints.
 In cycle 23, "lets a firework cover a mover" guards the merge order, and
@@ -547,7 +553,9 @@ Manual checks in `npm run dev`, after cycle 13:
    full width.
 3. Press a key when a mover is in the sky. A firework rises over the mover.
    The firework covers it.
-4. Load `?renderer=pixel`. No movers appear. Nothing breaks.
+
+The pixel renderer drew no movers when cycle 13 landed. Cycles 20 to 25 changed
+that. The pixel checks below replace the check that held then.
 
 Manual checks on the emoji renderer, after cycle 18:
 
