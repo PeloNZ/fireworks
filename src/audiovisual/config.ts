@@ -61,6 +61,9 @@ export interface AudioVisualConfig {
     // After a mover spawns, no mover of the same kind spawns for this long.
     // It keeps random events from arriving in clusters.
     readonly cooldownMs: number;
+    // Most movers alive at one time. At the cap a step spawns nothing and
+    // draws no random value.
+    readonly maxLive: number;
     // A streak across the upper sky. World units throughout.
     readonly shootingStar: {
       readonly x: NumberRange; // start, across the world width
@@ -241,6 +244,7 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
   ambient: Object.freeze({
     ratePerSecond: 0.05,
     cooldownMs: 8000,
+    maxLive: 2,
     shootingStar: Object.freeze({
       x: Object.freeze({ min: -50, max: 50 }),
       y: Object.freeze({ min: 65, max: 95 }),

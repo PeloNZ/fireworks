@@ -207,4 +207,38 @@ describe("createAmbient", () => {
 
     expect(ambient.step(1000)).toHaveLength(2);
   });
+
+  // Cycle 11. At `maxLive` live movers a step makes no draw at all, not even
+  // the spawn roll, so a scripted stream stays aligned. The cooldown is 0
+  // here, so only the cap can stop a spawn. Satellites live 6000 ms:
+  //   steps 1 and 2 spawn two, 10 draws in all;
+  //   steps 3 and 4 see the cap and draw nothing;
+  //   step 5 ends the first one at age 6000, before the cap check, so a third
+  //   spawns, 5 more draws.
+  it("draws nothing while the cap is reached, and spawns again when one expires", () => {
+    let draws = 0;
+    const next = scripted([
+      ...satelliteDraws,
+      ...satelliteDraws,
+      ...satelliteDraws,
+    ]);
+    const ambient = createAmbient({
+      config: { ...cooldownConfig, cooldownMs: 0, maxLive: 2 },
+      random: () => {
+        draws += 1;
+        return next();
+      },
+    });
+
+    ambient.step(1000);
+    expect(ambient.step(1000)).toHaveLength(2);
+    expect(draws).toBe(10);
+
+    expect(ambient.step(1000)).toHaveLength(2);
+    expect(ambient.step(3999)).toHaveLength(2);
+    expect(draws).toBe(10);
+
+    expect(ambient.step(1)).toHaveLength(2);
+    expect(draws).toBe(15);
+  });
 });

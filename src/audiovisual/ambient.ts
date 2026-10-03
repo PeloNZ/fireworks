@@ -103,7 +103,7 @@ export function createAmbient(options: {
       // A rate per second, not a chance per frame, so a 144 Hz screen and a
       // 60 Hz screen spawn at the same pace.
       const chance = 1 - Math.exp((-config.ratePerSecond * elapsedMs) / 1000);
-      if (random() < chance) {
+      if (live.length < config.maxLive && random() < chance) {
         const kind = KINDS[Math.floor(random() * KINDS.length)];
         if (kind !== undefined && cooldownLeftMs[kind] === 0) {
           live.push(
