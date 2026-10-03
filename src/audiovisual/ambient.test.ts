@@ -103,4 +103,53 @@ describe("createAmbient", () => {
     expect(brightnessAfter(799)).toHaveLength(1);
     expect(brightnessAfter(1)).toEqual([]);
   });
+
+  // Cycle 9. A kind roll under 0.5 picks the shooting star and a roll of 0.5
+  // or more picks the satellite, because the pick is floor(roll * 2). The
+  // satellite draws y, direction and speed. Worked by hand for this config:
+  //   y 0.25 in [80, 90]   -> 82.5       speed 0.5 in [5, 15] -> 10
+  //   it starts on the edge it moves away from: x = -30 going right, +30
+  //   going left, and it crosses 60 units at 10 per second: 6000 ms.
+  const satellite = {
+    x: { min: -30, max: 30 },
+    y: { min: 80, max: 90 },
+    speed: { min: 5, max: 15 },
+    brightness: 0.45,
+  };
+
+  function satelliteAfter(directionRoll: number) {
+    return createAmbient({
+      config: {
+        ...defaultAudioVisualConfig.ambient,
+        ratePerSecond: 1,
+        satellite,
+      },
+      random: scripted([0.5, 0.7, 0.25, directionRoll, 0.5]),
+    });
+  }
+
+  it("crosses the span at a constant brightness, starting on the edge it leaves", () => {
+    const right = satelliteAfter(0.2);
+    expect(right.step(1000)).toEqual([
+      { position: { x: -30, y: 82.5, z: 0 }, brightness: 0.45 },
+    ]);
+    expect(right.step(2000)).toEqual([
+      { position: { x: -10, y: 82.5, z: 0 }, brightness: 0.45 },
+    ]);
+
+    const left = satelliteAfter(0.7);
+    left.step(1000);
+    expect(left.step(2000)).toEqual([
+      { position: { x: 10, y: 82.5, z: 0 }, brightness: 0.45 },
+    ]);
+  });
+
+  it("removes a satellite once it has crossed the span", () => {
+    const ambient = satelliteAfter(0.2);
+    ambient.step(1000);
+    ambient.step(2000);
+
+    expect(ambient.step(3999)).toHaveLength(1);
+    expect(ambient.step(1)).toEqual([]);
+  });
 });

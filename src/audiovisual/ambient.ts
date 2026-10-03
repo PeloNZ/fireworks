@@ -3,7 +3,7 @@ import type { AudioVisualConfig } from "./config.ts";
 import type { Mover } from "./types.ts";
 
 // One entry per kind of mover. A spawn picks one with a single draw.
-const KINDS = ["shootingStar"] as const;
+const KINDS = ["shootingStar", "satellite"] as const;
 
 /** Maps the next value from `random` (in `[0, 1)`) onto `range`. One small
  * helper per file, the same as sparks.ts and backdrop.ts. */
@@ -19,7 +19,8 @@ interface LiveMover {
   readonly velocityX: number; // world units per second
   readonly velocityY: number;
   readonly ttlMs: number;
-  readonly brightness: number; // at age 0; it falls to 0 at `ttlMs`
+  readonly brightness: number; // at age 0
+  readonly fades: boolean; // true: it falls to 0 at `ttlMs`. False: it holds
   ageMs: number;
 }
 
@@ -40,13 +41,16 @@ export function createAmbient(options: {
   const { config, random } = options;
   let live: LiveMover[] = [];
 
+  // Left or right, from one draw.
+  const pickDirection = (): 1 | -1 => (random() < 0.5 ? 1 : -1);
+
   // The draws are in a fixed order, so a test can script them: x, y,
   // direction, speed, then time to live.
   function spawnShootingStar(): LiveMover {
     const star = config.shootingStar;
     const startX = pickInRange(random, star.x);
     const startY = pickInRange(random, star.y);
-    const direction = random() < 0.5 ? 1 : -1;
+    const direction = pickDirection();
     const speed = pickInRange(random, star.speed);
     const ttlMs = pickInRange(random, star.ttlMs);
     return {
@@ -56,6 +60,26 @@ export function createAmbient(options: {
       velocityY: -star.descent * speed,
       ttlMs,
       brightness: star.brightness,
+      fades: true,
+      ageMs: 0,
+    };
+  }
+
+  // The draws are y, direction, then speed. It starts on the edge it moves
+  // away from, and it lives for as long as it takes to cross the span.
+  function spawnSatellite(): LiveMover {
+    const sat = config.satellite;
+    const startY = pickInRange(random, sat.y);
+    const direction = pickDirection();
+    const speed = pickInRange(random, sat.speed);
+    return {
+      startX: direction === 1 ? sat.x.min : sat.x.max,
+      startY,
+      velocityX: direction * speed,
+      velocityY: 0,
+      ttlMs: ((sat.x.max - sat.x.min) / speed) * 1000,
+      brightness: sat.brightness,
+      fades: false,
       ageMs: 0,
     };
   }
@@ -74,6 +98,8 @@ export function createAmbient(options: {
         const kind = KINDS[Math.floor(random() * KINDS.length)];
         if (kind === "shootingStar") {
           live.push(spawnShootingStar());
+        } else if (kind === "satellite") {
+          live.push(spawnSatellite());
         }
       }
 
@@ -83,7 +109,9 @@ export function createAmbient(options: {
           y: mover.startY + (mover.velocityY * mover.ageMs) / 1000,
           z: 0,
         },
-        brightness: mover.brightness * (1 - mover.ageMs / mover.ttlMs),
+        brightness: mover.fades
+          ? mover.brightness * (1 - mover.ageMs / mover.ttlMs)
+          : mover.brightness,
       }));
     },
   };

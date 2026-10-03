@@ -69,6 +69,16 @@ export interface AudioVisualConfig {
       readonly ttlMs: NumberRange; // time to live
       readonly brightness: number; // at spawn; it falls to 0 over the ttl
     };
+    // A slow dot that crosses the sky level, at one brightness, and is gone
+    // at the far edge.
+    readonly satellite: {
+      // The span it crosses. It starts at `min` going right, or at `max`
+      // going left, and its time to live is the span over its speed.
+      readonly x: NumberRange;
+      readonly y: NumberRange; // height of the whole path
+      readonly speed: NumberRange; // units per second
+      readonly brightness: number; // constant
+    };
   };
   // Only the ASCII adapter reads this — nested under its own key for the
   // same reason ControlConfig nests `keyboard`: the shape says who owns it.
@@ -234,6 +244,12 @@ export const defaultAudioVisualConfig: AudioVisualConfig = Object.freeze({
       descent: 0.5,
       ttlMs: Object.freeze({ min: 400, max: 800 }),
       brightness: 1,
+    }),
+    satellite: Object.freeze({
+      x: Object.freeze({ min: -50, max: 50 }),
+      y: Object.freeze({ min: 80, max: 95 }),
+      speed: Object.freeze({ min: 5, max: 9 }),
+      brightness: 0.6,
     }),
   }),
   ascii: Object.freeze({
