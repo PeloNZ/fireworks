@@ -8,6 +8,7 @@ const STORAGE_KEY = "fireworks.settings";
 interface SettingsStore {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
+  removeItem(key: string): void;
 }
 
 /**
@@ -78,9 +79,22 @@ export function applySettingsForm(
   entries: Iterable<readonly [string, FormDataEntryValue]>,
   store: SettingsStore,
   defaults: Settings,
-): "saved" {
+): "saved" | "cleared" | "none" {
+  const fields = [...entries];
+  const command = fields.find(([name]) => name === "command")?.[1];
+  if (command === "defaults") {
+    try {
+      store.removeItem(STORAGE_KEY);
+    } catch {
+      // A blocked store keeps what it holds, so the reload shows the old values.
+    }
+    return "cleared";
+  }
+  if (command !== "apply") {
+    return "none";
+  }
   const saved: Record<string, unknown> = {};
-  for (const [name, value] of entries) {
+  for (const [name, value] of fields) {
     const path = name.split(".");
     const initial = path.reduce<unknown>(
       (node, part) =>
@@ -110,6 +124,10 @@ export function applySettingsForm(
       }
     }
   }
-  store.setItem(STORAGE_KEY, JSON.stringify(saved));
+  try {
+    store.setItem(STORAGE_KEY, JSON.stringify(saved));
+  } catch {
+    // A blocked store keeps what it holds, so the reload shows the old values.
+  }
   return "saved";
 }

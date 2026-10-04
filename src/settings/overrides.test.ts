@@ -265,3 +265,71 @@ describe("applySettingsForm: fields that are dropped", () => {
     );
   });
 });
+
+// Cycle 9: the `command` field says which button sent the form.
+describe("applySettingsForm: Defaults", () => {
+  it('removes the saved settings and gives "cleared"', () => {
+    const store = mapStore();
+    store.setItem("fireworks.settings", '{"world":{"drag":0.77}}');
+
+    const outcome = applySettingsForm(
+      [
+        ["command", "defaults"],
+        ["world.drag", "0.5"],
+      ],
+      store,
+      defaultSettings,
+    );
+
+    expect(outcome).toBe("cleared");
+    expect(store.getItem("fireworks.settings")).toBeNull();
+  });
+});
+
+describe("applySettingsForm: Cancel", () => {
+  it.each([
+    ["no command, as Cancel sends", []],
+    ["an unknown command", [["command", "launch"]]],
+  ])('gives "none" and leaves the store alone with %s', (_what, extra) => {
+    const store = mapStore();
+    store.setItem("fireworks.settings", '{"world":{"drag":0.77}}');
+
+    const outcome = applySettingsForm(
+      [...(extra as [string, string][]), ["world.drag", "0.5"]],
+      store,
+      defaultSettings,
+    );
+
+    expect(outcome).toBe("none");
+    expect(store.getItem("fireworks.settings")).toBe('{"world":{"drag":0.77}}');
+  });
+});
+
+describe("applySettingsForm: a store that throws", () => {
+  const blocked = (): never => {
+    throw new Error("The operation is insecure.");
+  };
+
+  it('still gives "saved" when setItem throws', () => {
+    const store = { ...mapStore(), setItem: blocked };
+
+    expect(
+      applySettingsForm(
+        [
+          ["command", "apply"],
+          ["world.drag", "0.77"],
+        ],
+        store,
+        defaultSettings,
+      ),
+    ).toBe("saved");
+  });
+
+  it('still gives "cleared" when removeItem throws', () => {
+    const store = { ...mapStore(), removeItem: blocked };
+
+    expect(
+      applySettingsForm([["command", "defaults"]], store, defaultSettings),
+    ).toBe("cleared");
+  });
+});
