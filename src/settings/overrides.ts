@@ -71,7 +71,8 @@ export function mergeOverrides<T>(defaults: T, overrides: unknown): T {
 /**
  * Saves the fields of the settings form. A field name is a dotted path into
  * `Settings`, for example `world.drag`. The default at that path says how to
- * read the value: a string stays a string, a number is parsed.
+ * read the value: a string stays a string, a number is parsed. A path with no
+ * default, and a number that is empty or not finite, are left out.
  */
 export function applySettingsForm(
   entries: Iterable<readonly [string, FormDataEntryValue]>,
@@ -82,16 +83,28 @@ export function applySettingsForm(
   for (const [name, value] of entries) {
     const path = name.split(".");
     const initial = path.reduce<unknown>(
-      (node, part) => (node as Record<string, unknown> | undefined)?.[part],
+      (node, part) =>
+        typeof node === "object" && node !== null && Object.hasOwn(node, part)
+          ? (node as Record<string, unknown>)[part]
+          : undefined,
       defaults,
     );
-    if (typeof initial !== "string" && typeof initial !== "number") {
+    let converted: FormDataEntryValue | number;
+    if (typeof initial === "string") {
+      converted = value;
+    } else if (typeof initial === "number") {
+      converted =
+        typeof value === "string" && value.trim() !== "" ? Number(value) : NaN;
+    } else {
+      continue;
+    }
+    if (typeof converted === "number" && !Number.isFinite(converted)) {
       continue;
     }
     let target = saved;
     for (const [index, part] of path.entries()) {
       if (index === path.length - 1) {
-        target[part] = typeof initial === "string" ? value : Number(value);
+        target[part] = converted;
       } else {
         target = (target[part] ??= {}) as Record<string, unknown>;
       }

@@ -232,3 +232,36 @@ describe("applySettingsForm: paths and strings", () => {
     expect(settings.sound).toBe("silly");
   });
 });
+
+// Cycle 8: a field that is not a usable value for its path is left out of the
+// saved JSON. The test reads the raw saved text, because `loadSettings` would
+// hide a bad value by ignoring it.
+describe("applySettingsForm: fields that are dropped", () => {
+  it.each([
+    ["an empty number", "world.drag", ""],
+    ["a blank number", "world.drag", "  "],
+    ["text for a number", "world.drag", "abc"],
+    ["Infinity for a number", "world.drag", "Infinity"],
+    ["an unknown name", "world.friction", "1"],
+    ["a __proto__ path", "__proto__.polluted", "1"],
+    ["a path through the prototype", "constructor.name", "x"],
+    ["a path past a number", "world.drag.x", "1"],
+    ["a path that ends on an object", "world.gravity", "1"],
+  ])("drops %s", (_what, name, value) => {
+    const store = mapStore();
+
+    const outcome = applySettingsForm(
+      [
+        ["command", "apply"],
+        [name, value],
+      ],
+      store,
+      defaultSettings,
+    );
+
+    expect(outcome).toBe("saved");
+    expect(JSON.parse(store.getItem("fireworks.settings") ?? "null")).toEqual(
+      {},
+    );
+  });
+});
