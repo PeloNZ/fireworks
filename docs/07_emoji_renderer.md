@@ -10,6 +10,10 @@ concept explained, the explanation is here in full.
 **Out of scope here**: a UI to switch renderers, running two renderers at once, and any renderer beyond
 ASCII and emoji.
 
+The `?renderer=` URL parameter this plan describes was replaced by the settings menu form and the saved
+`renderer` setting in `13_settings_overrides.md`. The page URL is no longer read. Where a manual check
+below loads `?renderer=<name>`, open the menu with Esc, pick that renderer and press Apply.
+
 ## Why a second renderer
 
 `Sprite` carries `kind` and `color`. `rasteriseFrame` reads neither: it only reads `position` and
@@ -550,13 +554,14 @@ before it disappears completely, the colour matching whichever palette that key'
   names no glyph, the same house rule `06_world_backdrop.md` states for characters; `config.ts` holding
   the defaults is the declared exception, not a violation.
 - Manual, in `npm run dev`:
-  - `http://localhost:5174/` — the ASCII grid, unchanged from before this plan. This is the regression
-    check that Pass A's extraction of `contestCells` changed nothing observable.
-  - `http://localhost:5174/?renderer=emoji` — an emoji sky: a scatter of stars, a moon, a planet, a
+  - `http://localhost:5174/` with no saved settings — the ASCII grid, unchanged from before this plan.
+    This is the regression check that Pass A's extraction of `contestCells` changed nothing observable.
+  - Esc, pick emoji, Apply — an emoji sky: a scatter of stars, a moon, a planet, a
     treeline along the bottom. Press a key: `🚀` climbs, then bursts into coloured circles that fade
     out through the trail glyphs before vanishing.
-  - `http://localhost:5174/?renderer=nonsense` — falls back to the ASCII grid, no crash, and the
-    `<pre>`'s class reads `ascii`, not `nonsense`.
+  - Run `localStorage.setItem("fireworks.settings", JSON.stringify({ renderer: "nonsense" }))` in
+    devtools and reload — falls back to the ASCII grid, no crash, and the `<pre>`'s class reads
+    `ascii`, not `nonsense`. Clear it with Esc, Defaults.
   - **Columns line up.** Every row is the same width, top to bottom, with no visible shear. This cannot
     be unit tested — `vitest` has no font metrics — so it is the one check that decides whether the
     chosen glyph set is actually usable, done by eye in a real browser.

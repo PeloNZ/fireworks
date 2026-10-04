@@ -5,6 +5,10 @@ for the static sky, and `10_settings_ui.md` for the settings menu. Those
 documents stay closed as their own v1 records. In this one, the cycle count
 resets to 1.
 
+Where a manual check below loads `?renderer=<name>`, open the menu with Esc, pick that renderer and
+press Apply. The settings menu form replaced the URL parameter, as `13_settings_overrides.md`
+describes.
+
 ## Context
 
 The sky is static. `buildBackdrop` makes it once per page load. Each renderer
@@ -559,27 +563,27 @@ that. The pixel checks below replace the check that held then.
 
 Manual checks on the emoji renderer, after cycle 18:
 
-1. Load `?renderer=emoji`. Wait about 1 minute. 🌠 and 🛸 appear.
+1. Pick emoji in the Esc menu. Wait about 1 minute. 🌠 and 🛸 appear.
 2. 🌠 vanishes in the middle of the sky. 🛸 crosses the full width.
 3. The columns stay in line while a mover is on screen.
 4. Press a key when a mover is in the sky. The firework covers the mover.
-5. Load `?renderer=ascii`. It looks the same as before.
+5. Pick ascii in the Esc menu. It looks the same as before.
 
 Manual checks on the pixel renderer, after cycle 25:
 
-1. Load `?renderer=pixel`. Wait about 1 minute. A shooting star and a satellite
+1. Pick pixel in the Esc menu. Wait about 1 minute. A shooting star and a satellite
    appear.
 2. A shooting star has a tail that fades, then it vanishes in the middle of the
    sky.
 3. A satellite crosses from one screen edge to the other.
 4. Press a key when a mover is in the sky. The firework covers the mover.
-5. Load `?renderer=ascii` and `?renderer=emoji`. They look the same as before.
+5. Pick ascii, then emoji. They look the same as before.
 
 ## Out of scope
 
 - **A rate the user can change.** Add a table `{ off, rare, normal, busy }`
-  that maps a name to a rate. Read `?ambient=` with `selectRenderer`. Add a
-  third radio group to the settings menu with `choicesFor`. `main.ts` then
+  that maps a name to a rate. Save the name as a setting and look it up with
+  `selectRenderer`. Add a third radio group to the settings menu with `choicesFor`. `main.ts` then
   replaces `config.ambient.ratePerSecond`, in the same way it replaces the
   pixel `columns`. `src/audiovisual/` gets the rate as data. It never reads
   `location`.

@@ -12,6 +12,9 @@ needs a concept explained, the explanation is here in full.
 **Out of scope here**: a UI to switch renderers, running two renderers at once,
 reflowing on window resize, and any renderer beyond ASCII, emoji and 8-bit.
 
+The `?renderer=` URL parameter described here was replaced by the settings menu form and the saved
+`renderer` setting in `13_settings_overrides.md`. The page URL is no longer read.
+
 ## Context
 
 The project has two renderers, both drawing text into a `<pre>`: `ascii` (an
@@ -843,10 +846,13 @@ grep -rn "ImageData\|getContext\|document\." src/audiovisual/
 
 Manual, in `npm run dev`:
 
-- `?renderer=ascii`, `?renderer=emoji`, no parameter, and `?renderer=nonsense`
-  all still work exactly as before. The widened registry is the riskiest part
+- Ascii, emoji, no saved settings, and an unknown renderer name
+  all still work exactly as before. Pick each in the Esc menu. For the unknown
+  name, run
+  `localStorage.setItem("fireworks.settings", JSON.stringify({ renderer: "nonsense" }))`
+  in devtools and reload, then clear it with Esc, Defaults. The widened registry is the riskiest part
   of cycle 18 and this is what catches a regression in it.
-- `?renderer=pixel` fills the whole window — no scrollbars, no margin, no gap
+- Pixel, picked in the Esc menu, fills the whole window — no scrollbars, no margin, no gap
   at any edge.
 - **A `ring` firework's burst reads round, not oval.** Resize the window wide
   and narrow, reloading each time, and check it stays round in both. This is
@@ -869,7 +875,7 @@ false` is missing.
 - Mash keys. Check nothing tears, drops frames badly, or leaves debris.
 
 Then play test it and write what happened into `PLAY_TESTING.md` — `5m` and
-`8f` have not tried `?sound=silly` yet either.
+`8f` have not tried the `silly` sound set yet either.
 
 ---
 

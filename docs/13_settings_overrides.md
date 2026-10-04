@@ -1,6 +1,6 @@
 # 13. Settings in one place, saved overrides, a POST settings form
 
-Status: steps 1 and 2 are built (cycles 1 to 5). The step 3 plan is approved. Cycles 6 to 11 are not started.
+Status: all three steps are built (cycles 1 to 11). The form has not been checked in a browser.
 
 ## Context
 
@@ -12,7 +12,7 @@ The order of work is fixed:
 
 1. Put every default in one file in the code. **Built.**
 2. Let an outside source (`localStorage`) override the defaults. **Built.** Nothing writes to `localStorage` yet, so for now a person sets a value from devtools.
-3. Make the settings form POST, so that no setting goes in the URL.
+3. Make the settings form POST, so that no setting goes in the URL. **Built.**
 
 ## Decisions
 
@@ -78,10 +78,11 @@ export function loadSettings(
 - `settings.world` goes to both `createWorld` and `createAudioVisualLayer`. Sparks read `gravity` and `drag` on every frame. If only one place gets the saved value, shells and sparks fall at different rates.
 - The renderer and sound still come from the URL. Their fallbacks are `defaultSettings.renderer` and `defaultSettings.sound`, not `settings.*`. `selectRenderer` throws if its fallback is not in its table, and a saved name is not checked against the table.
 
-### Step 3 (not started)
+### Step 3 (built)
 
 ```ts
-// SettingsStore gains setItem and removeItem (still not exported)
+// SettingsStore gains setItem and removeItem (still not exported).
+// loadSettings takes Pick<SettingsStore, "getItem">.
 interface SettingsStore {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
@@ -127,7 +128,7 @@ Facts that shape the form code (not yet checked in a browser):
 | `src/main.ts` and 29 test files                                                                           | Import `defaultSettings` and use `.control`, `.world`, `.action` or `.audiovisual` | 1    |
 | `src/settings/overrides.ts`, `overrides.test.ts` (new)                                                    | Merge, load, form parsing, submit result                                           | 2, 3 |
 | `src/main.ts`                                                                                             | Load saved settings. Build the POST form. Handle submit.                           | 2, 3 |
-| `docs/10_settings_ui.md`, `README.md`, `CHANGELOG.md`                                                     | Note that this doc replaces doc 10 decision 2                                      | 3    |
+| `docs/10_settings_ui.md`, `README.md`, `CHANGELOG.md`                                                     | Note that this doc replaces parts of doc 10 and the URL settings                   | 3    |
 
 Docs 03 to 07 and doc 11 still name the old defaults (`defaultActionConfig` and others) in their cycle-by-cycle text. That text records how each layer was built at the time. The file-layout lines in docs 03, 04 and 05 now point to `src/config.ts`.
 
@@ -160,20 +161,25 @@ Rules for every cycle:
 4. `loadSettings`: reads `fireworks.settings`, parses it and merges it. A missing key, bad JSON and a `getItem` that throws all give the defaults. The missing-key test passed before the code for it, because `JSON.parse(null)` returns `null`. The code now checks for `null` itself.
 5. Wiring in `main.ts` (untested, as in doc 10 cycle 6). `settings` replaces `defaultSettings` in every layer call. A throwaway script ran the same store with a working `localStorage`, an empty one and a `localStorage` getter that throws. The results were the saved gravity, the defaults and the defaults.
 
-### Step 3: the POST form (not started)
+### Step 3: the POST form (built)
 
 The fake store in the tests is a plain object over a `Map`.
 
-6. `applySettingsForm`, Apply saves a number: `[["command","apply"],["world.drag","0.77"]]` returns `"saved"`, and `loadSettings` on the same store gives drag `0.77`.
-7. Nested paths and strings: `world.gravity.y = "-4.5"` keeps gravity x and z. `renderer = "neon"` stays a string.
-8. Dropped fields: an empty number (because `Number("")` is `0`), `"abc"`, an unknown name, `__proto__.x`, a path past a number (`world.drag.x`) and a path that ends on an object (`world.gravity`).
-9. Defaults and Cancel: `command=defaults` removes the key and returns `"cleared"`. No `command` returns `"none"` and leaves the store alone. A `setItem` that throws still returns `"saved"`.
+6. `applySettingsForm`, Apply saves a number: `[["command","apply"],["world.drag","0.77"]]` returns `"saved"`, and `loadSettings` on the same store gives drag `0.77`. The first code read only a path of two parts, so cycle 7 had a failing test to drive the general walk. It had no `defaults` parameter, because ESLint rejects an unused one.
+7. Nested paths and strings. Two tests, each seen to fail first:
+   - `world.gravity.y = "-4.5"` keeps gravity x and z. It failed because the two-part code saved `gravity` as a number.
+   - `renderer = "neon"` and `sound = "silly"` stay strings. It failed because a one-part path was skipped. The code now walks `defaults` along the path and reads the value by the type it finds there, which brings `defaults` back as a parameter.
+8. Dropped fields. A saved JSON of `{}` is the check, read from the store as text, because `loadSettings` would hide a bad value by ignoring it. Five cases failed first: an empty number, a blank number, `"abc"`, `"Infinity"` and `constructor.name`. The last one gave a real `TypeError` (`Cannot assign to read only property 'name'`): the walk through `defaults` reached the string `"Object"` through the prototype chain. The walk now uses `Object.hasOwn`. Four cases passed before any code for them: an unknown name, `__proto__.polluted`, a path past a number (`world.drag.x`) and a path that ends on an object (`world.gravity`).
+9. Defaults, Cancel and a store that throws. Each was seen to fail first:
+   - `command=defaults` removes the key and returns `"cleared"`.
+   - No `command`, and an unknown `command`, return `"none"` and leave the store alone.
+   - A `setItem` that throws still returns `"saved"`, and a `removeItem` that throws still returns `"cleared"`. The reload then shows the old values.
 10. The form in `main.ts` (untested):
     - Both `URLSearchParams(location.search)` reads go. `selectRenderer(settings.renderer, renderers, defaultSettings.renderer)`, and the same for sound.
     - `method="post"`. `radioGroup` sets `defaultChecked`.
-    - A `rangeField(...)` helper next to `radioGroup`: `<label>`, `<input type="range">` with `defaultValue`, a `<datalist>` for the ticks and an `<output>`. One `input` listener on the form updates each `<output>`.
+    - A `rangeField(...)` helper next to `radioGroup`: `<label>`, `<input type="range">` with `defaultValue`, a `<datalist>` for the ticks and an `<output>`. Each range has its own `input` listener that updates its `<output>`. `min`, `max` and `step` are set before `defaultValue`, or the browser would clamp the value to 0 to 100.
     - A `.vertical` rule in the `<style>` block of `index.html` for the gravity range.
-    - Buttons in this order: Apply, Defaults (`formNoValidate`), Reset (`type="reset"`) and Cancel (`formMethod="dialog"`, `formNoValidate`, no name). Cancel also fires `submit`, so without `formNoValidate` a bad field would keep the dialog open.
+    - Buttons in this order: Apply, Defaults, Reset (`type="reset"`) and Cancel (`formMethod="dialog"`, no name). No button has `formNoValidate`: a range always holds a valid value, so nothing in this form can fail the browser's checks. A future number field with `required` needs it on Defaults and Cancel, because Cancel also fires `submit`.
     - The `submit` listener calls `applySettingsForm(new FormData(settingsForm, event.submitter), store, defaultSettings)`. On `"saved"` or `"cleared"` it calls `preventDefault()` and `location.reload()`.
     - The store's three methods each call `localStorage` inside themselves.
 11. Doc sync: doc 10, `CLAUDE.md`, `README.md`, `CHANGELOG.md`, then the `doc-sync` agent.

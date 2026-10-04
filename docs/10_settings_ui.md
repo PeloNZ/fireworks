@@ -5,6 +5,14 @@ Control layer, `07_emoji_renderer.md` for `selectRenderer`, and
 `08_sound_effects.md` for the sound sets. Those documents stay closed as their
 own v1 records. In this one, the cycle count resets to 1.
 
+**Replaced in part by `13_settings_overrides.md`.** The menu now holds a POST
+form, and the URL no longer carries a setting. Doc 13 replaces decision 2 (the
+URL is the only source of truth), decision 5 (renderer and sound only), decision
+8 (a GET form builds the URL), and the out-of-scope items "Settings in
+`localStorage`" and "Settings other than renderer and sound". The rest of this
+doc still holds: the native `<dialog>`, Esc, the stopped control layer and
+`attachSettingsMenu`. The text below is the v1 record.
+
 ## Context
 
 The user can pick a renderer and a sound set. Today the only way to do this is

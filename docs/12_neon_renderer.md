@@ -5,6 +5,9 @@ for the static sky, `09_8bit_renderer.md` for the pixel renderer this one is
 modelled on, and `11_ambient_movers.md` for the movers. Those documents stay
 closed as their own v1 records. In this one, the cycle count starts at 1.
 
+The page URL no longer picks a renderer. The settings menu form saves the `renderer` setting, as
+`13_settings_overrides.md` describes.
+
 ## Context
 
 The project has three renderers: ascii, emoji and pixel. All three are calm.
@@ -48,7 +51,7 @@ The user made these decisions before anyone wrote this plan.
 7. **One rule covers every sprite.** Velocity not zero gives a streak.
    Velocity zero gives a disc. A shell is a streak plus a near-white core
    disc.
-8. **The registry key is `neon`.** It is the `?renderer=` value.
+8. **The registry key is `neon`.** It is the value of the `renderer` setting.
 9. **`Rgb` floats are read as Display P3.** They go straight into
    `color(display-p3 r g b / a)`. Pure red becomes P3 red.
 10. **The renderer always writes P3 strings.** On an sRGB canvas the browser
@@ -274,7 +277,7 @@ nothing.
 
 Manual checks with `npm run dev`:
 
-- Chrome and Safari, `?renderer=neon`:
+- Chrome and Safari, with neon picked in the Esc menu and applied:
   - The sky is black with cyan crosses. The moon and the planet are cyan rings.
   - The ridge glows from edge to edge.
   - Sparks are fading streaks that point along their motion, also after the

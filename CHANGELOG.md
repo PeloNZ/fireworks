@@ -14,4 +14,10 @@ This file follows the [Keep a Changelog](https://keepachangelog.com/) format. It
 - A settings menu: press Esc to pick the renderer and the sound set from a list, then press Apply. The page reloads with your choice in the URL. No firework launches while the menu is open, and Esc no longer launches one. See `docs/10_settings_ui.md`.
 - Shooting stars and satellites in the sky. About once in 20 seconds, a shooting star streaks across the upper sky and fades out, or a satellite crosses it slowly. They draw behind the fireworks, so a firework always covers one. All four renderers draw them. In emoji a shooting star is 🌠 and a satellite is 🛸. In the pixel renderer (`?renderer=pixel`) a shooting star is a point of light with a fading tail, a satellite is a dimmer point, and on a wide window they cross the whole width. See `docs/11_ambient_movers.md`.
 
+- Saved settings. The Esc menu has three sliders: gravity (vertical, down is negative), wind (horizontal, right is positive) and drag. Apply saves the sliders, the renderer and the sound set in the browser, so they stay after a reload and after you close the tab. Defaults clears what is saved. Reset puts the menu back to what the page loaded with. Cancel closes the menu. If the browser blocks storage, as a private window may, the page runs with the defaults. See `docs/13_settings_overrides.md`.
+
+### Changed
+
+- The Esc menu no longer puts the renderer and the sound set in the URL. `?renderer=` and `?sound=` in a link are ignored. Pick them in the menu instead.
+
 Everything before this was internal: the Control, Action and AudioVisual layers and their supporting tooling, with no visible surface to change.

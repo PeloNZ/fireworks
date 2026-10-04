@@ -2,8 +2,12 @@
 
 See `05_audio_visual_layer.md` for the sound vocabulary this plan builds on — voices, envelopes,
 filters, the audio clock. This document is the _how_ for a second thing this game can sound
-like: a switchable set of sounds, chosen by URL, so a play-test session picks its audience
+like: a switchable set of sounds, so a play-test session picks its audience
 without a rebuild.
+
+The `?sound=` URL parameter this plan describes was replaced by the settings menu form and the saved
+`sound` setting in `13_settings_overrides.md`. The page URL is no longer read. Where a check below
+uses `?sound=<name>`, open the menu with Esc, pick that sound set and press Apply.
 
 This document assumes no background in sound design. Where a decision needs a concept explained,
 the explanation is here in full, not linked out.
@@ -399,8 +403,8 @@ grep -rE "Math\.random|Date\.now|performance\.now" src/audiovisual/
 
 By hand, in a browser — the only way to judge a sound (`npm run dev`):
 
-1. No parameter, then `?sound=tones` — both identical to before this plan.
-2. `?sound=silly`, one key pressed five times — the **note** is the same every time; the
+1. No saved settings, then `tones` picked in the menu — both identical to before this plan.
+2. `silly` picked in the menu, one key pressed five times — the **note** is the same every time; the
    wobble, the clang ratio and the gremlin tail differ between presses.
 3. Still in `silly`, key A five times then key S five times — A's five agree with each other,
    S's five agree with each other, A is clearly a different note from S, in the same direction
@@ -410,6 +414,8 @@ By hand, in a browser — the only way to judge a sound (`npm run dev`):
 4. A short tune in `silly` — it must still read as a tune. This is the check that matters.
 5. Mash keys for ten seconds — listen for clipping (too many voices summed past full scale) and
    for silence (the `maxVoices` cap dropping voices).
-6. `?sound=nonsense` falls back to `tones`, not silence.
+6. An unknown sound name falls back to `tones`, not silence. Run
+   `localStorage.setItem("fireworks.settings", JSON.stringify({ sound: "nonsense" }))` in devtools and
+   reload. Clear it with Esc, Defaults.
 
 Then play test it with the 5-year-old and write what happened into `PLAY_TESTING.md`.
