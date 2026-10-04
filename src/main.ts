@@ -16,7 +16,7 @@ import { createPixelRenderer } from "./audiovisual/adapters/pixel.ts";
 import { worldHalfWidth } from "./audiovisual/adapters/pixelGrid.ts";
 import { createWebAudioSink } from "./audiovisual/adapters/webAudio.ts";
 import { selectRenderer } from "./audiovisual/selectRenderer.ts";
-import { loadSettings } from "./settings/overrides.ts";
+import { applySettingsForm, loadSettings } from "./settings/overrides.ts";
 import { attachSettingsMenu, choicesFor } from "./settings/settingsMenu.ts";
 import { soundSets } from "./audiovisual/voices/sets.ts";
 import type { FireworkPhase } from "./action/types.ts";
@@ -29,15 +29,21 @@ import type { Renderer } from "./audiovisual/types.ts";
 // jsdom" in docs/03_plan_control_layer.md and "File layout" in
 // docs/04_plan_action_layer.md.
 
-// The defaults with any settings saved in localStorage laid over them. The
-// store reads `localStorage` inside its own method, so a browser that throws
+// The defaults with any settings saved in localStorage laid over them. Each
+// store method reads `localStorage` inside itself, so a browser that throws
 // on access (a private window, blocked site data) gives the defaults. The
-// renderer and sound still come from the URL, with the defaults as fallbacks.
-// See docs/13_settings_overrides.md.
-const settings = loadSettings(
-  { getItem: (key) => localStorage.getItem(key) },
-  defaultSettings,
-);
+// settings form writes through the same store. See
+// docs/13_settings_overrides.md.
+const store = {
+  getItem: (key: string) => localStorage.getItem(key),
+  setItem: (key: string, value: string) => {
+    localStorage.setItem(key, value);
+  },
+  removeItem: (key: string) => {
+    localStorage.removeItem(key);
+  },
+};
+const settings = loadSettings(store, defaultSettings);
 
 const adapter = createKeyboardAdapter({
   target: window,
@@ -287,28 +293,29 @@ const renderers: Record<
     };
   },
 };
+// A saved name that is not in the table falls back to the default.
 const { name: rendererName, create: createRenderer } = selectRenderer(
-  new URLSearchParams(location.search).get("renderer"),
+  settings.renderer,
   renderers,
   defaultSettings.renderer,
 );
 const { renderer, halfWidth } = createRenderer(app);
 
 // Which sound set plays is the same kind of lookup, against its own
-// table — a `?sound=` this project now has more than one entry for. See
-// docs/08_sound_effects.md.
+// table. See docs/08_sound_effects.md.
 const { name: soundName, create: voicePlanner } = selectRenderer(
-  new URLSearchParams(location.search).get("sound"),
+  settings.sound,
   soundSets,
   defaultSettings.sound,
 );
 
-// The settings menu: Escape opens a native <dialog> with one radio group per
-// lookup table above. Apply submits a GET form, so the browser itself writes
-// `?renderer=…&sound=…` and reloads — no code here builds a query string.
-// The radios start on the names that actually run (`rendererName`,
-// `soundName`), not the raw URL values, so `?renderer=foo` shows `ascii`
-// checked. See docs/10_settings_ui.md.
+// The settings menu: Escape opens a native <dialog> holding a POST form. A
+// page script cannot read the body of a POST page load, and neither Vite nor a
+// static host sends one to the page, so the `submit` listener below reads the
+// fields, saves them through `applySettingsForm` and reloads. No setting goes
+// in the URL. The fields start on the values that run now (`rendererName`,
+// `soundName`, `settings.world`) and set them as default values, so Reset
+// puts them back. See docs/13_settings_overrides.md.
 function radioGroup(
   legendText: string,
   field: string,
@@ -324,7 +331,7 @@ function radioGroup(
     input.type = "radio";
     input.name = field;
     input.value = choice.value;
-    input.checked = choice.checked;
+    input.defaultChecked = choice.checked;
     const label = document.createElement("label");
     label.append(input, ` ${choice.value}`);
     const row = document.createElement("div");
@@ -334,12 +341,115 @@ function radioGroup(
   return fieldset;
 }
 
+interface RangeSpec {
+  readonly label: string;
+  readonly name: string; // a dotted path into Settings
+  readonly min: number;
+  readonly max: number;
+  readonly step: number;
+  readonly tickEvery: number;
+  readonly value: number;
+  readonly vertical?: boolean;
+}
+
+// A label, a range with tick marks (a <datalist>) and an <output> that shows
+// its number. Whatever the saved value is, the browser clamps it to `min` and
+// `max` and snaps it to `step`.
+function rangeField(spec: RangeSpec): HTMLDivElement {
+  const id = `setting-${spec.name}`;
+  const input = document.createElement("input");
+  input.type = "range";
+  input.id = id;
+  input.name = spec.name;
+  // `min` and `max` go first, so the browser does not clamp the value to 0..100.
+  input.min = String(spec.min);
+  input.max = String(spec.max);
+  input.step = String(spec.step);
+  input.defaultValue = String(spec.value);
+  input.setAttribute("list", `${id}-ticks`);
+  if (spec.vertical) {
+    input.classList.add("vertical");
+  }
+  const ticks = document.createElement("datalist");
+  ticks.id = `${id}-ticks`;
+  const tickCount = Math.round((spec.max - spec.min) / spec.tickEvery);
+  for (let index = 0; index <= tickCount; index += 1) {
+    const option = document.createElement("option");
+    option.value = String(spec.min + index * spec.tickEvery);
+    option.label = option.value;
+    ticks.append(option);
+  }
+  const label = document.createElement("label");
+  label.htmlFor = id;
+  label.textContent = spec.label;
+  const output = document.createElement("output");
+  output.htmlFor.add(id);
+  output.textContent = input.value;
+  input.addEventListener("input", () => {
+    output.value = input.value;
+  });
+  const row = document.createElement("div");
+  row.append(label, " ", input, ticks, " ", output);
+  return row;
+}
+
+function worldGroup(): HTMLFieldSetElement {
+  const fieldset = document.createElement("fieldset");
+  const legend = document.createElement("legend");
+  legend.textContent = "World";
+  fieldset.append(
+    legend,
+    rangeField({
+      label: "Gravity (down is negative)",
+      name: "world.gravity.y",
+      min: -60,
+      max: 60,
+      step: 1,
+      tickEvery: 10,
+      value: settings.world.gravity.y,
+      vertical: true,
+    }),
+    rangeField({
+      label: "Wind (right is positive)",
+      name: "world.wind.x",
+      min: -20,
+      max: 20,
+      step: 0.5,
+      tickEvery: 5,
+      value: settings.world.wind.x,
+    }),
+    rangeField({
+      label: "Drag",
+      name: "world.drag",
+      min: 0,
+      max: 3,
+      step: 0.05,
+      tickEvery: 0.5,
+      value: settings.world.drag,
+    }),
+  );
+  return fieldset;
+}
+
+function commandButton(text: string, command: string): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "submit";
+  button.name = "command";
+  button.value = command;
+  button.textContent = text;
+  return button;
+}
+
 const settingsForm = document.createElement("form");
-settingsForm.method = "get";
-const apply = document.createElement("button");
-apply.type = "submit";
-apply.textContent = "Apply";
-// `formMethod = "dialog"` closes the dialog and skips the GET navigation.
+settingsForm.method = "post";
+// Apply comes first, because Enter submits with the first submit button.
+const apply = commandButton("Apply", "apply");
+const defaults = commandButton("Defaults", "defaults");
+const reset = document.createElement("button");
+reset.type = "reset";
+reset.textContent = "Reset";
+// No name, so `applySettingsForm` gives "none". `formMethod = "dialog"` closes
+// the dialog and skips the POST.
 const cancel = document.createElement("button");
 cancel.type = "submit";
 cancel.formMethod = "dialog";
@@ -347,9 +457,23 @@ cancel.textContent = "Cancel";
 settingsForm.append(
   radioGroup("Renderer", "renderer", Object.keys(renderers), rendererName),
   radioGroup("Sound", "sound", Object.keys(soundSets), soundName),
+  worldGroup(),
   apply,
+  defaults,
+  reset,
   cancel,
 );
+settingsForm.addEventListener("submit", (event) => {
+  const outcome = applySettingsForm(
+    new FormData(settingsForm, event.submitter),
+    store,
+    defaultSettings,
+  );
+  if (outcome !== "none") {
+    event.preventDefault();
+    location.reload();
+  }
+});
 const settingsDialog = document.createElement("dialog");
 settingsDialog.append(settingsForm);
 app.append(settingsDialog);

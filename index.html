@@ -84,6 +84,15 @@
       canvas.neon-light {
         z-index: 1;
       }
+
+      /* The gravity range in the settings dialog runs up and down. With
+         direction: rtl in a vertical writing mode, the minimum is at the
+         bottom. */
+      input[type="range"].vertical {
+        writing-mode: vertical-lr;
+        direction: rtl;
+        inline-size: 12em;
+      }
     </style>
   </head>
   <body>
