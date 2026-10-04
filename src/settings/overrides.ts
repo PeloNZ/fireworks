@@ -70,17 +70,31 @@ export function mergeOverrides<T>(defaults: T, overrides: unknown): T {
 
 /**
  * Saves the fields of the settings form. A field name is a dotted path into
- * `Settings`, for example `world.drag`.
+ * `Settings`, for example `world.drag`. The default at that path says how to
+ * read the value: a string stays a string, a number is parsed.
  */
 export function applySettingsForm(
   entries: Iterable<readonly [string, FormDataEntryValue]>,
   store: SettingsStore,
+  defaults: Settings,
 ): "saved" {
-  const saved: Record<string, Record<string, number>> = {};
+  const saved: Record<string, unknown> = {};
   for (const [name, value] of entries) {
-    const [group, key] = name.split(".");
-    if (group !== undefined && key !== undefined) {
-      saved[group] = { [key]: Number(value) };
+    const path = name.split(".");
+    const initial = path.reduce<unknown>(
+      (node, part) => (node as Record<string, unknown> | undefined)?.[part],
+      defaults,
+    );
+    if (typeof initial !== "string" && typeof initial !== "number") {
+      continue;
+    }
+    let target = saved;
+    for (const [index, part] of path.entries()) {
+      if (index === path.length - 1) {
+        target[part] = typeof initial === "string" ? value : Number(value);
+      } else {
+        target = (target[part] ??= {}) as Record<string, unknown>;
+      }
     }
   }
   store.setItem(STORAGE_KEY, JSON.stringify(saved));

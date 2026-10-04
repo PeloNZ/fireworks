@@ -184,9 +184,51 @@ describe("applySettingsForm: Apply", () => {
         ["world.drag", "0.77"],
       ],
       store,
+      defaultSettings,
     );
 
     expect(outcome).toBe("saved");
     expect(loadSettings(store, defaultSettings).world.drag).toBe(0.77);
+  });
+});
+
+// Cycle 7: a field name can be a path of any depth, and a field whose default
+// is a string stays a string.
+describe("applySettingsForm: paths and strings", () => {
+  it("saves a nested number and keeps its siblings", () => {
+    const store = mapStore();
+
+    applySettingsForm(
+      [
+        ["command", "apply"],
+        ["world.gravity.y", "-4.5"],
+      ],
+      store,
+      defaultSettings,
+    );
+
+    expect(loadSettings(store, defaultSettings).world.gravity).toEqual({
+      x: 0,
+      y: -4.5,
+      z: 0,
+    });
+  });
+
+  it("saves a string field as a string", () => {
+    const store = mapStore();
+
+    applySettingsForm(
+      [
+        ["command", "apply"],
+        ["renderer", "neon"],
+        ["sound", "silly"],
+      ],
+      store,
+      defaultSettings,
+    );
+
+    const settings = loadSettings(store, defaultSettings);
+    expect(settings.renderer).toBe("neon");
+    expect(settings.sound).toBe("silly");
   });
 });
