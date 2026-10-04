@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { defaultSettings } from "../config.ts";
-import { loadSettings, mergeOverrides } from "./overrides.ts";
+import {
+  applySettingsForm,
+  loadSettings,
+  mergeOverrides,
+} from "./overrides.ts";
 
 // Cycle 2 (docs/13_settings_overrides.md): a saved value replaces its default.
 // The defaults here are small made-up objects with unusual numbers, so a
@@ -151,5 +155,38 @@ describe("loadSettings", () => {
     };
 
     expect(loadSettings(store, defaultSettings)).toEqual(defaultSettings);
+  });
+});
+
+// A store that keeps its values in a Map, with the three methods used.
+function mapStore() {
+  const data = new Map<string, string>();
+  return {
+    getItem: (key: string) => data.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      data.set(key, value);
+    },
+    removeItem: (key: string) => {
+      data.delete(key);
+    },
+  };
+}
+
+// Cycle 6: Apply saves the form fields. The test reads the result back
+// through `loadSettings` on the same store.
+describe("applySettingsForm: Apply", () => {
+  it("saves a number field, and loadSettings reads it back", () => {
+    const store = mapStore();
+
+    const outcome = applySettingsForm(
+      [
+        ["command", "apply"],
+        ["world.drag", "0.77"],
+      ],
+      store,
+    );
+
+    expect(outcome).toBe("saved");
+    expect(loadSettings(store, defaultSettings).world.drag).toBe(0.77);
   });
 });

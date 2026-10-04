@@ -1,6 +1,6 @@
 # 13. Settings in one place, saved overrides, a POST settings form
 
-Status: steps 1 and 2 are built (cycles 1 to 5). Step 3 is not started.
+Status: steps 1 and 2 are built (cycles 1 to 5). The step 3 plan is approved. Cycles 6 to 11 are not started.
 
 ## Context
 
@@ -16,12 +16,17 @@ The order of work is fixed:
 
 ## Decisions
 
-1. **Scope of the form.** The form edits `gravity`, `wind` and `drag` from `WorldConfig`, and the renderer and sound radios. Every other value stays in code for now.
+1. **Scope of the form.** The form edits `world.gravity.y`, `world.wind.x` and `world.drag`, and the renderer and sound radios. Gravity x and z, wind y and z, `stepMs` and every other value stay in code for now. The world draws in x and y, and gravity acts vertically and wind horizontally.
 2. **One tree.** `src/config.ts` holds every default value. Each layer keeps its own config type in its own `config.ts`. A layer still imports only its own type.
-3. **Checks.** Each saved value must have the same type as its default. If it does not, the default stays. The native `min`, `max`, `step` and `required` attributes guard the inputs. A Defaults button clears what is saved. The code applies no other rule.
-4. **Form elements.** The form uses only standard HTML: radio, number, submit, reset and button.
+3. **Checks.** Each saved value must have the same type as its default. If it does not, the default stays. The native `min`, `max` and `step` attributes of each range guard the inputs. A Defaults button clears what is saved. The code applies no other rule.
+4. **Form elements.** The form uses only standard HTML: radio, range, submit, reset and button.
+   - Gravity y is a vertical range. Wind x and drag are horizontal ranges.
+   - Each range has tick marks (a `<datalist>`), a `<label>`, a step that can reach its default exactly and an `<output>` that shows its number.
+   - Number, checkbox and text inputs are not used. No field needs them yet.
 5. **POST.** The form has `method="post"`. A page script cannot read the body of a POST page load. The Vite dev server also passes only GET and HEAD requests to the page (`vite/dist/node/chunks/node.js`, the HTML fallback), and a static host has no POST handler. So a `submit` listener reads `FormData`, saves it and reloads the page. No value goes in the URL.
 6. **This replaces doc 10.** Doc 10 decision 2 says "The URL is the only source of truth. No setting goes into `localStorage`." Its out-of-scope list rules out `localStorage` and settings other than renderer and sound. Step 3 reverses these. Doc 10 gets a note then.
+7. **Apply replaces.** Apply saves exactly what the form sends. A key that was set only from devtools is lost on the next Apply.
+8. **One public function.** `overridesFromForm` is not exported. Tests call `applySettingsForm` and read the result back through `loadSettings` on the same fake store.
 
 ## Key contracts
 
@@ -76,16 +81,12 @@ export function loadSettings(
 ### Step 3 (not started)
 
 ```ts
-// SettingsStore gains setItem and removeItem
-export interface SettingsStore {
+// SettingsStore gains setItem and removeItem (still not exported)
+interface SettingsStore {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
   removeItem(key: string): void;
 }
-export function overridesFromForm(
-  entries: Iterable<readonly [string, FormDataEntryValue]>,
-  defaults: Settings,
-): unknown;
 export function applySettingsForm(
   entries: Iterable<readonly [string, FormDataEntryValue]>,
   store: SettingsStore,
@@ -95,7 +96,26 @@ export function applySettingsForm(
 
 - The saved JSON holds only the fields the form sends.
 - A form field name is the dotted path, for example `world.gravity.y`. The radios keep the names `renderer` and `sound`.
+- Each path segment must be an own key of the defaults (`Object.hasOwn`). Otherwise the field is dropped.
+- A value converts by the type of its default. A number field must parse as a finite number and must not be empty.
 - The submit buttons have `name="command"`. Apply has `value="apply"`. Defaults has `value="defaults"`. Cancel has no name, so `applySettingsForm` returns `"none"`.
+
+The ranges:
+
+| Field                        | `min` | `max` | `step` | Ticks     | Default |
+| ---------------------------- | ----- | ----- | ------ | --------- | ------- |
+| `world.gravity.y` (vertical) | -60   | 60    | 1      | every 10  | -18     |
+| `world.wind.x`               | -20   | 20    | 0.5    | every 5   | 1.5     |
+| `world.drag`                 | 0     | 3     | 0.05   | every 0.5 | 0.3     |
+
+Facts that shape the form code (not yet checked in a browser):
+
+- `orient="vertical"` is a non-standard Firefox attribute. The standard way is CSS `writing-mode: vertical-lr` with `direction: rtl`, which puts `min` at the bottom.
+- A range always has a value. The browser clamps it to `min` and `max` and snaps it to `step`, so `required` does nothing on a range. A saved value outside the range shows clamped.
+- `input.list` is read-only in the DOM. The tick marks need `input.setAttribute("list", id)`.
+- Reset restores the `value` and `checked` attributes. `radioGroup` sets the `.checked` property, so Reset would uncheck every radio. Use `defaultChecked` and `defaultValue`.
+- Enter in a form submits with the first submit button in DOM order. Apply comes before Defaults, or Enter would clear the settings.
+- A drag of `0` is safe. `sparks.ts` has a closed form for it.
 - The renderer fallback becomes the default and the requested name becomes the saved one: `selectRenderer(settings.renderer, renderers, defaultSettings.renderer)`. An unknown saved name then falls back to the default and does not throw.
 
 ## File layout
@@ -142,15 +162,21 @@ Rules for every cycle:
 
 ### Step 3: the POST form (not started)
 
-6. `overridesFromForm`: `world.drag = "0.77"` gives `{ world: { drag: 0.77 } }`. An empty number field is dropped, because `Number("")` is `0`. Unknown names and `command` are dropped.
-7. `applySettingsForm`, Apply: saves the parsed fields and returns `"saved"`. A `setItem` that throws still returns `"saved"`.
-8. `applySettingsForm`, Defaults and Cancel: `defaults` removes the key and returns `"cleared"`. No `command` returns `"none"` and leaves the store alone.
-9. The form in `main.ts` (untested):
-   - `method="post"`. Radios for renderer and sound. Both `URLSearchParams(location.search)` reads go.
-   - A World fieldset with number inputs (`step="any"`, `required`): gravity x and y (`min -100`, `max 100`), wind x and y (`min -50`, `max 50`) and drag (`min 0`, `max 5`).
-   - Buttons: Apply, Defaults (`formNoValidate`), Reset (`type="reset"`) and Cancel (`formMethod="dialog"`, `formNoValidate`). Cancel also fires `submit`, so without `formNoValidate` a bad field would keep the dialog open.
-   - The `submit` listener calls `applySettingsForm`. On `"saved"` or `"cleared"` it calls `preventDefault()` and `location.reload()`.
-10. Doc sync: doc 10, `CLAUDE.md`, `README.md`, `CHANGELOG.md`.
+The fake store in the tests is a plain object over a `Map`.
+
+6. `applySettingsForm`, Apply saves a number: `[["command","apply"],["world.drag","0.77"]]` returns `"saved"`, and `loadSettings` on the same store gives drag `0.77`.
+7. Nested paths and strings: `world.gravity.y = "-4.5"` keeps gravity x and z. `renderer = "neon"` stays a string.
+8. Dropped fields: an empty number (because `Number("")` is `0`), `"abc"`, an unknown name, `__proto__.x`, a path past a number (`world.drag.x`) and a path that ends on an object (`world.gravity`).
+9. Defaults and Cancel: `command=defaults` removes the key and returns `"cleared"`. No `command` returns `"none"` and leaves the store alone. A `setItem` that throws still returns `"saved"`.
+10. The form in `main.ts` (untested):
+    - Both `URLSearchParams(location.search)` reads go. `selectRenderer(settings.renderer, renderers, defaultSettings.renderer)`, and the same for sound.
+    - `method="post"`. `radioGroup` sets `defaultChecked`.
+    - A `rangeField(...)` helper next to `radioGroup`: `<label>`, `<input type="range">` with `defaultValue`, a `<datalist>` for the ticks and an `<output>`. One `input` listener on the form updates each `<output>`.
+    - A `.vertical` rule in the `<style>` block of `index.html` for the gravity range.
+    - Buttons in this order: Apply, Defaults (`formNoValidate`), Reset (`type="reset"`) and Cancel (`formMethod="dialog"`, `formNoValidate`, no name). Cancel also fires `submit`, so without `formNoValidate` a bad field would keep the dialog open.
+    - The `submit` listener calls `applySettingsForm(new FormData(settingsForm, event.submitter), store, defaultSettings)`. On `"saved"` or `"cleared"` it calls `preventDefault()` and `location.reload()`.
+    - The store's three methods each call `localStorage` inside themselves.
+11. Doc sync: doc 10, `CLAUDE.md`, `README.md`, `CHANGELOG.md`, then the `doc-sync` agent.
 
 ## Verification
 
@@ -178,17 +204,20 @@ Step 2 (nothing writes to `localStorage` yet, so set it from devtools):
 
 After step 3:
 
-- Esc, set gravity y to `-5`, Apply. The page reloads, fireworks fall slowly and the URL has no query.
-- Reload. Gravity is still `-5`.
-- Type `500` in gravity y and press Apply. The browser blocks it and names the field.
-- Defaults reloads with gravity `-18`.
-- Reset puts an edited field back to its value at page load. The dialog stays open.
-- Cancel with an invalid field closes the dialog.
+- Esc. The gravity range is vertical with `min` at the bottom. All three ranges show ticks and their number.
+- Move gravity to `-5` and press Apply. The page reloads, fireworks fall slowly and the URL has no query. Reload again. Gravity is still `-5`.
+- Wind `-10`: shells and sparks drift left. Drag `0`: nothing slows.
+- Press Enter in the form. It applies, and does not clear.
+- Defaults reloads with gravity `-18`, wind `1.5` and drag `0.3`.
+- Reset puts the ranges, their numbers and the radios back to their page-load values. The dialog stays open.
+- Renderer `neon`, Apply: neon draws, and still draws after another reload.
+- In devtools, save gravity y `500` and reload. The range shows `60`. The page runs with `500` until the next Apply.
 - A private window loads with the defaults.
 
 ## Out of scope
 
-- Any value other than gravity, wind, drag, renderer and sound in the form.
+- Any value other than `world.gravity.y`, `world.wind.x`, `world.drag`, renderer and sound in the form.
+- Checkbox and text inputs.
 - Module constants (`WILLOW_SPEED_FRACTION`, the bloom divisors, the voice constants).
 - Rules beyond the type check and the input attributes.
 - Applying a change without a reload. The sky still changes on each reload, as doc 10 accepted.

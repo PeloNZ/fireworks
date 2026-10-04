@@ -4,9 +4,10 @@ import type { Settings } from "../config.ts";
 
 const STORAGE_KEY = "fireworks.settings";
 
-/** The slice of `Storage` that `loadSettings` uses. */
+/** The slice of `Storage` that this file uses. */
 interface SettingsStore {
   getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
 }
 
 /**
@@ -16,7 +17,7 @@ interface SettingsStore {
  * page from loading.
  */
 export function loadSettings(
-  store: SettingsStore,
+  store: Pick<SettingsStore, "getItem">,
   defaults: Settings,
 ): Settings {
   try {
@@ -65,4 +66,23 @@ export function mergeOverrides<T>(defaults: T, overrides: unknown): T {
     return merged as T;
   }
   return defaults;
+}
+
+/**
+ * Saves the fields of the settings form. A field name is a dotted path into
+ * `Settings`, for example `world.drag`.
+ */
+export function applySettingsForm(
+  entries: Iterable<readonly [string, FormDataEntryValue]>,
+  store: SettingsStore,
+): "saved" {
+  const saved: Record<string, Record<string, number>> = {};
+  for (const [name, value] of entries) {
+    const [group, key] = name.split(".");
+    if (group !== undefined && key !== undefined) {
+      saved[group] = { [key]: Number(value) };
+    }
+  }
+  store.setItem(STORAGE_KEY, JSON.stringify(saved));
+  return "saved";
 }
