@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { mergeOverrides } from "./overrides.ts";
+import { defaultSettings } from "../config.ts";
+import { loadSettings, mergeOverrides } from "./overrides.ts";
 
 // Cycle 2 (docs/13_settings_overrides.md): a saved value replaces its default.
 // The defaults here are small made-up objects with unusual numbers, so a
@@ -98,5 +99,57 @@ describe("mergeOverrides: a value of the wrong type keeps the default", () => {
     expect(
       mergeOverrides({ timbres: ["soft", "sharp"] }, { timbres: ["loud"] }),
     ).toEqual({ timbres: ["soft", "sharp"] });
+  });
+});
+
+// Cycle 4: `loadSettings` reads the saved JSON from a store and merges it
+// over the defaults. The store is a plain object with the one method used.
+describe("loadSettings", () => {
+  const key = "fireworks.settings";
+
+  it("lays the saved settings over the defaults", () => {
+    const store = {
+      getItem: (name: string) =>
+        name === key
+          ? JSON.stringify({
+              renderer: "neon",
+              world: { drag: 0.77, gravity: { y: -4.5 } },
+            })
+          : null,
+    };
+
+    const settings = loadSettings(store, defaultSettings);
+
+    expect(settings.renderer).toBe("neon");
+    expect(settings.sound).toBe("tones");
+    expect(settings.world).toEqual({
+      gravity: { x: 0, y: -4.5, z: 0 },
+      wind: { x: 1.5, y: 0, z: 0 },
+      drag: 0.77,
+      stepMs: 1000 / 120,
+    });
+    expect(settings.action).toEqual(defaultSettings.action);
+  });
+
+  it("gives the defaults when nothing is saved", () => {
+    const store = { getItem: () => null };
+
+    expect(loadSettings(store, defaultSettings)).toEqual(defaultSettings);
+  });
+
+  it("gives the defaults when the saved text is not JSON", () => {
+    const store = { getItem: () => "{not json" };
+
+    expect(loadSettings(store, defaultSettings)).toEqual(defaultSettings);
+  });
+
+  it("gives the defaults when the store throws, as a blocked one does", () => {
+    const store = {
+      getItem: (): string => {
+        throw new Error("The operation is insecure.");
+      },
+    };
+
+    expect(loadSettings(store, defaultSettings)).toEqual(defaultSettings);
   });
 });

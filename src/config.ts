@@ -8,7 +8,7 @@ import type { WorldConfig } from "./action/worldConfig.ts";
 import type { AudioVisualConfig } from "./audiovisual/config.ts";
 import type { ControlConfig } from "./control/config.ts";
 
-interface Settings {
+export interface Settings {
   // Which renderer and sound set run when none is chosen. They are keys of
   // the `renderers` and `soundSets` tables.
   readonly renderer: string;
