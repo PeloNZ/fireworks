@@ -1,6 +1,6 @@
 # 13. Settings in one place, saved overrides, a POST settings form
 
-Status: all three steps are built (cycles 1 to 11). The form has not been checked in a browser.
+Status: all three steps are built (cycles 1 to 11). The user ran the manual checks in a browser and reported that they pass. The report names no browser, so the Firefox tick marks and the vertical range there stay unrecorded.
 
 ## Context
 
@@ -109,7 +109,7 @@ The ranges:
 | `world.wind.x`               | -20   | 20    | 0.5    | every 5   | 1.5     |
 | `world.drag`                 | 0     | 3     | 0.05   | every 0.5 | 0.3     |
 
-Facts that shape the form code (not yet checked in a browser):
+Facts that shape the form code (the manual checks passed, as the status line says):
 
 - `orient="vertical"` is a non-standard Firefox attribute. The standard way is CSS `writing-mode: vertical-lr` with `direction: rtl`, which puts `min` at the bottom.
 - A range always has a value. The browser clamps it to `min` and `max` and snaps it to `step`, so `required` does nothing on a range. A saved value outside the range shows clamped.
