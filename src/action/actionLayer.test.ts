@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { defaultActionConfig } from "./config.ts";
+import { defaultSettings } from "../config.ts";
 import { createActionLayer, resolveAction } from "./actionLayer.ts";
 import { buildFireworkSpec } from "./spec.ts";
 import type { ControlEvent, ControlSignal } from "../control/types.ts";
@@ -24,15 +24,17 @@ describe("resolveAction", () => {
     const s = signal();
     const event: ControlEvent = { kind: "single", signal: s };
 
-    const specs = resolveAction(event, defaultActionConfig);
+    const specs = resolveAction(event, defaultSettings.action);
 
-    expect(specs).toEqual([buildFireworkSpec(s, defaultActionConfig)]);
+    expect(specs).toEqual([buildFireworkSpec(s, defaultSettings.action)]);
   });
 
   it("returns an array", () => {
     const event: ControlEvent = { kind: "single", signal: signal() };
 
-    expect(Array.isArray(resolveAction(event, defaultActionConfig))).toBe(true);
+    expect(Array.isArray(resolveAction(event, defaultSettings.action))).toBe(
+      true,
+    );
   });
 });
 
@@ -49,7 +51,7 @@ function fakeWorld() {
 describe("createActionLayer", () => {
   it("spawns one entity into the world per resolved spec, in order", () => {
     const world = fakeWorld();
-    const sink = createActionLayer({ world, config: defaultActionConfig });
+    const sink = createActionLayer({ world, config: defaultSettings.action });
     const eventA: ControlEvent = {
       kind: "single",
       signal: signal({ id: "KeyA", timestamp: 100 }),
@@ -65,11 +67,11 @@ describe("createActionLayer", () => {
     expect(world.spawn).toHaveBeenCalledTimes(2);
     expect(world.spawn).toHaveBeenNthCalledWith(
       1,
-      buildFireworkSpec(eventA.signal, defaultActionConfig),
+      buildFireworkSpec(eventA.signal, defaultSettings.action),
     );
     expect(world.spawn).toHaveBeenNthCalledWith(
       2,
-      buildFireworkSpec(eventB.signal, defaultActionConfig),
+      buildFireworkSpec(eventB.signal, defaultSettings.action),
     );
   });
 });

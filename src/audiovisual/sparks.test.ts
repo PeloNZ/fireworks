@@ -7,8 +7,7 @@ import {
   sparkVelocity,
 } from "./sparks.ts";
 import { parseHexColor } from "./color.ts";
-import { defaultAudioVisualConfig } from "./config.ts";
-import { defaultWorldConfig } from "../action/worldConfig.ts";
+import { defaultSettings } from "../config.ts";
 import { add, scale } from "../action/vector.ts";
 import type { Firework, FireworkSpec, Vec3 } from "../action/types.ts";
 import type { Sprite } from "./types.ts";
@@ -106,7 +105,7 @@ describe("sparkDirections", () => {
 // A deliberately unusual range, not the default, so a hardcoded speed
 // can't pass.
 const speedConfig = {
-  ...defaultAudioVisualConfig,
+  ...defaultSettings.audiovisual,
   sparkSpeed: { min: 12, max: 19 },
 };
 
@@ -326,8 +325,8 @@ describe("expandBurst", () => {
 
     const sparks = expandBurst(
       entity,
-      defaultAudioVisualConfig,
-      defaultWorldConfig,
+      defaultSettings.audiovisual,
+      defaultSettings.world,
     );
 
     expect(sparks).toHaveLength(8);
@@ -345,7 +344,7 @@ describe("expandBurst", () => {
       entity.spec.pattern,
       count,
       entity.spec.seed,
-      defaultAudioVisualConfig,
+      defaultSettings.audiovisual,
     );
     const [direction] = directions;
     const [speed] = speeds;
@@ -356,15 +355,15 @@ describe("expandBurst", () => {
       entity.position,
       direction,
       speed,
-      defaultWorldConfig.gravity,
-      defaultWorldConfig.drag,
+      defaultSettings.world.gravity,
+      defaultSettings.world.drag,
       entity.phaseElapsedMs,
     );
 
     const sparks = expandBurst(
       entity,
-      defaultAudioVisualConfig,
-      defaultWorldConfig,
+      defaultSettings.audiovisual,
+      defaultSettings.world,
     );
 
     expect(sparks[0]?.position).toEqual(expected);
@@ -380,8 +379,8 @@ describe("expandBurst", () => {
 
     const sparks = expandBurst(
       entity,
-      defaultAudioVisualConfig,
-      defaultWorldConfig,
+      defaultSettings.audiovisual,
+      defaultSettings.world,
     );
 
     expect(sparks.map((s) => s.color)).toEqual([
@@ -398,18 +397,18 @@ describe("expandBurst", () => {
 
     const atStart = expandBurst(
       firework({ spec, phaseElapsedMs: 0 }),
-      defaultAudioVisualConfig,
-      defaultWorldConfig,
+      defaultSettings.audiovisual,
+      defaultSettings.world,
     );
     const atHalf = expandBurst(
       firework({ spec, phaseElapsedMs: 150 }),
-      defaultAudioVisualConfig,
-      defaultWorldConfig,
+      defaultSettings.audiovisual,
+      defaultSettings.world,
     );
     const atEnd = expandBurst(
       firework({ spec, phaseElapsedMs: 300 }),
-      defaultAudioVisualConfig,
-      defaultWorldConfig,
+      defaultSettings.audiovisual,
+      defaultSettings.world,
     );
 
     expect(atStart[0]?.brightness).toBeCloseTo(1);
@@ -424,8 +423,8 @@ describe("expandBurst", () => {
 
       const sparks = expandBurst(
         entity,
-        defaultAudioVisualConfig,
-        defaultWorldConfig,
+        defaultSettings.audiovisual,
+        defaultSettings.world,
       );
 
       expect(sparks).toEqual([]);
@@ -436,7 +435,7 @@ describe("expandBurst", () => {
   // evaluated a little earlier — no state, nothing stored between frames.
   // One spark keeps the numbers simple to hand-check.
   const oneSparkConfig = {
-    ...defaultAudioVisualConfig,
+    ...defaultSettings.audiovisual,
     trailSpacingMs: 50,
     trailMaxPoints: 2,
   };
@@ -445,7 +444,7 @@ describe("expandBurst", () => {
   it("emits no trail points before trailSpacingMs has elapsed", () => {
     const entity = firework({ spec: oneSparkSpec, phaseElapsedMs: 30 });
 
-    const sprites = expandBurst(entity, oneSparkConfig, defaultWorldConfig);
+    const sprites = expandBurst(entity, oneSparkConfig, defaultSettings.world);
 
     expect(sprites.every((s) => s.kind === "spark")).toBe(true);
   });
@@ -468,7 +467,7 @@ describe("expandBurst", () => {
       throw new Error("test fixture produced no sparks");
     }
 
-    const sprites = expandBurst(entity, oneSparkConfig, defaultWorldConfig);
+    const sprites = expandBurst(entity, oneSparkConfig, defaultSettings.world);
     const trails = sprites.filter((s) => s.kind === "trail");
 
     expect(trails).toHaveLength(2);
@@ -477,8 +476,8 @@ describe("expandBurst", () => {
         entity.position,
         direction,
         speed,
-        defaultWorldConfig.gravity,
-        defaultWorldConfig.drag,
+        defaultSettings.world.gravity,
+        defaultSettings.world.drag,
         phaseElapsedMs - 50,
       ),
     );
@@ -487,8 +486,8 @@ describe("expandBurst", () => {
         entity.position,
         direction,
         speed,
-        defaultWorldConfig.gravity,
-        defaultWorldConfig.drag,
+        defaultSettings.world.gravity,
+        defaultSettings.world.drag,
         phaseElapsedMs - 100,
       ),
     );
@@ -499,7 +498,7 @@ describe("expandBurst", () => {
   it("caps trail points at config.trailMaxPoints even with far more elapsed time available", () => {
     const entity = firework({ spec: oneSparkSpec, phaseElapsedMs: 5000 });
 
-    const sprites = expandBurst(entity, oneSparkConfig, defaultWorldConfig);
+    const sprites = expandBurst(entity, oneSparkConfig, defaultSettings.world);
 
     expect(sprites.filter((s) => s.kind === "trail")).toHaveLength(2);
   });
@@ -513,7 +512,7 @@ describe("expandBurst", () => {
 // drifting at its own velocity, and divides the position change by the time.
 describe("expandBurst sprite velocity", () => {
   const driftConfig = {
-    ...defaultAudioVisualConfig,
+    ...defaultSettings.audiovisual,
     trailSpacingMs: 50,
     trailMaxPoints: 2,
   };
@@ -532,7 +531,9 @@ describe("expandBurst sprite velocity", () => {
       position: add(drift.position, scale(drift.velocity, offsetMs / 1000)),
       phaseElapsedMs: drift.phaseElapsedMs + offsetMs,
     });
-    const sprite = expandBurst(moved, driftConfig, defaultWorldConfig)[index];
+    const sprite = expandBurst(moved, driftConfig, defaultSettings.world)[
+      index
+    ];
     if (sprite === undefined) {
       throw new Error(`no sprite at index ${String(index)}`);
     }

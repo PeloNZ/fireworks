@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultActionConfig } from "./config.ts";
+import { defaultSettings } from "../config.ts";
 import { stepPhase } from "./phase.ts";
 import type { Firework, FireworkSpec } from "./types.ts";
 
@@ -43,7 +43,7 @@ function firework(overrides: Partial<Firework> = {}): Firework {
   };
 }
 
-const config = { ...defaultActionConfig, launchDurationMs: 200 };
+const config = { ...defaultSettings.action, launchDurationMs: 200 };
 
 describe("stepPhase", () => {
   it("moves from armed to launching once half of launchDurationMs has elapsed", () => {

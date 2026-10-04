@@ -8,7 +8,7 @@ import {
   skyBrightnessAt,
 } from "./backdrop.ts";
 import { hashString } from "../action/random.ts";
-import { defaultAudioVisualConfig } from "./config.ts";
+import { defaultSettings } from "../config.ts";
 import type { GroundPoint, SkyGradient } from "./types.ts";
 
 // Cycle 1 (docs/06_world_backdrop.md): the sky gradient as a plain
@@ -49,7 +49,7 @@ describe("buildSky", () => {
   // An unusual cap, well below the default 0.25, so an implementation that
   // hardcodes the default fails.
   const config = {
-    ...defaultAudioVisualConfig.backdrop,
+    ...defaultSettings.audiovisual.backdrop,
     skyMaxBrightness: 0.11,
   };
 
@@ -98,7 +98,7 @@ describe("buildBodies", () => {
   // A pinned star count and an unusually high floor, neither a default, so
   // a hardcoded count or a hardcoded height fails.
   const config = {
-    ...defaultAudioVisualConfig.backdrop,
+    ...defaultSettings.audiovisual.backdrop,
     starCount: { min: 3, max: 3 },
     celestialMinHeight: 60,
   };
@@ -159,7 +159,7 @@ describe("buildBodies", () => {
 
 describe("buildBodies — a lit sky washes out the stars", () => {
   const config = {
-    ...defaultAudioVisualConfig.backdrop,
+    ...defaultSettings.audiovisual.backdrop,
     starCount: { min: 20, max: 20 }, // pinned, so only the sky can change it
     skyMaxBrightness: 0.25,
   };
@@ -210,7 +210,7 @@ describe("buildGround", () => {
     // return value assertable exactly rather than by range. An unusual
     // point count, so a hardcoded number of points fails.
     const config = {
-      ...defaultAudioVisualConfig.backdrop,
+      ...defaultSettings.audiovisual.backdrop,
       groundPoints: 5,
       groundHeight: { min: 7, max: 7 },
     };
@@ -230,7 +230,7 @@ describe("buildGround", () => {
 
   it("draws each point's height separately, rather than one height shared by all of them", () => {
     const config = {
-      ...defaultAudioVisualConfig.backdrop,
+      ...defaultSettings.audiovisual.backdrop,
       groundPoints: 9,
       groundHeight: { min: 30, max: 31 },
     };
@@ -245,13 +245,13 @@ describe("buildGround", () => {
   });
 
   it("returns the same ground for the same seed", () => {
-    const config = defaultAudioVisualConfig.backdrop;
+    const config = defaultSettings.audiovisual.backdrop;
 
     expect(buildGround(42, config)).toEqual(buildGround(42, config));
   });
 
   it("returns different ground for a different seed", () => {
-    const config = defaultAudioVisualConfig.backdrop;
+    const config = defaultSettings.audiovisual.backdrop;
 
     expect(buildGround(1, config)).not.toEqual(buildGround(2, config));
   });
@@ -300,7 +300,7 @@ describe("groundHeightAt", () => {
 // the sky's horizon with the first star's x and the first hill's height.
 
 describe("buildBackdrop", () => {
-  const config = defaultAudioVisualConfig.backdrop;
+  const config = defaultSettings.audiovisual.backdrop;
 
   it("composes sky, bodies and ground, each drawn from its own hashed stream", () => {
     const seed = 12345;

@@ -479,7 +479,7 @@ twice as many columns as rows keeps the 100×100 world looking square rather tha
 src/audiovisual/
   types.ts             Rgb, Sprite, Frame, Renderer, Cue, Envelope,
                         Filter, Voice, AudioSink  — one cycle at a time
-  config.ts            AudioVisualConfig + defaultAudioVisualConfig
+  config.ts            AudioVisualConfig (default: `defaultSettings.audiovisual` in src/config.ts)
   color.ts             parseHexColor                                   [pure]
   interpolate.ts       lerpVec3                                        [pure]
   sparks.ts            sparkDirections, sparkSpeeds, sparkPosition,

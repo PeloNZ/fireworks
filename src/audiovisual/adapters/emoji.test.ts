@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createEmojiRenderer } from "./emoji.ts";
 import { overlayEmojiGrid, rasteriseEmojiFrame } from "./emojiGrid.ts";
 import { rasteriseEmojiBackdrop } from "./emojiBackdrop.ts";
-import { defaultAudioVisualConfig } from "../config.ts";
+import { defaultSettings } from "../../config.ts";
 import type { Backdrop, Frame, Mover } from "../types.ts";
 
 // Cycle 10 (docs/07_emoji_renderer.md): the adapter itself, mirroring
@@ -51,7 +51,7 @@ describe("createEmojiRenderer", () => {
     const { target, writes } = createTarget();
     const renderer = createEmojiRenderer({
       target,
-      config: defaultAudioVisualConfig,
+      config: defaultSettings.audiovisual,
       backdrop: null,
     });
     const frame = shellFrame();
@@ -60,7 +60,7 @@ describe("createEmojiRenderer", () => {
 
     expect(writes).toHaveLength(1);
     expect(writes[0]).toBe(
-      join(rasteriseEmojiFrame(frame, defaultAudioVisualConfig.emoji)),
+      join(rasteriseEmojiFrame(frame, defaultSettings.audiovisual.emoji)),
     );
   });
 
@@ -68,8 +68,8 @@ describe("createEmojiRenderer", () => {
     // Unusual columns and rows, so what passes is the composition rather
     // than a coincidence at the default grid size.
     const config = {
-      ...defaultAudioVisualConfig,
-      emoji: { ...defaultAudioVisualConfig.emoji, columns: 7, rows: 3 },
+      ...defaultSettings.audiovisual,
+      emoji: { ...defaultSettings.audiovisual.emoji, columns: 7, rows: 3 },
     };
     const backdrop: Backdrop = {
       sky: { horizon: 0.2, zenith: 0.05 },
@@ -107,8 +107,8 @@ describe("createEmojiRenderer", () => {
 
 describe("createEmojiRenderer with ambient movers", () => {
   const config = {
-    ...defaultAudioVisualConfig,
-    emoji: { ...defaultAudioVisualConfig.emoji, columns: 5, rows: 3 },
+    ...defaultSettings.audiovisual,
+    emoji: { ...defaultSettings.audiovisual.emoji, columns: 5, rows: 3 },
   };
   const flatSky: Backdrop = {
     sky: { horizon: 0.2, zenith: 0.2 },

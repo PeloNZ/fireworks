@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { paintBackdrop } from "./pixelBackdrop.ts";
-import { defaultAudioVisualConfig } from "../config.ts";
+import { defaultSettings } from "../../config.ts";
 import type { AudioVisualConfig } from "../config.ts";
 import type { Backdrop } from "../types.ts";
 
@@ -11,7 +11,7 @@ import type { Backdrop } from "../types.ts";
 // round(0.25*4)=1, round(0.75*4)=3, no rounding tie.
 
 const pixel: AudioVisualConfig["pixel"] = {
-  ...defaultAudioVisualConfig.pixel,
+  ...defaultSettings.audiovisual.pixel,
   columns: 3,
   rows: 2,
   sky: [90, 91, 92, 93, 94],
@@ -50,7 +50,7 @@ const flatGround: Backdrop["ground"] = [
 
 describe("paintBackdrop -- bodies", () => {
   const bodyPixel: AudioVisualConfig["pixel"] = {
-    ...defaultAudioVisualConfig.pixel,
+    ...defaultSettings.audiovisual.pixel,
     columns: wideGrid.columns,
     rows: wideGrid.rows,
     sky: [5, 5, 5, 5, 5], // flat, so body cells are easy to tell apart
@@ -104,7 +104,7 @@ describe("paintBackdrop -- bodies", () => {
 describe("paintBackdrop -- ground", () => {
   const groundGrid = { columns: 4, rows: 4 };
   const groundPixel: AudioVisualConfig["pixel"] = {
-    ...defaultAudioVisualConfig.pixel,
+    ...defaultSettings.audiovisual.pixel,
     columns: groundGrid.columns,
     rows: groundGrid.rows,
     sky: [3, 3, 3, 3, 3], // flat and distinct from ground, easy to tell apart

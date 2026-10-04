@@ -7,7 +7,7 @@ import {
   rasteriseEmojiFrame,
   sparkGlyph,
 } from "./emojiGrid.ts";
-import { defaultAudioVisualConfig } from "../config.ts";
+import { defaultSettings } from "../../config.ts";
 import type { AudioVisualConfig } from "../config.ts";
 import type { Frame, Mover, Rgb, Sprite } from "../types.ts";
 
@@ -16,7 +16,7 @@ import type { Frame, Mover, Rgb, Sprite } from "../types.ts";
 // default can't pass by accident.
 
 const emoji: AudioVisualConfig["emoji"] = {
-  ...defaultAudioVisualConfig.emoji,
+  ...defaultSettings.audiovisual.emoji,
   sparkHues: [
     { hue: 10, glyph: "A" },
     { hue: 200, glyph: "B" },
@@ -217,7 +217,7 @@ describe("overlayEmojiGrid", () => {
 
 describe("rasteriseEmojiAmbient", () => {
   const ambientEmoji: AudioVisualConfig["emoji"] = {
-    ...defaultAudioVisualConfig.emoji,
+    ...defaultSettings.audiovisual.emoji,
     columns: 4,
     rows: 2,
     blank: ".",
@@ -264,7 +264,7 @@ describe("rasteriseEmojiAmbient", () => {
   // width, which shears the grid), and none equal to the blank (a mover
   // would be invisible).
   it("uses default glyphs that have no variation selector and are not the blank", () => {
-    const { blank, movers } = defaultAudioVisualConfig.emoji;
+    const { blank, movers } = defaultSettings.audiovisual.emoji;
 
     for (const glyph of Object.values(movers)) {
       expect(glyph).not.toContain("\uFE0F");

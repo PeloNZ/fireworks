@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { stepPhysics } from "./physics.ts";
-import { defaultWorldConfig } from "./worldConfig.ts";
+import { defaultSettings } from "../config.ts";
 import { magnitude } from "./vector.ts";
 import type { Firework, FireworkSpec } from "./types.ts";
 import type { WorldConfig } from "./worldConfig.ts";
@@ -14,7 +14,7 @@ const ZERO_WORLD: WorldConfig = {
   gravity: { x: 0, y: 0, z: 0 },
   wind: { x: 0, y: 0, z: 0 },
   drag: 0,
-  stepMs: defaultWorldConfig.stepMs,
+  stepMs: defaultSettings.world.stepMs,
 };
 
 function fireworkSpec(overrides: Partial<FireworkSpec> = {}): FireworkSpec {
@@ -170,8 +170,8 @@ describe("stepPhysics", () => {
       fuelRemainingMs: 200,
     });
 
-    const a = stepPhysics(initial, defaultWorldConfig, 8);
-    const b = stepPhysics(initial, defaultWorldConfig, 8);
+    const a = stepPhysics(initial, defaultSettings.world, 8);
+    const b = stepPhysics(initial, defaultSettings.world, 8);
 
     expect(a).toEqual(b);
   });

@@ -1,6 +1,7 @@
 // Config is a single read-only object, not scattered constants — see
 // docs/02_spec.md#config. Nothing here is hardcoded into logic; every
-// consumer reads its values from a ControlConfig instance.
+// consumer reads its values from a ControlConfig instance. This file holds
+// the types. The default values are in src/config.ts.
 
 /** Only the keyboard adapter reads this — see "Where noise filtering
  * belongs" in docs/02_spec.md. Named and exported now that cycle 2's
@@ -17,24 +18,3 @@ export interface ControlConfig {
   readonly historyMaxAgeMs: number;
   readonly keyboard: KeyboardConfig;
 }
-
-export const defaultConfig: ControlConfig = Object.freeze({
-  defaultIntensity: 1.0,
-  historyMaxEntries: 16,
-  historyMaxAgeMs: 2000,
-  keyboard: Object.freeze({
-    deniedCodes: Object.freeze([
-      "ShiftLeft",
-      "ShiftRight",
-      "ControlLeft",
-      "ControlRight",
-      "AltLeft",
-      "AltRight",
-      "MetaLeft",
-      "MetaRight",
-      "CapsLock",
-      // Opens the settings menu, so it must not also launch a firework.
-      "Escape",
-    ]),
-  }),
-});

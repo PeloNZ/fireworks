@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { planSillyVoices } from "./silly.ts";
-import { defaultAudioVisualConfig } from "../config.ts";
+import { defaultSettings } from "../../config.ts";
 import type { Cue } from "../types.ts";
 import type { FireworkSpec } from "../../action/types.ts";
 
@@ -30,9 +30,9 @@ function fireworkSpec(overrides: Partial<FireworkSpec> = {}): FireworkSpec {
 // An unusual launch duration, envelope and flight gain, not the
 // defaults, so a hardcoded value can't pass.
 const config = {
-  ...defaultAudioVisualConfig,
+  ...defaultSettings.audiovisual,
   audio: {
-    ...defaultAudioVisualConfig.audio,
+    ...defaultSettings.audiovisual.audio,
     burst: {
       envelope: {
         attackMs: 4,

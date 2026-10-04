@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { defaultConfig } from "./config.ts";
+import { defaultSettings } from "../config.ts";
 import { createControlLayer } from "./controlLayer.ts";
 import type {
   ControllerAdapter,
@@ -60,7 +60,7 @@ describe("createControlLayer", () => {
     const sink: ControlEventSink = vi.fn();
     const layer = createControlLayer({
       adapter,
-      config: defaultConfig,
+      config: defaultSettings.control,
       now: fixedClock(0),
       sink,
       focusLoss: fakeFocusLossSource(),
@@ -95,7 +95,7 @@ describe("createControlLayer", () => {
   it("builds signal fields the same way buildSignal itself would", () => {
     const adapter = fakeAdapter();
     const sink = vi.fn();
-    const config = { ...defaultConfig, defaultIntensity: 0.42 };
+    const config = { ...defaultSettings.control, defaultIntensity: 0.42 };
     const layer = createControlLayer({
       adapter,
       config,
@@ -124,7 +124,7 @@ describe("createControlLayer", () => {
     const stop = vi.spyOn(adapter, "stop");
     const layer = createControlLayer({
       adapter,
-      config: defaultConfig,
+      config: defaultSettings.control,
       now: fixedClock(0),
       sink: vi.fn(),
       focusLoss: fakeFocusLossSource(),
@@ -140,7 +140,7 @@ describe("createControlLayer", () => {
     const stop = vi.spyOn(focusLoss, "stop");
     const layer = createControlLayer({
       adapter: fakeAdapter(),
-      config: defaultConfig,
+      config: defaultSettings.control,
       now: fixedClock(0),
       sink: vi.fn(),
       focusLoss,
@@ -156,7 +156,7 @@ describe("createControlLayer", () => {
     const focusLoss = fakeFocusLossSource();
     const layer = createControlLayer({
       adapter,
-      config: defaultConfig,
+      config: defaultSettings.control,
       now: fixedClock(0),
       sink: vi.fn(),
       focusLoss,
@@ -174,7 +174,7 @@ describe("createControlLayer", () => {
     const focusLoss = fakeFocusLossSource();
     const layer = createControlLayer({
       adapter,
-      config: defaultConfig,
+      config: defaultSettings.control,
       now: fixedClock(0),
       sink: vi.fn(),
       focusLoss,
@@ -200,7 +200,7 @@ describe("createControlLayer", () => {
     const adapter = fakeAdapter();
     const layer = createControlLayer({
       adapter,
-      config: defaultConfig,
+      config: defaultSettings.control,
       now: fixedClock(0),
       sink: vi.fn(),
       focusLoss: fakeFocusLossSource(),
@@ -232,7 +232,7 @@ describe("createControlLayer", () => {
       const sink = vi.fn();
       const layer = createControlLayer({
         adapter,
-        config: defaultConfig,
+        config: defaultSettings.control,
         now: fixedClock(0),
         sink,
         focusLoss: fakeFocusLossSource(),

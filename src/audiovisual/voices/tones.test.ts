@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { planToneVoices } from "./tones.ts";
-import { defaultAudioVisualConfig } from "../config.ts";
+import { defaultSettings } from "../../config.ts";
 import type { Cue } from "../types.ts";
 import type { FireworkSpec } from "../../action/types.ts";
 
@@ -44,9 +44,9 @@ function fireworkSpec(overrides: Partial<FireworkSpec> = {}): FireworkSpec {
 // Unusual envelopes, duration and crackle count, not the defaults, so a
 // hardcoded value can't pass.
 const config = {
-  ...defaultAudioVisualConfig,
+  ...defaultSettings.audiovisual,
   audio: {
-    ...defaultAudioVisualConfig.audio,
+    ...defaultSettings.audiovisual.audio,
     crackleCount: 4,
     burst: {
       envelope: {

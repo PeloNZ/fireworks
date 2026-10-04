@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { defaultConfig } from "../config.ts";
+import { defaultSettings } from "../../config.ts";
 import { createKeyboardAdapter, interpretKeyEvent } from "./keyboard.ts";
 import type { KeyboardListenerEvent, KeyEventLike } from "./keyboard.ts";
 
@@ -18,7 +18,7 @@ const baseEvent: KeyEventLike = {
   timeStamp: 1000,
 };
 
-const keyboardConfig = defaultConfig.keyboard;
+const keyboardConfig = defaultSettings.control.keyboard;
 
 describe("interpretKeyEvent", () => {
   it("produces an input for an ordinary letter key, passing code and timestamp through", () => {

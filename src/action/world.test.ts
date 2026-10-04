@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultActionConfig } from "./config.ts";
-import { defaultWorldConfig } from "./worldConfig.ts";
+import { defaultSettings } from "../config.ts";
 import { createFirework, createWorld } from "./world.ts";
 import type { Firework, FireworkSpec } from "./types.ts";
 import type { WorldConfig } from "./worldConfig.ts";
@@ -70,10 +69,10 @@ describe("createFirework", () => {
 // rather than integrating with a variable dt.
 
 const STEP_MS = 10;
-const worldConfig: WorldConfig = { ...defaultWorldConfig, stepMs: STEP_MS };
+const worldConfig: WorldConfig = { ...defaultSettings.world, stepMs: STEP_MS };
 // A long launch/fuse by default, so phase stays "armed" and nothing resets
 // phaseElapsedMs unless a test deliberately shortens one of these.
-const actionConfig = { ...defaultActionConfig, launchDurationMs: 1_000_000 };
+const actionConfig = { ...defaultSettings.action, launchDurationMs: 1_000_000 };
 
 function stillSpec(overrides: Partial<FireworkSpec> = {}): FireworkSpec {
   return spec({ fuseMs: 1_000_000, ...overrides });

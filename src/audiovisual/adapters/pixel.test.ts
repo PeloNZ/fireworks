@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createPixelRenderer, toRgba } from "./pixel.ts";
 import { paintFrame } from "./pixelGrid.ts";
-import { defaultAudioVisualConfig } from "../config.ts";
+import { defaultSettings } from "../../config.ts";
 import type { PixelTarget } from "./pixel.ts";
 import type { AudioVisualConfig } from "../config.ts";
 import type { Backdrop, Frame } from "../types.ts";
@@ -61,12 +61,12 @@ function createTarget(): {
 }
 
 const pixelConfig: AudioVisualConfig["pixel"] = {
-  ...defaultAudioVisualConfig.pixel,
+  ...defaultSettings.audiovisual.pixel,
   columns: 7,
   rows: 3,
 };
 const config: AudioVisualConfig = {
-  ...defaultAudioVisualConfig,
+  ...defaultSettings.audiovisual,
   pixel: pixelConfig,
 };
 const frame: Frame = { sprites: [], ambient: [] };

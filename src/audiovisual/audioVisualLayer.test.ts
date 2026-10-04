@@ -3,8 +3,7 @@ import { createAudioVisualLayer } from "./audioVisualLayer.ts";
 import { buildFrame } from "./frame.ts";
 import { createTrails } from "./trails.ts";
 import { planToneVoices } from "./voices/tones.ts";
-import { defaultAudioVisualConfig } from "./config.ts";
-import { defaultWorldConfig } from "../action/worldConfig.ts";
+import { defaultSettings } from "../config.ts";
 import type { Firework, FireworkSpec } from "../action/types.ts";
 import type { Renderer, Voice, VoicePlanner } from "./types.ts";
 
@@ -69,8 +68,8 @@ describe("createAudioVisualLayer", () => {
       audio: vi.fn(),
       voicePlanner: planToneVoices,
       ambientRandom: () => draws[next++] ?? 0.99,
-      config: defaultAudioVisualConfig,
-      worldConfig: defaultWorldConfig,
+      config: defaultSettings.audiovisual,
+      worldConfig: defaultSettings.world,
     });
 
     layer.present({ entities: [], alpha: 0, elapsedMs: 16 });
@@ -101,8 +100,8 @@ describe("createAudioVisualLayer", () => {
       audio: vi.fn(),
       voicePlanner: planToneVoices,
       ambientRandom: () => 0.99,
-      config: defaultAudioVisualConfig,
-      worldConfig: defaultWorldConfig,
+      config: defaultSettings.audiovisual,
+      worldConfig: defaultSettings.world,
     });
     const entities = [firework()];
 
@@ -112,8 +111,8 @@ describe("createAudioVisualLayer", () => {
     // frame — an independent instance, fed the same call, reproduces the
     // same trail state to compare against.
     const trails = createTrails({
-      maxAgeMs: defaultAudioVisualConfig.trailMaxAgeMs,
-      maxPoints: defaultAudioVisualConfig.trailMaxPoints,
+      maxAgeMs: defaultSettings.audiovisual.trailMaxAgeMs,
+      maxPoints: defaultSettings.audiovisual.trailMaxPoints,
     });
     trails.record(entities, 16);
 
@@ -122,8 +121,8 @@ describe("createAudioVisualLayer", () => {
       ...buildFrame({
         entities,
         alpha: 0.4,
-        config: defaultAudioVisualConfig,
-        worldConfig: defaultWorldConfig,
+        config: defaultSettings.audiovisual,
+        worldConfig: defaultSettings.world,
         trails,
       }),
       ambient: [],
@@ -137,8 +136,8 @@ describe("createAudioVisualLayer", () => {
       audio,
       voicePlanner: planToneVoices,
       ambientRandom: () => 0.99,
-      config: defaultAudioVisualConfig,
-      worldConfig: defaultWorldConfig,
+      config: defaultSettings.audiovisual,
+      worldConfig: defaultSettings.world,
     });
 
     layer.present({
@@ -158,8 +157,8 @@ describe("createAudioVisualLayer", () => {
       audio,
       voicePlanner: planToneVoices,
       ambientRandom: () => 0.99,
-      config: defaultAudioVisualConfig,
-      worldConfig: defaultWorldConfig,
+      config: defaultSettings.audiovisual,
+      worldConfig: defaultSettings.world,
     });
     const spec = fireworkSpec();
     layer.present({
@@ -177,7 +176,7 @@ describe("createAudioVisualLayer", () => {
     expect(audio).toHaveBeenCalledTimes(2);
     expect(audio).toHaveBeenNthCalledWith(
       2,
-      planToneVoices({ kind: "burst", spec }, defaultAudioVisualConfig),
+      planToneVoices({ kind: "burst", spec }, defaultSettings.audiovisual),
     );
   });
 
@@ -204,8 +203,8 @@ describe("createAudioVisualLayer", () => {
       audio,
       voicePlanner,
       ambientRandom: () => 0.99,
-      config: defaultAudioVisualConfig,
-      worldConfig: defaultWorldConfig,
+      config: defaultSettings.audiovisual,
+      worldConfig: defaultSettings.world,
     });
     const spec = fireworkSpec();
     layer.present({
@@ -222,7 +221,7 @@ describe("createAudioVisualLayer", () => {
 
     expect(voicePlanner).toHaveBeenCalledWith(
       { kind: "burst", spec },
-      defaultAudioVisualConfig,
+      defaultSettings.audiovisual,
     );
     expect(audio).toHaveBeenNthCalledWith(2, [fakeVoice]);
   });

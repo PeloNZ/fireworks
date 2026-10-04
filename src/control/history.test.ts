@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultConfig } from "./config.ts";
+import { defaultSettings } from "../config.ts";
 import { createHistory } from "./history.ts";
 import type { ControlSignal } from "./types.ts";
 
@@ -25,7 +25,7 @@ function fakeClock(start: number) {
 describe("createHistory", () => {
   it("returns a pushed signal from recent()", () => {
     const clock = fakeClock(0);
-    const history = createHistory(defaultConfig, clock.now);
+    const history = createHistory(defaultSettings.control, clock.now);
 
     history.push(signal("a", 0));
 
@@ -34,7 +34,7 @@ describe("createHistory", () => {
 
   it("returns signals oldest first", () => {
     const clock = fakeClock(0);
-    const history = createHistory(defaultConfig, clock.now);
+    const history = createHistory(defaultSettings.control, clock.now);
 
     history.push(signal("a", 0));
     history.push(signal("b", 10));
@@ -45,7 +45,7 @@ describe("createHistory", () => {
 
   it("caps at config.historyMaxEntries, dropping the oldest first", () => {
     const clock = fakeClock(0);
-    const config = { ...defaultConfig, historyMaxEntries: 2 };
+    const config = { ...defaultSettings.control, historyMaxEntries: 2 };
     const history = createHistory(config, clock.now);
 
     history.push(signal("a", 0));
@@ -57,7 +57,7 @@ describe("createHistory", () => {
 
   it("drops entries older than config.historyMaxAgeMs, measured at read time", () => {
     const clock = fakeClock(0);
-    const config = { ...defaultConfig, historyMaxAgeMs: 100 };
+    const config = { ...defaultSettings.control, historyMaxAgeMs: 100 };
     const history = createHistory(config, clock.now);
 
     history.push(signal("a", 0));
@@ -68,7 +68,7 @@ describe("createHistory", () => {
 
   it("keeps a fresh entry while dropping a stale one pushed earlier", () => {
     const clock = fakeClock(0);
-    const config = { ...defaultConfig, historyMaxAgeMs: 100 };
+    const config = { ...defaultSettings.control, historyMaxAgeMs: 100 };
     const history = createHistory(config, clock.now);
 
     history.push(signal("old", 0));
@@ -80,7 +80,7 @@ describe("createHistory", () => {
 
   it("empties on clear()", () => {
     const clock = fakeClock(0);
-    const history = createHistory(defaultConfig, clock.now);
+    const history = createHistory(defaultSettings.control, clock.now);
 
     history.push(signal("a", 0));
     history.clear();
@@ -90,7 +90,7 @@ describe("createHistory", () => {
 
   it("accepts a push after clear() as a fresh start", () => {
     const clock = fakeClock(0);
-    const history = createHistory(defaultConfig, clock.now);
+    const history = createHistory(defaultSettings.control, clock.now);
 
     history.push(signal("a", 0));
     history.clear();
@@ -101,7 +101,7 @@ describe("createHistory", () => {
 
   it("does not let a caller mutate stored state through the returned array", () => {
     const clock = fakeClock(0);
-    const history = createHistory(defaultConfig, clock.now);
+    const history = createHistory(defaultSettings.control, clock.now);
     history.push(signal("a", 0));
 
     const first = history.recent();
@@ -116,8 +116,8 @@ describe("createHistory", () => {
 
   it("keeps two instances independent", () => {
     const clock = fakeClock(0);
-    const historyA = createHistory(defaultConfig, clock.now);
-    const historyB = createHistory(defaultConfig, clock.now);
+    const historyA = createHistory(defaultSettings.control, clock.now);
+    const historyB = createHistory(defaultSettings.control, clock.now);
 
     historyA.push(signal("a", 0));
 

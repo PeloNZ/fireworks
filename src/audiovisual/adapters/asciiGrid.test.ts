@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { rasteriseAmbient, rasteriseFrame } from "./asciiGrid.ts";
-import { defaultAudioVisualConfig } from "../config.ts";
+import { defaultSettings } from "../../config.ts";
 import type { Mover, Sprite, Frame } from "../types.ts";
 
 // Cycle 4 (docs/05_audio_visual_layer.md): the interesting part of the
@@ -8,7 +8,7 @@ import type { Mover, Sprite, Frame } from "../types.ts";
 // returning a plain string, asserted in full. A small 9x5 grid keeps
 // every position hand-checkable.
 
-const ascii = { ...defaultAudioVisualConfig.ascii, columns: 9, rows: 5 };
+const ascii = { ...defaultSettings.audiovisual.ascii, columns: 9, rows: 5 };
 
 function sprite(overrides: Partial<Sprite> = {}): Sprite {
   return {

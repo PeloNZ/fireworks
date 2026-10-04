@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { rasteriseEmojiBackdrop } from "./emojiBackdrop.ts";
-import { defaultAudioVisualConfig } from "../config.ts";
+import { defaultSettings } from "../../config.ts";
 import type { AudioVisualConfig } from "../config.ts";
 import type { Backdrop } from "../types.ts";
 
@@ -12,7 +12,7 @@ import type { Backdrop } from "../types.ts";
 function config(
   overrides: Partial<AudioVisualConfig["emoji"]>,
 ): AudioVisualConfig["emoji"] {
-  return { ...defaultAudioVisualConfig.emoji, ...overrides };
+  return { ...defaultSettings.audiovisual.emoji, ...overrides };
 }
 
 function backdrop(overrides: Partial<Backdrop> = {}): Backdrop {
@@ -56,7 +56,7 @@ describe("rasteriseEmojiBackdrop", () => {
       rows: 2,
       sky: ["z", "z", "z", "z", "z"],
       backdropGlyphs: {
-        ...defaultAudioVisualConfig.emoji.backdropGlyphs,
+        ...defaultSettings.audiovisual.emoji.backdropGlyphs,
         star: "S",
         moon: "M",
         planet: "P",
@@ -106,7 +106,7 @@ describe("rasteriseEmojiBackdrop", () => {
       rows: 4,
       sky: ["z", "z", "z", "z", "z"],
       backdropGlyphs: {
-        ...defaultAudioVisualConfig.emoji.backdropGlyphs,
+        ...defaultSettings.audiovisual.emoji.backdropGlyphs,
         ridge: "R",
         ground: "G",
       },

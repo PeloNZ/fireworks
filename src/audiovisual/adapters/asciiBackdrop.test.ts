@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { overlayGrid, rasteriseBackdrop } from "./asciiBackdrop.ts";
-import { defaultAudioVisualConfig } from "../config.ts";
+import { defaultSettings } from "../../config.ts";
 import type { AudioVisualConfig } from "../config.ts";
 import type { Backdrop } from "../types.ts";
 
@@ -20,15 +20,15 @@ function config(overrides: {
   readonly backdrop?: Partial<AudioVisualConfig["backdrop"]>;
 }): AudioVisualConfig {
   return {
-    ...defaultAudioVisualConfig,
+    ...defaultSettings.audiovisual,
     ascii: {
-      ...defaultAudioVisualConfig.ascii,
+      ...defaultSettings.audiovisual.ascii,
       ramp: "abcde",
       backdropGlyphs: { star: "S", moon: "M", planet: "P", ridge: "R" },
       ...overrides.ascii,
     },
     backdrop: {
-      ...defaultAudioVisualConfig.backdrop,
+      ...defaultSettings.audiovisual.backdrop,
       ...overrides.backdrop,
     },
   };

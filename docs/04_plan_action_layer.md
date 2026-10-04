@@ -299,8 +299,8 @@ and this line moves.
 src/action/
   types.ts         Vec3, Seeds, FireworkSpec, FireworkPhase, Firework,
                     FireworkPattern, FireworkTimbre, FireworkSound
-  config.ts        ActionConfig + defaultActionConfig
-  worldConfig.ts   WorldConfig + defaultWorldConfig
+  config.ts        ActionConfig (default: `defaultSettings.action` in src/config.ts)
+  worldConfig.ts   WorldConfig (default: `defaultSettings.world` in src/config.ts)
   vector.ts        add, scale, normalise, magnitude                   [pure]
   random.ts        hashString, createRandom, deriveSeeds              [pure]
   launch.ts        pickLaunch(seeds, config)                          [pure]

@@ -28,7 +28,8 @@ different.
 src/control/
   types.ts              RawInput, ControlSignal, ControlEvent, ControlSource,
                          ControllerAdapter, ControlEventSink
-  config.ts              ControlConfig + a frozen defaultConfig (includes a `keyboard` sub-object)
+  config.ts              ControlConfig (includes a `keyboard` sub-object); its frozen default is
+                         `defaultSettings.control` in src/config.ts (docs/13_settings_overrides.md)
   signal.ts               buildSignal(raw, source, config) -> ControlSignal        [pure]
   history.ts              createHistory(config, now) -> { push, recent, clear }    [pure state machine]
   controlLayer.ts         createControlLayer({ adapter, config, now, sink })

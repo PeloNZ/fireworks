@@ -8,7 +8,7 @@ import {
   toPixel,
   worldHalfWidth,
 } from "./pixelGrid.ts";
-import { defaultAudioVisualConfig } from "../config.ts";
+import { defaultSettings } from "../../config.ts";
 import type { AudioVisualConfig } from "../config.ts";
 import type { Frame, Mover, Rgb, Sprite } from "../types.ts";
 
@@ -19,7 +19,7 @@ import type { Frame, Mover, Rgb, Sprite } from "../types.ts";
 // away from the 0.15 default, so neither can pass by coincidence.
 
 const pixel: AudioVisualConfig["pixel"] = {
-  ...defaultAudioVisualConfig.pixel,
+  ...defaultSettings.audiovisual.pixel,
   sparkHues: [
     { hue: 10, index: 3 },
     { hue: 200, index: 12 },
@@ -221,7 +221,7 @@ describe("discCells", () => {
 describe("paintFrame", () => {
   it("fills the buffer with blank, painting one sprite's disc over it", () => {
     const pixel: AudioVisualConfig["pixel"] = {
-      ...defaultAudioVisualConfig.pixel,
+      ...defaultSettings.audiovisual.pixel,
       sparkHues: [{ hue: 10, index: 3 }],
       columns: wideGrid.columns,
       rows: wideGrid.rows,
@@ -260,7 +260,7 @@ describe("paintFrame", () => {
 // painter's-algorithm implementation where the later sprite simply wins.
 describe("paintFrame -- the brightness contest", () => {
   const contestPixel: AudioVisualConfig["pixel"] = {
-    ...defaultAudioVisualConfig.pixel,
+    ...defaultSettings.audiovisual.pixel,
     sparkHues: [
       { hue: 10, index: 3 },
       { hue: 200, index: 12 },
@@ -359,7 +359,7 @@ describe("paintFrame -- radius scales with brightness", () => {
 
   it("paints a smaller disc at a dimmer, never-default brightness", () => {
     const pixel: AudioVisualConfig["pixel"] = {
-      ...defaultAudioVisualConfig.pixel,
+      ...defaultSettings.audiovisual.pixel,
       sparkHues: [{ hue: 10, index: 3 }],
       columns: wideGrid.columns,
       rows: wideGrid.rows,
@@ -388,7 +388,7 @@ describe("paintFrame -- radius scales with brightness", () => {
 // is index 0 -> 7, which is blank.
 describe("paintFrame -- ambient movers", () => {
   const moverPixel: AudioVisualConfig["pixel"] = {
-    ...defaultAudioVisualConfig.pixel,
+    ...defaultSettings.audiovisual.pixel,
     moverRamp: [7, 2, 3, 4],
     moverTailMs: { shootingStar: 0, satellite: 0 },
     sparkHues: [{ hue: 10, index: 3 }],
@@ -463,7 +463,7 @@ describe("paintFrame -- ambient movers", () => {
 
   // The same house rule as trail[0] === blank: a fully faded mover must vanish.
   it("starts the default mover ramp on blank", () => {
-    const { moverRamp, blank } = defaultAudioVisualConfig.pixel;
+    const { moverRamp, blank } = defaultSettings.audiovisual.pixel;
 
     expect(moverRamp[0]).toBe(blank);
   });

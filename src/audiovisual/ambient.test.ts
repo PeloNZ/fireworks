@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ambientForWidth, createAmbient } from "./ambient.ts";
-import { defaultAudioVisualConfig } from "./config.ts";
+import { defaultSettings } from "../config.ts";
 
 // docs/11_ambient_movers.md: rare, random movers behind the fireworks. The
 // spawner takes `random` as a plain function, so each test scripts the
@@ -24,7 +24,7 @@ function scripted(values: readonly number[]): () => number {
 // rebuilds the config from defaults fails.
 describe("ambientForWidth", () => {
   const base = {
-    ...defaultAudioVisualConfig.ambient,
+    ...defaultSettings.audiovisual.ambient,
     ratePerSecond: 0.3,
     cooldownMs: 1234,
     maxLive: 5,
@@ -53,7 +53,7 @@ describe("createAmbient", () => {
   // does not spawn when the chance is 0. A `<=` would spawn on every step.
   it("never spawns at rate 0, whatever the roll", () => {
     const ambient = createAmbient({
-      config: { ...defaultAudioVisualConfig.ambient, ratePerSecond: 0 },
+      config: { ...defaultSettings.audiovisual.ambient, ratePerSecond: 0 },
       random: () => 0,
     });
 
@@ -66,7 +66,7 @@ describe("createAmbient", () => {
   //   1000 ms: 1 - e^-1   = 0.6321, so a roll of 0.63 spawns and 0.64 does not.
   //    500 ms: 1 - e^-0.5 = 0.3935, so a roll of 0.39 spawns and 0.40 does not.
   it("turns the rate per second into a chance for the elapsed time", () => {
-    const config = { ...defaultAudioVisualConfig.ambient, ratePerSecond: 1 };
+    const config = { ...defaultSettings.audiovisual.ambient, ratePerSecond: 1 };
     const spawnsAt = (roll: number, elapsedMs: number): number =>
       createAmbient({ config, random: () => roll }).step(elapsedMs).length;
 
@@ -97,7 +97,7 @@ describe("createAmbient", () => {
   function starAmbient(directionRoll: number) {
     return createAmbient({
       config: {
-        ...defaultAudioVisualConfig.ambient,
+        ...defaultSettings.audiovisual.ambient,
         ratePerSecond: 1,
         shootingStar: star,
       },
@@ -174,7 +174,7 @@ describe("createAmbient", () => {
   function satelliteAfter(directionRoll: number) {
     return createAmbient({
       config: {
-        ...defaultAudioVisualConfig.ambient,
+        ...defaultSettings.audiovisual.ambient,
         ratePerSecond: 1,
         satellite,
       },
@@ -230,7 +230,7 @@ describe("createAmbient", () => {
   // 3999 more. Both of those steps draw a spawn roll and a kind, find the
   // kind waiting, and spawn nothing. One more millisecond ends the wait.
   const cooldownConfig = {
-    ...defaultAudioVisualConfig.ambient,
+    ...defaultSettings.audiovisual.ambient,
     ratePerSecond: 1000,
     cooldownMs: 5000,
     shootingStar: star,

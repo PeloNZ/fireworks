@@ -3,8 +3,7 @@ import { buildFrame } from "./frame.ts";
 import { parseHexColor } from "./color.ts";
 import { expandBurst } from "./sparks.ts";
 import { createTrails } from "./trails.ts";
-import { defaultAudioVisualConfig } from "./config.ts";
-import { defaultWorldConfig } from "../action/worldConfig.ts";
+import { defaultSettings } from "../config.ts";
 import type { Firework, FireworkSpec } from "../action/types.ts";
 
 // Cycle 3 (docs/05_audio_visual_layer.md): the first thing to draw is the
@@ -14,8 +13,8 @@ import type { Firework, FireworkSpec } from "../action/types.ts";
 // adds shell trails.
 
 // An unusual shellSize, not the default, so a hardcoded size can't pass.
-const config = { ...defaultAudioVisualConfig, shellSize: 2 };
-const worldConfig = defaultWorldConfig;
+const config = { ...defaultSettings.audiovisual, shellSize: 2 };
+const worldConfig = defaultSettings.world;
 
 // buildFrame only reads a trails store — recording into it is
 // createAudioVisualLayer's job (cycle 15). Most tests here don't care

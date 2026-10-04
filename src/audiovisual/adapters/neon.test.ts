@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createNeonRenderer } from "./neon.ts";
 import type { Canvas2DLike } from "./neon.ts";
-import { defaultAudioVisualConfig } from "../config.ts";
+import { defaultSettings } from "../../config.ts";
 import type { Backdrop, Frame, Sprite } from "../types.ts";
 
 // The player replays the scene onto a canvas port. The port is a slice of the
@@ -48,7 +48,7 @@ function expectSequence(log: readonly string[], lines: readonly string[]) {
 
 // Unusual values, not the defaults, so a hard-coded one cannot pass.
 const config = {
-  ...defaultAudioVisualConfig.neon,
+  ...defaultSettings.audiovisual.neon,
   streakMs: 1000,
   starArm: 5,
   starColor: { r: 0.1, g: 0.2, b: 0.3 },

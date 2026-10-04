@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultConfig } from "./config.ts";
+import { defaultSettings } from "../config.ts";
 import { buildSignal } from "./signal.ts";
 import type { RawInput } from "./types.ts";
 
@@ -11,7 +11,7 @@ describe("buildSignal", () => {
   const raw: RawInput = { code: "KeyA", shift: true, timestamp: 1234 };
 
   it("passes id, shift, and timestamp through from the raw input unchanged", () => {
-    const signal = buildSignal(raw, "keyboard", defaultConfig);
+    const signal = buildSignal(raw, "keyboard", defaultSettings.control);
 
     expect(signal.id).toBe(raw.code);
     expect(signal.shift).toBe(raw.shift);
@@ -19,7 +19,7 @@ describe("buildSignal", () => {
   });
 
   it("always sets intensity from config.defaultIntensity, never invented locally", () => {
-    const config = { ...defaultConfig, defaultIntensity: 0.42 };
+    const config = { ...defaultSettings.control, defaultIntensity: 0.42 };
 
     const signal = buildSignal(raw, "keyboard", config);
 
@@ -27,13 +27,13 @@ describe("buildSignal", () => {
   });
 
   it("stamps source from the argument passed in, not something it decides itself", () => {
-    const signal = buildSignal(raw, "keyboard", defaultConfig);
+    const signal = buildSignal(raw, "keyboard", defaultSettings.control);
 
     expect(signal.source).toBe("keyboard");
   });
 
   it("returns exactly the five ControlSignal fields, nothing extra", () => {
-    const signal = buildSignal(raw, "keyboard", defaultConfig);
+    const signal = buildSignal(raw, "keyboard", defaultSettings.control);
 
     expect(Object.keys(signal).sort()).toEqual([
       "id",

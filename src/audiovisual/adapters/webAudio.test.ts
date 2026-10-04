@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createNoiseBuffer, createWebAudioSink } from "./webAudio.ts";
-import { defaultAudioVisualConfig } from "../config.ts";
+import { defaultSettings } from "../../config.ts";
 import type { Voice } from "../types.ts";
 
 // Cycle 18 (docs/05_audio_visual_layer.md): the adapter that actually
@@ -170,9 +170,9 @@ const noiseVoice: Voice = {
 // An unusual lookahead/gain/cap, not the defaults, so hardcoded values
 // can't pass.
 const config = {
-  ...defaultAudioVisualConfig,
+  ...defaultSettings.audiovisual,
   audio: {
-    ...defaultAudioVisualConfig.audio,
+    ...defaultSettings.audiovisual.audio,
     lookaheadMs: 20,
     masterGain: 0.7,
     maxVoices: 2,

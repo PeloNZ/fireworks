@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { neonBackdrop, neonFrame, toCanvas } from "./neonScene.ts";
-import { defaultAudioVisualConfig } from "../config.ts";
+import { defaultSettings } from "../../config.ts";
 import type { Backdrop, Frame, Mover, Sprite } from "../types.ts";
 
 // Cycle 3 (docs/12_neon_renderer.md): world space to canvas pixels. The
@@ -30,7 +30,7 @@ describe("toCanvas", () => {
 // velocity. (Cycle 5 gives a sprite that does not move a disc.)
 
 // An unusual streakMs, not the default, so a hard-coded length cannot pass.
-const neon = { ...defaultAudioVisualConfig.neon, streakMs: 100 };
+const neon = { ...defaultSettings.audiovisual.neon, streakMs: 100 };
 
 function sprite(overrides: Partial<Sprite> = {}): Sprite {
   return {

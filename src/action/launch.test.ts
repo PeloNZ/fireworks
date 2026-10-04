@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultActionConfig } from "./config.ts";
+import { defaultSettings } from "../config.ts";
 import { pickLaunch } from "./launch.ts";
 import { magnitude } from "./vector.ts";
 import type { Seeds } from "./types.ts";
@@ -16,7 +16,7 @@ function seeds(overrides: Partial<Seeds> = {}): Seeds {
 describe("pickLaunch", () => {
   it("keeps speed inside the configured range", () => {
     const config = {
-      ...defaultActionConfig,
+      ...defaultSettings.action,
       launchSpeed: { min: 1000, max: 1001 },
     };
 
@@ -27,7 +27,10 @@ describe("pickLaunch", () => {
   });
 
   it("keeps thrust inside the configured range", () => {
-    const config = { ...defaultActionConfig, thrust: { min: 777, max: 778 } };
+    const config = {
+      ...defaultSettings.action,
+      thrust: { min: 777, max: 778 },
+    };
 
     const launch = pickLaunch(seeds(), config);
 
@@ -36,7 +39,10 @@ describe("pickLaunch", () => {
   });
 
   it("keeps fuelMs inside the configured range", () => {
-    const config = { ...defaultActionConfig, fuelMs: { min: 6000, max: 6001 } };
+    const config = {
+      ...defaultSettings.action,
+      fuelMs: { min: 6000, max: 6001 },
+    };
 
     const launch = pickLaunch(seeds(), config);
 
@@ -45,7 +51,10 @@ describe("pickLaunch", () => {
   });
 
   it("keeps fuseMs inside the configured range", () => {
-    const config = { ...defaultActionConfig, fuseMs: { min: 9000, max: 9001 } };
+    const config = {
+      ...defaultSettings.action,
+      fuseMs: { min: 9000, max: 9001 },
+    };
 
     const launch = pickLaunch(seeds(), config);
 
@@ -55,7 +64,7 @@ describe("pickLaunch", () => {
 
   it("gives the same angle for the same key seed, whatever the press seed", () => {
     const config = {
-      ...defaultActionConfig,
+      ...defaultSettings.action,
       launchAngle: { min: -60, max: 60 },
     };
 
@@ -71,7 +80,7 @@ describe("pickLaunch", () => {
 
   it("varies speed for a different press seed, same key seed", () => {
     const config = {
-      ...defaultActionConfig,
+      ...defaultSettings.action,
       launchSpeed: { min: 10, max: 1000 },
     };
 
@@ -82,7 +91,10 @@ describe("pickLaunch", () => {
   });
 
   it("points straight up for an angle of 0", () => {
-    const config = { ...defaultActionConfig, launchAngle: { min: 0, max: 0 } };
+    const config = {
+      ...defaultSettings.action,
+      launchAngle: { min: 0, max: 0 },
+    };
 
     const launch = pickLaunch(seeds(), config);
 
@@ -91,7 +103,7 @@ describe("pickLaunch", () => {
   });
 
   it("always has a z of 0", () => {
-    const launch = pickLaunch(seeds(), defaultActionConfig);
+    const launch = pickLaunch(seeds(), defaultSettings.action);
 
     expect(launch.velocity.z).toBe(0);
   });

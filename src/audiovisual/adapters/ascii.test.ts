@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createAsciiRenderer } from "./ascii.ts";
 import { rasteriseFrame } from "./asciiGrid.ts";
 import { overlayGrid, rasteriseBackdrop } from "./asciiBackdrop.ts";
-import { defaultAudioVisualConfig } from "../config.ts";
+import { defaultSettings } from "../../config.ts";
 import type { Backdrop, Frame, Mover } from "../types.ts";
 
 // Cycle 5 (docs/05_audio_visual_layer.md): the adapter itself is one
@@ -48,7 +48,7 @@ describe("createAsciiRenderer", () => {
     const { target, writes } = createTarget();
     const renderer = createAsciiRenderer({
       target,
-      config: defaultAudioVisualConfig,
+      config: defaultSettings.audiovisual,
       backdrop: null,
     });
     const frame = shellFrame();
@@ -57,7 +57,7 @@ describe("createAsciiRenderer", () => {
 
     expect(writes).toHaveLength(1);
     expect(writes[0]).toBe(
-      rasteriseFrame(frame, defaultAudioVisualConfig.ascii),
+      rasteriseFrame(frame, defaultSettings.audiovisual.ascii),
     );
   });
 
@@ -71,8 +71,8 @@ describe("createAsciiRenderer", () => {
     // Unusual columns and rows, so what passes is the composition rather
     // than a coincidence at the default grid size.
     const config = {
-      ...defaultAudioVisualConfig,
-      ascii: { ...defaultAudioVisualConfig.ascii, columns: 7, rows: 3 },
+      ...defaultSettings.audiovisual,
+      ascii: { ...defaultSettings.audiovisual.ascii, columns: 7, rows: 3 },
     };
     const backdrop: Backdrop = {
       sky: { horizon: 0.2, zenith: 0.05 },
@@ -106,8 +106,8 @@ describe("createAsciiRenderer", () => {
 
   describe("with ambient movers", () => {
     const config = {
-      ...defaultAudioVisualConfig,
-      ascii: { ...defaultAudioVisualConfig.ascii, columns: 5, rows: 3 },
+      ...defaultSettings.audiovisual,
+      ascii: { ...defaultSettings.audiovisual.ascii, columns: 5, rows: 3 },
     };
     const flatSky: Backdrop = {
       sky: { horizon: 0.2, zenith: 0.2 },

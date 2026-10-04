@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultActionConfig } from "./config.ts";
+import { defaultSettings } from "../config.ts";
 import { buildFireworkSpec } from "./spec.ts";
 import type { ControlSignal } from "../control/types.ts";
 
@@ -21,7 +21,7 @@ function signal(overrides: Partial<ControlSignal> = {}): ControlSignal {
 describe("buildFireworkSpec", () => {
   it("sets origin to config.launchOrigin", () => {
     const config = {
-      ...defaultActionConfig,
+      ...defaultSettings.action,
       launchOrigin: { x: 7, y: 8, z: 0 },
     };
 
@@ -33,7 +33,7 @@ describe("buildFireworkSpec", () => {
   it("sets launchedAt to signal.timestamp", () => {
     const spec = buildFireworkSpec(
       signal({ timestamp: 4242 }),
-      defaultActionConfig,
+      defaultSettings.action,
     );
 
     expect(spec.launchedAt).toBe(4242);
@@ -42,25 +42,25 @@ describe("buildFireworkSpec", () => {
   it("gives a deterministic id that differs between two presses of the same key at different times", () => {
     const a = buildFireworkSpec(
       signal({ id: "KeyA", timestamp: 1000 }),
-      defaultActionConfig,
+      defaultSettings.action,
     );
     const b = buildFireworkSpec(
       signal({ id: "KeyA", timestamp: 2000 }),
-      defaultActionConfig,
+      defaultSettings.action,
     );
 
     expect(a.id).not.toBe(b.id);
     expect(
       buildFireworkSpec(
         signal({ id: "KeyA", timestamp: 1000 }),
-        defaultActionConfig,
+        defaultSettings.action,
       ).id,
     ).toBe(a.id);
   });
 
   it("keeps thrust, fuelMs and fuseMs inside their configured ranges", () => {
     const config = {
-      ...defaultActionConfig,
+      ...defaultSettings.action,
       thrust: { min: 111, max: 112 },
       fuelMs: { min: 222, max: 223 },
       fuseMs: { min: 333, max: 334 },
@@ -78,7 +78,7 @@ describe("buildFireworkSpec", () => {
 
   it("keeps particleCount and burstDurationMs inside their configured ranges", () => {
     const config = {
-      ...defaultActionConfig,
+      ...defaultSettings.action,
       particleCount: { min: 999, max: 1000 },
       burstDurationMs: { min: 5000, max: 5001 },
     };
@@ -92,17 +92,17 @@ describe("buildFireworkSpec", () => {
   });
 
   it("produces a deep-equal spec when fed the same signal twice", () => {
-    const a = buildFireworkSpec(signal(), defaultActionConfig);
-    const b = buildFireworkSpec(signal(), defaultActionConfig);
+    const a = buildFireworkSpec(signal(), defaultSettings.action);
+    const b = buildFireworkSpec(signal(), defaultSettings.action);
 
     expect(a).toEqual(b);
   });
 
   it("assembles pattern, colors and sound from the trait pickers", () => {
-    const spec = buildFireworkSpec(signal(), defaultActionConfig);
+    const spec = buildFireworkSpec(signal(), defaultSettings.action);
 
-    expect(defaultActionConfig.patterns).toContain(spec.pattern);
-    expect(spec.colors).toHaveLength(defaultActionConfig.paletteSize);
-    expect(defaultActionConfig.sound.timbres).toContain(spec.sound.timbre);
+    expect(defaultSettings.action.patterns).toContain(spec.pattern);
+    expect(spec.colors).toHaveLength(defaultSettings.action.paletteSize);
+    expect(defaultSettings.action.sound.timbres).toContain(spec.sound.timbre);
   });
 });
