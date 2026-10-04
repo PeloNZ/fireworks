@@ -1,6 +1,6 @@
 # 13. Settings in one place, saved overrides, a POST settings form
 
-Status: step 1 is built (cycle 1). Steps 2 and 3 are not started.
+Status: steps 1 and 2 are built (cycles 1 to 5). Step 3 is not started.
 
 ## Context
 
@@ -11,7 +11,7 @@ The goal is unlimited experimentation. The user changes a setting in the Esc men
 The order of work is fixed:
 
 1. Put every default in one file in the code. **Built.**
-2. Let an outside source (`localStorage`) override the defaults.
+2. Let an outside source (`localStorage`) override the defaults. **Built.** Nothing writes to `localStorage` yet, so for now a person sets a value from devtools.
 3. Make the settings form POST, so that no setting goes in the URL.
 
 ## Decisions
@@ -29,8 +29,8 @@ The order of work is fixed:
 
 ```ts
 // src/config.ts
-interface Settings {
-  // not exported until step 2 needs it
+export interface Settings {
+  // `loadSettings` names it, so it is exported
   readonly renderer: string; // "ascii"
   readonly sound: string; // "tones"
   readonly control: ControlConfig;
@@ -46,21 +46,42 @@ export const defaultSettings: Settings; // deep-frozen
 - `defaultConfig`, `defaultWorldConfig`, `defaultActionConfig` and `defaultAudioVisualConfig` no longer exist.
 - `main.ts` is the only non-test file that imports `defaultSettings`.
 
-### Steps 2 and 3 (not started)
+### Step 2 (built)
 
 ```ts
 // src/settings/overrides.ts — pure
-export interface SettingsStore {
-  // a slice of Storage
+interface SettingsStore {
+  // the slice of Storage that loadSettings uses
   getItem(key: string): string | null;
-  setItem(key: string, value: string): void;
-  removeItem(key: string): void;
 }
 export function mergeOverrides<T>(defaults: T, overrides: unknown): T;
 export function loadSettings(
   store: SettingsStore,
   defaults: Settings,
 ): Settings;
+```
+
+- The storage key is `fireworks.settings`. The value is JSON with the same nesting as `Settings`.
+- `mergeOverrides` uses a saved value only when it has the type of its default:
+  - A number must be finite. A string must be a string.
+  - An object merges key by key, so a saved `gravity.y` keeps `gravity.x`.
+  - A key with no default is ignored. The merge walks the keys of the defaults, so a `__proto__` key in saved JSON is never read.
+  - A saved value that is not an object, where the default is an object, gives the default.
+  - A list keeps its default, because nothing checks its items. A list is not saved yet.
+- `loadSettings` gives the defaults when nothing is saved, when the text is not JSON, and when the store throws.
+- `main.ts` builds the store as `{ getItem: (key) => localStorage.getItem(key) }`. The `localStorage` property is read inside the method, so a browser that throws on access gives the defaults.
+- `settings.world` goes to both `createWorld` and `createAudioVisualLayer`. Sparks read `gravity` and `drag` on every frame. If only one place gets the saved value, shells and sparks fall at different rates.
+- The renderer and sound still come from the URL. Their fallbacks are `defaultSettings.renderer` and `defaultSettings.sound`, not `settings.*`. `selectRenderer` throws if its fallback is not in its table, and a saved name is not checked against the table.
+
+### Step 3 (not started)
+
+```ts
+// SettingsStore gains setItem and removeItem
+export interface SettingsStore {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}
 export function overridesFromForm(
   entries: Iterable<readonly [string, FormDataEntryValue]>,
   defaults: Settings,
@@ -72,10 +93,10 @@ export function applySettingsForm(
 ): "saved" | "cleared" | "none";
 ```
 
-- The storage key is `fireworks.settings`. The value is JSON with the same nesting as `Settings`. It holds only the fields the form sends.
+- The saved JSON holds only the fields the form sends.
 - A form field name is the dotted path, for example `world.gravity.y`. The radios keep the names `renderer` and `sound`.
 - The submit buttons have `name="command"`. Apply has `value="apply"`. Defaults has `value="defaults"`. Cancel has no name, so `applySettingsForm` returns `"none"`.
-- `settings.world` goes to both `createWorld` and `createAudioVisualLayer`. Sparks read `gravity` and `drag` on every frame. If only one place gets the saved value, shells and sparks fall at different rates.
+- The renderer fallback becomes the default and the requested name becomes the saved one: `selectRenderer(settings.renderer, renderers, defaultSettings.renderer)`. An unknown saved name then falls back to the default and does not throw.
 
 ## File layout
 
@@ -108,12 +129,16 @@ Rules for every cycle:
      - A throwaway script compared the old and the new objects with `deepStrictEqual`. All four are equal and still deeply frozen.
      - The 30 changed test files, with whitespace and trailing commas ignored, are identical to the old files after the rename.
 
-### Step 2: override from `localStorage` (not started)
+### Step 2: override from `localStorage` (built)
 
-2. `mergeOverrides`: a saved value replaces its default. `{ world: { gravity: { y: -4.5 } } }` changes y and keeps x and z.
-3. `mergeOverrides`: a value of the wrong type keeps the default. A string for a number, `NaN`, `Infinity` and an object for a number all keep it. An unknown key is dropped. An input that is not an object gives the defaults.
-4. `loadSettings`: reads `fireworks.settings`, parses it and merges it. A missing key, bad JSON and a `getItem` that throws all give the defaults.
-5. Wiring in `main.ts` (untested, as in doc 10 cycle 6). Each `SettingsStore` method calls `localStorage` inside itself, so a throwing `localStorage` is caught. `settings.*` replaces `defaultSettings.*`.
+2. `mergeOverrides`: a saved value replaces its default. Two tests: a top-level number, then a nested one. `{ world: { gravity: { y: -4.5 } } }` changes y and keeps x and z. The second test failed against the first version, which merged only one level.
+3. `mergeOverrides`: a value of the wrong type keeps the default. Tests, each written and seen to fail first:
+   - A string, `NaN`, `Infinity`, `null`, a boolean and an object for a number all keep the default. (`null` is in the list because `JSON.stringify` turns `NaN` and `Infinity` into `null`.)
+   - An unknown key is dropped, and so is a `__proto__` key from `JSON.parse`. Both tests failed before the merge walked the keys of the defaults.
+   - A saved `null` or `undefined`, where the default is an object, gave a `TypeError`. It now gives the default. A string, a number and a list were already safe.
+   - A string default takes only a string. A list keeps its default.
+4. `loadSettings`: reads `fireworks.settings`, parses it and merges it. A missing key, bad JSON and a `getItem` that throws all give the defaults. The missing-key test passed before the code for it, because `JSON.parse(null)` returns `null`. The code now checks for `null` itself.
+5. Wiring in `main.ts` (untested, as in doc 10 cycle 6). `settings` replaces `defaultSettings` in every layer call. A throwaway script ran the same store with a working `localStorage`, an empty one and a `localStorage` getter that throws. The results were the saved gravity, the defaults and the defaults.
 
 ### Step 3: the POST form (not started)
 
@@ -143,6 +168,13 @@ grep -rn "location.search\|URLSearchParams" src/   # empty
 ## Manual checks
 
 Step 1: `npm run dev` looks and plays as before, in each of `?renderer=ascii`, `emoji`, `pixel` and `neon`.
+
+Step 2 (nothing writes to `localStorage` yet, so set it from devtools):
+
+- Run `localStorage.setItem("fireworks.settings", '{"world":{"gravity":{"y":-5}}}')` and reload. Shells and sparks fall slowly.
+- Run `localStorage.setItem("fireworks.settings", '{"world":{"drag":"fast"}}')` and reload. The page plays with the default drag.
+- Run `localStorage.setItem("fireworks.settings", "{not json")` and reload. The page plays with the defaults.
+- Run `localStorage.removeItem("fireworks.settings")` and reload. The page is back to the defaults.
 
 After step 3:
 

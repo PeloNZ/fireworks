@@ -16,6 +16,7 @@ import { createPixelRenderer } from "./audiovisual/adapters/pixel.ts";
 import { worldHalfWidth } from "./audiovisual/adapters/pixelGrid.ts";
 import { createWebAudioSink } from "./audiovisual/adapters/webAudio.ts";
 import { selectRenderer } from "./audiovisual/selectRenderer.ts";
+import { loadSettings } from "./settings/overrides.ts";
 import { attachSettingsMenu, choicesFor } from "./settings/settingsMenu.ts";
 import { soundSets } from "./audiovisual/voices/sets.ts";
 import type { FireworkPhase } from "./action/types.ts";
@@ -28,9 +29,19 @@ import type { Renderer } from "./audiovisual/types.ts";
 // jsdom" in docs/03_plan_control_layer.md and "File layout" in
 // docs/04_plan_action_layer.md.
 
+// The defaults with any settings saved in localStorage laid over them. The
+// store reads `localStorage` inside its own method, so a browser that throws
+// on access (a private window, blocked site data) gives the defaults. The
+// renderer and sound still come from the URL, with the defaults as fallbacks.
+// See docs/13_settings_overrides.md.
+const settings = loadSettings(
+  { getItem: (key) => localStorage.getItem(key) },
+  defaultSettings,
+);
+
 const adapter = createKeyboardAdapter({
   target: window,
-  config: defaultSettings.control.keyboard,
+  config: settings.control.keyboard,
 });
 
 const focusLoss = createWindowFocusLoss({
@@ -39,8 +50,8 @@ const focusLoss = createWindowFocusLoss({
 });
 
 const world = createWorld({
-  worldConfig: defaultSettings.world,
-  config: defaultSettings.action,
+  worldConfig: settings.world,
+  config: settings.action,
 });
 
 // Not `now: performance.now` — that passes the function detached from the
@@ -50,9 +61,9 @@ const world = createWorld({
 // browser built-in, not a type this codebase declares.
 const layer = createControlLayer({
   adapter,
-  config: defaultSettings.control,
+  config: settings.control,
   now: () => performance.now(),
-  sink: createActionLayer({ world, config: defaultSettings.action }),
+  sink: createActionLayer({ world, config: settings.action }),
   focusLoss,
 });
 
@@ -111,10 +122,7 @@ window.addEventListener(
 const backdropSeed = hashString(
   `${Date.now().toString()}:${Math.random().toString()}`,
 );
-const backdrop = buildBackdrop(
-  backdropSeed,
-  defaultSettings.audiovisual.backdrop,
-);
+const backdrop = buildBackdrop(backdropSeed, settings.audiovisual.backdrop);
 // The ambient movers (shooting stars, satellites) roll their dice from a
 // stream of their own, seeded off the same page-load seed, the way
 // `buildBackdrop` splits its sky, bodies and ground. See
@@ -149,7 +157,7 @@ const renderers: Record<
     return {
       renderer: createAsciiRenderer({
         target,
-        config: defaultSettings.audiovisual,
+        config: settings.audiovisual,
         backdrop,
       }),
       halfWidth: squareWorldHalfWidth,
@@ -162,7 +170,7 @@ const renderers: Record<
     return {
       renderer: createEmojiRenderer({
         target,
-        config: defaultSettings.audiovisual,
+        config: settings.audiovisual,
         backdrop,
       }),
       halfWidth: squareWorldHalfWidth,
@@ -174,11 +182,11 @@ const renderers: Record<
   // whatever shape the window is. See "The geometry" in
   // docs/09_8bit_renderer.md.
   pixel: (host) => {
-    const { rows } = defaultSettings.audiovisual.pixel;
+    const { rows } = settings.audiovisual.pixel;
     const columns = Math.round((rows * window.innerWidth) / window.innerHeight);
     const config = {
-      ...defaultSettings.audiovisual,
-      pixel: { ...defaultSettings.audiovisual.pixel, columns },
+      ...settings.audiovisual,
+      pixel: { ...settings.audiovisual.pixel, columns },
     };
 
     const background = document.createElement("canvas");
@@ -271,7 +279,7 @@ const renderers: Record<
       quarter: surfaceOf(canvasOf(Math.ceil(width / 4), Math.ceil(height / 4))),
       eighth: surfaceOf(canvasOf(Math.ceil(width / 8), Math.ceil(height / 8))),
       backdrop,
-      config: defaultSettings.audiovisual.neon,
+      config: settings.audiovisual.neon,
     });
     return {
       renderer,
@@ -355,15 +363,15 @@ const audioVisual = createAudioVisualLayer({
   renderer,
   audio: createWebAudioSink({
     context: audioContext,
-    config: defaultSettings.audiovisual,
+    config: settings.audiovisual,
   }),
   voicePlanner,
   ambientRandom,
   config: {
-    ...defaultSettings.audiovisual,
-    ambient: ambientForWidth(defaultSettings.audiovisual.ambient, halfWidth),
+    ...settings.audiovisual,
+    ambient: ambientForWidth(settings.audiovisual.ambient, halfWidth),
   },
-  worldConfig: defaultSettings.world,
+  worldConfig: settings.world,
 });
 
 // Traces each firework through its phases in the console — one line per
@@ -382,10 +390,7 @@ function frame(now: number): void {
   // of physics steps in one turn, and the AudioVisual layer's phase
   // watcher (cycle 16) never misses a transition. See "Why the elapsed
   // time is clamped" in docs/05_audio_visual_layer.md.
-  const elapsedMs = Math.min(
-    rawElapsedMs,
-    defaultSettings.audiovisual.maxFrameMs,
-  );
+  const elapsedMs = Math.min(rawElapsedMs, settings.audiovisual.maxFrameMs);
   world.step(elapsedMs);
 
   const entities = world.entities();
